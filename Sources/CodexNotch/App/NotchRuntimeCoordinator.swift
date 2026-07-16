@@ -321,7 +321,11 @@ final class NotchRuntimeCoordinator {
         } else {
             stateForWindow = state
         }
-        viewModel.update(state: stateForWindow, now: renderDate)
+        viewModel.update(
+            state: stateForWindow,
+            now: renderDate,
+            cameraSafeAreaInset: max(0, screen.safeAreaInsets.top)
+        )
         windowController.apply(layout: layout, state: stateForWindow)
     }
 

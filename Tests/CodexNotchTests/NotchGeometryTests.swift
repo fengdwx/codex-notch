@@ -25,7 +25,7 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertEqual(layout.expandedFrame.midX, 1512, accuracy: 0.1)
     }
 
-    func testExpandedFrameStaysInsideVisibleScreenBounds() {
+    func testExpandedFrameAttachesToTopAndReservesCameraHeight() {
         let metrics = NotchScreenMetrics(
             frame: NSRect(x: 0, y: 0, width: 1200, height: 800),
             visibleFrame: NSRect(x: 0, y: 0, width: 1200, height: 800),
@@ -42,11 +42,8 @@ final class NotchGeometryTests: XCTestCase {
 
         XCTAssertGreaterThanOrEqual(layout.expandedFrame.minX, metrics.visibleFrame.minX)
         XCTAssertLessThanOrEqual(layout.expandedFrame.maxX, metrics.visibleFrame.maxX)
-        XCTAssertEqual(
-            layout.expandedFrame.maxY,
-            metrics.frame.maxY - metrics.safeAreaInsets.top,
-            accuracy: 0.1
-        )
+        XCTAssertEqual(layout.expandedFrame.maxY, metrics.frame.maxY, accuracy: 0.1)
+        XCTAssertEqual(layout.expandedFrame.height, 220, accuracy: 0.1)
     }
 
     func testDefaultCompactFrameStaysCloseToNotchGap() {
@@ -70,11 +67,11 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertEqual(layout.compactFrame.midX, 755.5, accuracy: 0.1)
         XCTAssertEqual(layout.compactFrame.maxY, 982, accuracy: 0.1)
         XCTAssertEqual(layout.quotaExpandedFrame.width, 420, accuracy: 0.1)
-        XCTAssertEqual(layout.quotaExpandedFrame.height, 94, accuracy: 0.1)
-        XCTAssertEqual(layout.quotaExpandedFrame.maxY, 950, accuracy: 0.1)
+        XCTAssertEqual(layout.quotaExpandedFrame.height, 126, accuracy: 0.1)
+        XCTAssertEqual(layout.quotaExpandedFrame.maxY, 982, accuracy: 0.1)
         XCTAssertEqual(layout.expandedFrame.width, 420, accuracy: 0.1)
-        XCTAssertEqual(layout.expandedFrame.height, 176, accuracy: 0.1)
-        XCTAssertEqual(layout.expandedFrame.maxY, 950, accuracy: 0.1)
+        XCTAssertEqual(layout.expandedFrame.height, 208, accuracy: 0.1)
+        XCTAssertEqual(layout.expandedFrame.maxY, 982, accuracy: 0.1)
     }
 
     func testMissingAuxiliaryAreasUseMenuBarFallback() {

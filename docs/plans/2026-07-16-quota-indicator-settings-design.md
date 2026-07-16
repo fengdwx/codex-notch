@@ -15,7 +15,7 @@
 
 `QuotaDisplayStyle` 和 `QuotaLabelPlacement` 使用 `UserDefaults` 持久化。`NotchView` 和设置窗口都通过同一个 `@AppStorage` 键读取，因此设置修改后不需要重启即可更新刘海。设置窗口通过 SwiftUI `Settings` scene 提供，刘海右键菜单和应用菜单都提供入口。数字位置对圆环和波浪球统一生效，默认使用指标内数字；旧版的波浪球位置偏好会在启动时自动迁移。
 
-展开面板使用屏幕的 `safeAreaInsets.top` 作为顶部避让距离，紧凑态仍贴合刘海；这样实体摄像头不会遮住展开后的横向额度进度条。
+展开面板外壳从屏幕顶部与实体刘海连成一体；屏幕的 `safeAreaInsets.top` 仅作为内容顶部内边距，因此横向额度进度条和文字会避开摄像头，但卡片不会悬在刘海下方。
 
 ## 验证
 

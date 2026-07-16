@@ -4,6 +4,7 @@ import SwiftUI
 final class NotchViewModel: ObservableObject {
     @Published private(set) var state: NotchPresentationState
     @Published private(set) var now: Date
+    @Published private(set) var cameraSafeAreaInset: CGFloat
 
     var onOpenThread: (String) -> Void
     var onActivateChatGPT: () -> Void
@@ -12,20 +13,27 @@ final class NotchViewModel: ObservableObject {
     init(
         state: NotchPresentationState = .hidden,
         now: Date = .now,
+        cameraSafeAreaInset: CGFloat = 0,
         onOpenThread: @escaping (String) -> Void = { _ in },
         onActivateChatGPT: @escaping () -> Void = {},
         onHoverChanged: @escaping (Bool) -> Void = { _ in }
     ) {
         self.state = state
         self.now = now
+        self.cameraSafeAreaInset = cameraSafeAreaInset
         self.onOpenThread = onOpenThread
         self.onActivateChatGPT = onActivateChatGPT
         self.onHoverChanged = onHoverChanged
     }
 
-    func update(state: NotchPresentationState, now: Date) {
+    func update(
+        state: NotchPresentationState,
+        now: Date,
+        cameraSafeAreaInset: CGFloat = 0
+    ) {
         self.state = state
         self.now = now
+        self.cameraSafeAreaInset = cameraSafeAreaInset
     }
 }
 
@@ -120,6 +128,7 @@ struct NotchView: View {
                 ExpandedNotchView(
                     content: content,
                     now: model.now,
+                    cameraSafeAreaInset: model.cameraSafeAreaInset,
                     onOpenThread: model.onOpenThread
                 )
             }
@@ -888,6 +897,7 @@ private struct WeeklyQuotaRing: View {
 private struct ExpandedNotchView: View {
     let content: ExpandedContent
     let now: Date
+    let cameraSafeAreaInset: CGFloat
     let onOpenThread: (String) -> Void
 
     var body: some View {
@@ -937,10 +947,9 @@ private struct ExpandedNotchView: View {
             }
         }
         .padding(.horizontal, 14)
-        // Expanded frames start below the physical camera cutout. Keep only
-        // a small attachment gap here so the progress bar is never hidden by
-        // the hardware notch.
-        .padding(.top, 8)
+        // The panel itself attaches to the physical notch. Only the content
+        // moves down, so the progress bar and text stay on drawable pixels.
+        .padding(.top, cameraSafeAreaInset + 8)
         .padding(.bottom, 10)
     }
 }

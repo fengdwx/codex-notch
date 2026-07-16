@@ -91,6 +91,17 @@ enum NotchGeometry {
             compactSize.height,
             max(28, metrics.safeAreaInsets.top)
         )
+        // Expanded panels attach to the top edge like a single Dynamic Island.
+        // Their drawable content is still kept below this camera attachment.
+        let cameraAttachmentHeight = max(0, metrics.safeAreaInsets.top)
+        let quotaExpandedPanelSize = NSSize(
+            width: quotaExpandedSize.width,
+            height: quotaExpandedSize.height + cameraAttachmentHeight
+        )
+        let expandedPanelSize = NSSize(
+            width: expandedSize.width,
+            height: expandedSize.height + cameraAttachmentHeight
+        )
         return NotchLayout(
             mode: .notch,
             centerX: centerX,
@@ -110,17 +121,17 @@ enum NotchGeometry {
             ),
             quotaExpandedFrame: frame(
                 centeredAt: centerX,
-                size: quotaExpandedSize,
+                size: quotaExpandedPanelSize,
                 screenFrame: metrics.frame,
                 visibleFrame: metrics.visibleFrame,
-                topInset: metrics.safeAreaInsets.top
+                topInset: 0
             ),
             expandedFrame: frame(
                 centeredAt: centerX,
-                size: expandedSize,
+                size: expandedPanelSize,
                 screenFrame: metrics.frame,
                 visibleFrame: metrics.visibleFrame,
-                topInset: metrics.safeAreaInsets.top
+                topInset: 0
             )
         )
     }
@@ -138,9 +149,9 @@ enum NotchGeometry {
         let maxX = max(minX, visibleFrame.maxX - width)
         let proposedX = centerX - width / 2
         let x = min(max(proposedX, minX), maxX)
-        // A MacBook's central top area is a physical cutout, not drawable
-        // pixels. Place the panel below the safe-area inset so its text is
-        // rendered on the display rather than behind the camera.
+        // Expanded panels use topInset 0 so their shell is visually attached
+        // to the camera. Their content receives the safe-area padding in
+        // ExpandedNotchView, keeping text off the physical cutout.
         let y = screenFrame.maxY - min(max(0, topInset), screenFrame.height) - height
         return NSRect(x: x, y: y, width: width, height: height)
     }
