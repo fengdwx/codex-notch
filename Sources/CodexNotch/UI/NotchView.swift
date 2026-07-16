@@ -404,22 +404,29 @@ private struct CompletedChatGPTIcon: View {
     var body: some View {
         ZStack {
             if !reduceMotion {
-                Circle()
-                    .stroke(NotchPalette.success.opacity(hasSettled ? 0 : 0.7), lineWidth: 1)
-                    .frame(width: size + 8, height: size + 8)
-                    .scaleEffect(hasSettled ? 1.18 : 0.78)
+                // Keep the acknowledgement tied to the actual ChatGPT mark,
+                // not a generic circular notification ring. It reads as a
+                // single completion echo from the left-side app icon.
+                ChatGPTMark(size: size, tint: NotchPalette.success)
+                    .scaleEffect(hasSettled ? 1.42 : 0.82)
+                    .opacity(hasSettled ? 0 : 0.58)
+                    .blur(radius: hasSettled ? 0.75 : 0)
             }
 
             ChatGPTMark(size: size)
 
             Image(systemName: "checkmark")
-                .font(.system(size: 5.5, weight: .black))
+                .font(.system(size: 6.5, weight: .black))
                 .foregroundStyle(Color.black)
-                .frame(width: 9, height: 9)
+                .frame(width: 11, height: 11)
                 .background(NotchPalette.success, in: Circle())
-                .offset(x: 7, y: 7)
+                .overlay {
+                    Circle()
+                        .stroke(NotchPalette.background, lineWidth: 1)
+                }
+                .offset(x: 7.5, y: 7.5)
         }
-        .frame(width: size + 8, height: size + 8)
+        .frame(width: size + 10, height: size + 10)
         .onAppear {
             guard !reduceMotion else { return }
             hasSettled = true
@@ -454,6 +461,7 @@ private enum ChatGPTIconAsset {
 private struct ChatGPTMark: View {
     let size: CGFloat
     var fallbackSystemName = "sparkles"
+    var tint = NotchPalette.primaryText.opacity(0.96)
 
     var body: some View {
         Group {
@@ -463,11 +471,11 @@ private struct ChatGPTMark: View {
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
-                    .foregroundStyle(NotchPalette.primaryText.opacity(0.96))
+                    .foregroundStyle(tint)
             } else {
                 Image(systemName: fallbackSystemName)
                     .font(.system(size: size * 0.72, weight: .semibold))
-                    .foregroundStyle(NotchPalette.primaryText.opacity(0.96))
+                    .foregroundStyle(tint)
             }
         }
         .frame(width: size, height: size)
@@ -476,38 +484,37 @@ private struct ChatGPTMark: View {
 
 private struct RunningChatGPTIcon: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var isPulsing = false
+    @State private var isEmittingEcho = false
 
     let size: CGFloat
 
     var body: some View {
         ZStack {
             if !reduceMotion {
-                Circle()
-                    .stroke(NotchPalette.accent.opacity(0.28), lineWidth: 1)
-                    .frame(width: size + 7, height: size + 7)
-                    .scaleEffect(1.04)
-
-                Circle()
-                    .stroke(NotchPalette.accent.opacity(isPulsing ? 0 : 0.92), lineWidth: 1.35)
-                    .frame(width: size + 10, height: size + 10)
-                    .scaleEffect(isPulsing ? 1.34 : 0.68)
-                    .opacity(isPulsing ? 0 : 1)
-                    .shadow(color: NotchPalette.accent.opacity(0.46), radius: 2)
+                // A shape echo makes the active state feel native to ChatGPT
+                // while staying inside the narrow left notch wing.
+                ChatGPTMark(size: size, tint: NotchPalette.accent)
+                    .scaleEffect(isEmittingEcho ? 1.42 : 0.82)
+                    .opacity(isEmittingEcho ? 0 : 0.62)
+                    .blur(radius: isEmittingEcho ? 0.75 : 0)
+                    .shadow(
+                        color: NotchPalette.accent.opacity(isEmittingEcho ? 0 : 0.36),
+                        radius: 2
+                    )
             }
 
             ChatGPTMark(size: size)
         }
-        .frame(width: size + 8, height: size + 8)
+        .frame(width: size + 10, height: size + 10)
         .onAppear {
             guard !reduceMotion else { return }
-            isPulsing = true
+            isEmittingEcho = true
         }
         .animation(
             reduceMotion
                 ? nil
-                : .easeOut(duration: 1.05).repeatForever(autoreverses: false),
-            value: isPulsing
+                : .easeOut(duration: 1.08).repeatForever(autoreverses: false),
+            value: isEmittingEcho
         )
     }
 }
