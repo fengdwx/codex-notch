@@ -21,15 +21,15 @@ same top edge without becoming a detached black card.
 
 ## Expanded state
 
-- Use a 420 x 158 active panel and a 420 x 104 idle quota panel with no reserved
+- Use a 420 x 150 active panel and a 420 x 94 idle quota panel with no reserved
   empty list area.
 - Show a compact running header, at most two task cards, and one weekly quota
   card.
 - The weekly card contains the remaining percentage, the local reset timestamp
   in `yyyy-MM-dd HH:mm:ss`, and a countdown updated to the second.
-- Remove the running-title row below the notch. Keep only the ChatGPT mark and
-  weekly ring at the physical notch height; each task card remains the direct
-  navigation target.
+- Remove the running-title row below the notch. The circular quota gauge belongs
+  only to the compact state; expanded panels use one horizontal weekly progress
+  bar with reset details. Each task card remains the direct navigation target.
 - Animate only the window growth/collapse and the running pulse. Keep motion
   short and restrained to avoid reintroducing hover flicker.
 

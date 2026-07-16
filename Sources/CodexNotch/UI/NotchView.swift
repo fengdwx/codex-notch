@@ -428,19 +428,11 @@ private struct ExpandedNotchView: View {
     let onOpenThread: (String) -> Void
 
     var body: some View {
-        ZStack(alignment: .top) {
-            ExpandedNotchTopBar(
-                usage: content.usage,
-                isRunning: !content.sessions.isEmpty
-            )
-
+        Group {
             if content.sessions.isEmpty {
-                WeeklyQuotaCard(usage: content.usage, now: now)
-                    .padding(.horizontal, 12)
-                    .padding(.top, 38)
-                    .padding(.bottom, 10)
+                WeeklyQuotaProgressView(usage: content.usage, now: now)
             } else {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 7) {
                         ForEach(Array(content.sessions.prefix(2))) { session in
                             SessionCardView(
@@ -452,51 +444,13 @@ private struct ExpandedNotchView: View {
                     }
                     .frame(height: 46)
 
-                    WeeklyQuotaCard(usage: content.usage, now: now)
+                    WeeklyQuotaProgressView(usage: content.usage, now: now)
                 }
-                .padding(.horizontal, 12)
-                .padding(.top, 38)
-                .padding(.bottom, 10)
             }
         }
-    }
-}
-
-private struct ExpandedNotchTopBar: View {
-    let usage: UsageSnapshot?
-    let isRunning: Bool
-
-    private var notchWidth: CGFloat {
-        guard let screen = NSScreen.main,
-              let left = screen.auxiliaryTopLeftArea,
-              let right = screen.auxiliaryTopRightArea else {
-            return 185
-        }
-        return max(0, right.minX - left.maxX)
-    }
-
-    var body: some View {
-        GeometryReader { proxy in
-            let sideWidth = max(38, (proxy.size.width - notchWidth) / 2)
-
-            HStack(spacing: 0) {
-                HStack(spacing: 0) {
-                    Spacer(minLength: 0)
-                    CompactAppIconView(status: isRunning ? .working : .quota)
-                }
-                .frame(width: sideWidth)
-
-                Spacer(minLength: 0)
-
-                HStack(spacing: 0) {
-                    CompactQuotaView(usage: usage, isHovered: true)
-                    Spacer(minLength: 0)
-                }
-                .frame(width: sideWidth)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .frame(height: 32)
+        .padding(.horizontal, 14)
+        .padding(.top, 40)
+        .padding(.bottom, 12)
     }
 }
 
@@ -545,7 +499,7 @@ private struct SessionCardView: View {
     }
 }
 
-private struct WeeklyQuotaCard: View {
+private struct WeeklyQuotaProgressView: View {
     let usage: UsageSnapshot?
     let now: Date
 
@@ -553,47 +507,66 @@ private struct WeeklyQuotaCard: View {
         usage?.weeklyWindow
     }
 
-    var body: some View {
-        HStack(spacing: 10) {
-            WeeklyQuotaRing(
-                usage: usage,
-                diameter: 38,
-                lineWidth: 2.5,
-                fontSize: 9
-            )
+    private var level: WeeklyQuotaLevel {
+        WeeklyQuotaLevel(weeklyWindow: window)
+    }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("本周额度")
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+    private var progressColor: Color {
+        switch level {
+        case .healthy:
+            return NotchPalette.success
+        case .critical:
+            return NotchPalette.danger
+        case .unavailable:
+            return NotchPalette.secondaryText
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 5) {
+            HStack {
+                Text("本周剩余")
+                    .font(.system(size: 10.5, weight: .semibold, design: .rounded))
                     .foregroundStyle(NotchPalette.primaryText)
 
+                Spacer()
+
+                Text(window.map { NotchText.percent($0.remainingPercent) } ?? "—")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(progressColor)
+                    .monospacedDigit()
+            }
+
+            GeometryReader { proxy in
+                Capsule()
+                    .fill(NotchPalette.track)
+                    .overlay(alignment: .leading) {
+                        Capsule()
+                            .fill(progressColor)
+                            .frame(
+                                width: proxy.size.width * (window?.remainingPercent ?? 0) / 100
+                            )
+                    }
+            }
+            .frame(height: 5)
+
+            HStack(spacing: 8) {
                 Text(resetTimestampText)
                     .font(.system(size: 8.5, weight: .medium, design: .rounded))
                     .foregroundStyle(NotchPalette.secondaryText)
                     .lineLimit(1)
-            }
 
-            Spacer(minLength: 8)
+                Spacer(minLength: 4)
 
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("距离重置")
-                    .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                Text("还剩 \(resetCountdownText)")
+                    .font(.system(size: 8.5, weight: .semibold, design: .rounded))
                     .foregroundStyle(NotchPalette.secondaryText)
-
-                Text(resetCountdownText)
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(NotchPalette.primaryText)
                     .monospacedDigit()
+                    .lineLimit(1)
             }
         }
-        .padding(.horizontal, 10)
-        .frame(maxWidth: .infinity, minHeight: 56, maxHeight: 56)
-        .background(NotchPalette.row)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .stroke(NotchPalette.border, lineWidth: 0.5)
-        }
+        .frame(maxWidth: .infinity, minHeight: 42, maxHeight: 42)
+        .animation(.easeInOut(duration: 0.28), value: window?.remainingPercent ?? 0)
     }
 
     private var resetTimestampText: String {
