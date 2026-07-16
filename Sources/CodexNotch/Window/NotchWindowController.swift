@@ -10,7 +10,7 @@ final class NotchWindowController: NSWindowController {
     private var screenObserver: NSObjectProtocol?
     private var hostingView: NSHostingView<AnyView>?
     private var statusItem: NSStatusItem?
-    private var lastPresentedExpanded: Bool?
+    private var lastFrameKind: PresentationFrameKind?
 
     init() {
         let panel = NotchPanel(contentRect: NSRect(x: 0, y: 0, width: 1, height: 1))
@@ -48,20 +48,22 @@ final class NotchWindowController: NSWindowController {
         }
 
         hideFallbackMenu()
-        let isHidden = state == .hidden
-        if isHidden {
-            panel.ignoresMouseEvents = true
-            panel.orderOut(nil)
-            panel.alphaValue = 1
-            lastPresentedExpanded = nil
-            return
+        let frameKind = PresentationFrameKind(state: state)
+        let frame: NSRect
+        switch frameKind {
+        case .hoverSensor:
+            frame = layout.hoverSensorFrame
+        case .compact:
+            frame = layout.compactFrame
+        case .quotaExpanded:
+            frame = layout.quotaExpandedFrame
+        case .taskExpanded:
+            frame = layout.expandedFrame
         }
-
-        let frame = state.isExpanded ? layout.expandedFrame : layout.compactFrame
         let wasVisible = panel.isVisible
         let shouldAnimateFrame = wasVisible
-            && lastPresentedExpanded != nil
-            && lastPresentedExpanded != state.isExpanded
+            && lastFrameKind != nil
+            && lastFrameKind != frameKind
         panel.setFrame(frame, display: true, animate: shouldAnimateFrame)
         panel.ignoresMouseEvents = false
         if wasVisible {
@@ -75,7 +77,7 @@ final class NotchWindowController: NSWindowController {
                 panel.animator().alphaValue = 1
             }
         }
-        lastPresentedExpanded = state.isExpanded
+        lastFrameKind = frameKind
     }
 
     deinit {
@@ -193,9 +195,20 @@ final class NotchWindowController: NSWindowController {
     }
 }
 
-private extension NotchPresentationState {
-    var isExpanded: Bool {
-        if case .expanded = self { return true }
-        return false
+private enum PresentationFrameKind: Equatable {
+    case hoverSensor
+    case compact
+    case quotaExpanded
+    case taskExpanded
+
+    init(state: NotchPresentationState) {
+        switch state {
+        case .hidden:
+            self = .hoverSensor
+        case .quotaCompact, .workingCompact, .completedCompact:
+            self = .compact
+        case let .expanded(content):
+            self = content.sessions.isEmpty ? .quotaExpanded : .taskExpanded
+        }
     }
 }

@@ -92,19 +92,26 @@ final class NotchPresentationReducerTests: XCTestCase {
         XCTAssertEqual(hiddenState, .hidden)
     }
 
-    func testHoverWithoutAnActiveTaskRemainsHidden() {
+    func testHoverWithoutAnActiveTaskExpandsWeeklyQuota() {
+        let usage = UsageSnapshot(
+            windows: [UsageWindow(id: "weekly", kind: .weekly, usedPercent: 25)]
+        )
         let state = NotchPresentationReducer.reduce(
             NotchPresentationInput(
                 now: Date(timeIntervalSince1970: 2_000_000_000),
                 isChatGPTFrontmost: true,
                 activeSessions: [],
                 recentCompletion: nil,
-                usage: nil,
+                usage: usage,
                 isHovered: true
             )
         )
 
-        XCTAssertEqual(state, .hidden)
+        guard case let .expanded(content) = state else {
+            return XCTFail("Expected idle quota expansion")
+        }
+        XCTAssertTrue(content.sessions.isEmpty)
+        XCTAssertEqual(content.usage, usage)
     }
 
     func testHoverExpandsAllActiveSessionsInRecentOrder() {

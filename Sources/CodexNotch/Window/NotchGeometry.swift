@@ -41,7 +41,9 @@ struct NotchScreenMetrics {
 struct NotchLayout: Equatable {
     let mode: NotchLayoutMode
     let centerX: CGFloat
+    let hoverSensorFrame: NSRect
     let compactFrame: NSRect
+    let quotaExpandedFrame: NSRect
     let expandedFrame: NSRect
 }
 
@@ -49,7 +51,8 @@ enum NotchGeometry {
     static func layout(
         metrics: NotchScreenMetrics,
         compactSize: NSSize = NSSize(width: 264, height: 32),
-        expandedSize: NSSize = NSSize(width: 420, height: 190)
+        quotaExpandedSize: NSSize = NSSize(width: 420, height: 104),
+        expandedSize: NSSize = NSSize(width: 420, height: 158)
     ) -> NotchLayout {
         guard let left = metrics.auxiliaryTopLeftArea,
               let right = metrics.auxiliaryTopRightArea,
@@ -59,7 +62,9 @@ enum NotchGeometry {
             return NotchLayout(
                 mode: .menuBarFallback,
                 centerX: metrics.visibleFrame.midX,
+                hoverSensorFrame: .zero,
                 compactFrame: .zero,
+                quotaExpandedFrame: .zero,
                 expandedFrame: .zero
             )
         }
@@ -77,9 +82,23 @@ enum NotchGeometry {
         return NotchLayout(
             mode: .notch,
             centerX: centerX,
+            hoverSensorFrame: frame(
+                centeredAt: centerX,
+                size: NSSize(width: notchWidth, height: compactHeight),
+                screenFrame: metrics.frame,
+                visibleFrame: metrics.visibleFrame,
+                topInset: 0
+            ),
             compactFrame: frame(
                 centeredAt: centerX,
                 size: NSSize(width: compactWidth, height: compactHeight),
+                screenFrame: metrics.frame,
+                visibleFrame: metrics.visibleFrame,
+                topInset: 0
+            ),
+            quotaExpandedFrame: frame(
+                centeredAt: centerX,
+                size: quotaExpandedSize,
                 screenFrame: metrics.frame,
                 visibleFrame: metrics.visibleFrame,
                 topInset: 0

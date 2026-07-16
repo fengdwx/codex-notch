@@ -38,6 +38,10 @@ struct NotchView: View {
         return false
     }
 
+    private var isHidden: Bool {
+        model.state == .hidden
+    }
+
     init(
         state: NotchPresentationState,
         now: Date = .now,
@@ -64,7 +68,7 @@ struct NotchView: View {
         Group {
             switch model.state {
             case .hidden:
-                EmptyView()
+                Color.clear
             case let .quotaCompact(usage):
                 CompactNotchView(
                     icon: .quota,
@@ -103,7 +107,8 @@ struct NotchView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(NotchPalette.background)
+        .contentShape(Rectangle())
+        .background(isHidden ? Color.clear : NotchPalette.background)
         .clipShape(
             NotchAttachedShape(
                 shoulderDepth: 6,
@@ -423,52 +428,75 @@ private struct ExpandedNotchView: View {
     let onOpenThread: (String) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ExpandedRunningHeader(sessions: content.sessions, now: now)
+        ZStack(alignment: .top) {
+            ExpandedNotchTopBar(
+                usage: content.usage,
+                isRunning: !content.sessions.isEmpty
+            )
 
-            HStack(spacing: 7) {
-                ForEach(Array(content.sessions.prefix(2))) { session in
-                    SessionCardView(
-                        session: session,
-                        now: now,
-                        action: { onOpenThread(session.threadID) }
-                    )
+            if content.sessions.isEmpty {
+                WeeklyQuotaCard(usage: content.usage, now: now)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 38)
+                    .padding(.bottom, 10)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 7) {
+                        ForEach(Array(content.sessions.prefix(2))) { session in
+                            SessionCardView(
+                                session: session,
+                                now: now,
+                                action: { onOpenThread(session.threadID) }
+                            )
+                        }
+                    }
+                    .frame(height: 46)
+
+                    WeeklyQuotaCard(usage: content.usage, now: now)
                 }
+                .padding(.horizontal, 12)
+                .padding(.top, 38)
+                .padding(.bottom, 10)
             }
-            .frame(height: 46)
-
-            WeeklyQuotaCard(usage: content.usage, now: now)
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 38)
-        .padding(.bottom, 10)
     }
 }
 
-private struct ExpandedRunningHeader: View {
-    let sessions: [SessionActivity]
-    let now: Date
+private struct ExpandedNotchTopBar: View {
+    let usage: UsageSnapshot?
+    let isRunning: Bool
+
+    private var notchWidth: CGFloat {
+        guard let screen = NSScreen.main,
+              let left = screen.auxiliaryTopLeftArea,
+              let right = screen.auxiliaryTopRightArea else {
+            return 185
+        }
+        return max(0, right.minX - left.maxX)
+    }
 
     var body: some View {
-        HStack(spacing: 8) {
-            RunningChatGPTIcon(size: 16)
+        GeometryReader { proxy in
+            let sideWidth = max(38, (proxy.size.width - notchWidth) / 2)
 
-            Text(sessions.count > 1 ? "\(sessions.count) 个任务运行中" : "Codex 正在运行")
-                .font(.system(size: 12.5, weight: .bold, design: .rounded))
-                .foregroundStyle(NotchPalette.primaryText)
+            HStack(spacing: 0) {
+                HStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    CompactAppIconView(status: isRunning ? .working : .quota)
+                }
+                .frame(width: sideWidth)
 
-            Spacer(minLength: 8)
+                Spacer(minLength: 0)
 
-            if let primary = sessions.first {
-                Text(NotchText.formatDuration(
-                    seconds: max(0, now.timeIntervalSince(primary.startedAt))
-                ))
-                .font(.system(size: 10, weight: .semibold, design: .rounded))
-                .foregroundStyle(NotchPalette.secondaryText)
-                .monospacedDigit()
+                HStack(spacing: 0) {
+                    CompactQuotaView(usage: usage, isHovered: true)
+                    Spacer(minLength: 0)
+                }
+                .frame(width: sideWidth)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(height: 24)
+        .frame(height: 32)
     }
 }
 

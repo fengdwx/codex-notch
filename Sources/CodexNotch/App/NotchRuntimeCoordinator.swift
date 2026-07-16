@@ -180,8 +180,9 @@ final class NotchRuntimeCoordinator {
     }
 
     private func apply(snapshot: ActiveSessionStoreSnapshot, now: Date) {
+        let hadActiveSessions = !activeSessions.isEmpty
         activeSessions = snapshot.activeSessions
-        if activeSessions.isEmpty {
+        if hadActiveSessions, activeSessions.isEmpty {
             resetHoverState()
         }
         if let completion = snapshot.latestCompletion,

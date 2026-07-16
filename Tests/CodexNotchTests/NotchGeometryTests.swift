@@ -19,7 +19,9 @@ final class NotchGeometryTests: XCTestCase {
         )
 
         XCTAssertEqual(layout.mode, .notch)
+        XCTAssertEqual(layout.hoverSensorFrame.midX, 1512, accuracy: 0.1)
         XCTAssertEqual(layout.compactFrame.midX, 1512, accuracy: 0.1)
+        XCTAssertEqual(layout.quotaExpandedFrame.midX, 1512, accuracy: 0.1)
         XCTAssertEqual(layout.expandedFrame.midX, 1512, accuracy: 0.1)
     }
 
@@ -55,12 +57,19 @@ final class NotchGeometryTests: XCTestCase {
         let layout = NotchGeometry.layout(metrics: metrics)
 
         XCTAssertEqual(layout.mode, .notch)
+        XCTAssertEqual(layout.hoverSensorFrame.minX, 663, accuracy: 0.1)
+        XCTAssertEqual(layout.hoverSensorFrame.width, 185, accuracy: 0.1)
+        XCTAssertEqual(layout.hoverSensorFrame.height, 32, accuracy: 0.1)
+        XCTAssertEqual(layout.hoverSensorFrame.maxY, 982, accuracy: 0.1)
         XCTAssertEqual(layout.compactFrame.width, 261, accuracy: 0.1)
         XCTAssertEqual(layout.compactFrame.height, 32, accuracy: 0.1)
         XCTAssertEqual(layout.compactFrame.midX, 755.5, accuracy: 0.1)
         XCTAssertEqual(layout.compactFrame.maxY, 982, accuracy: 0.1)
+        XCTAssertEqual(layout.quotaExpandedFrame.width, 420, accuracy: 0.1)
+        XCTAssertEqual(layout.quotaExpandedFrame.height, 104, accuracy: 0.1)
+        XCTAssertEqual(layout.quotaExpandedFrame.maxY, 982, accuracy: 0.1)
         XCTAssertEqual(layout.expandedFrame.width, 420, accuracy: 0.1)
-        XCTAssertEqual(layout.expandedFrame.height, 190, accuracy: 0.1)
+        XCTAssertEqual(layout.expandedFrame.height, 158, accuracy: 0.1)
         XCTAssertEqual(layout.expandedFrame.maxY, 982, accuracy: 0.1)
     }
 
