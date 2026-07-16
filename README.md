@@ -1,13 +1,13 @@
 # CodexNotch
 
-CodexNotch 是一个独立的 macOS 原生小程序：在刘海两侧显示 ChatGPT 中 Codex 功能的额度，并在任务运行时持续显示活动状态。它不依赖 Atoll、CodexIsland、CC Switch 或其他宿主程序。
+CodexNotch 是一个独立的 macOS 原生小程序：仅在 Codex 任务运行时出现在刘海两侧，同时显示活动状态和周额度。它不依赖 Atoll、CodexIsland、CC Switch 或其他宿主程序。
 
 ## 功能
 
-- ChatGPT（当前 bundle identifier 为 com.openai.codex）在前台时显示实际 usage 窗口。
-- Codex 任务运行时，即使切换到其他应用，也在刘海旁保持工作状态。
-- 悬停查看全部活动任务，点击任务直接打开 codex://threads/<thread-id>。
-- 任务完成后显示短暂完成提示。
+- Codex 任务运行时，即使切换到其他应用，也在刘海旁保持工作状态；没有运行任务时完全隐藏。
+- 左侧使用高清 ChatGPT 标记和克制的呼吸动画，右侧显示周额度圆环。
+- 周额度剩余不低于 20% 时圆环为绿色，低于 20% 时为红色；未返回周额度时显示灰色。
+- 悬停展开当前活动任务、本周精确重置时刻和秒级倒计时，点击任务直接打开 codex://threads/<thread-id>。
 - 按接口返回的 limit_window_seconds 动态识别额度窗口，不写死 5 小时。
 - 无刘海屏幕使用菜单栏 fallback，不读取或展示用户消息正文。
 

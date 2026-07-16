@@ -34,4 +34,40 @@ final class NotchTextTests: XCTestCase {
 
         XCTAssertEqual(NotchText.quotaSubtitle(usage: usage), "每周剩余 80% · 已用 20%")
     }
+
+    func testWeeklyWindowIsSelectedWithoutFallingBackToRollingQuota() {
+        let rolling = UsageWindow(id: "primary", kind: .rolling(hours: 5), usedPercent: 10)
+        let weekly = UsageWindow(id: "secondary", kind: .weekly, usedPercent: 25)
+        let usage = UsageSnapshot(windows: [rolling, weekly])
+
+        XCTAssertEqual(usage.weeklyWindow?.id, "secondary")
+        XCTAssertNil(UsageSnapshot(windows: [rolling]).weeklyWindow)
+    }
+
+    func testWeeklyQuotaRingTreatsTwentyPercentAsHealthy() {
+        let healthy = UsageWindow(id: "weekly", kind: .weekly, usedPercent: 80)
+        let critical = UsageWindow(id: "weekly", kind: .weekly, usedPercent: 80.01)
+
+        XCTAssertEqual(WeeklyQuotaLevel(weeklyWindow: healthy), .healthy)
+        XCTAssertEqual(WeeklyQuotaLevel(weeklyWindow: critical), .critical)
+        XCTAssertEqual(WeeklyQuotaLevel(weeklyWindow: nil), .unavailable)
+    }
+
+    func testResetTimestampIncludesSeconds() {
+        let timeZone = TimeZone(secondsFromGMT: 8 * 3_600)!
+        let date = Date(timeIntervalSince1970: 1_768_377_845)
+
+        XCTAssertEqual(
+            NotchText.resetTimestamp(date, timeZone: timeZone),
+            "2026-01-14 16:04:05"
+        )
+    }
+
+    func testResetCountdownIncludesDaysAndSeconds() {
+        let now = Date(timeIntervalSince1970: 1_000)
+        let resetAt = now.addingTimeInterval(2 * 86_400 + 3 * 3_600 + 4 * 60 + 5)
+
+        XCTAssertEqual(NotchText.resetCountdown(resetAt: resetAt, now: now), "2天 03:04:05")
+        XCTAssertEqual(NotchText.resetCountdown(resetAt: now, now: now), "00:00:00")
+    }
 }

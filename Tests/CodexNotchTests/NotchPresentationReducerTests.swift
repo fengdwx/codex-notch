@@ -44,7 +44,7 @@ final class NotchPresentationReducerTests: XCTestCase {
         XCTFail("Expected working compact state")
     }
 
-    func testRecentCompletionShowsCompletedState() {
+    func testRecentCompletionIsHiddenWhenNoTaskIsActive() {
         let now = Date(timeIntervalSince1970: 2_000_000_000)
         let task = makeSession(id: "thread-completed", at: now.addingTimeInterval(-2))
         let state = NotchPresentationReducer.reduce(
@@ -58,19 +58,16 @@ final class NotchPresentationReducerTests: XCTestCase {
             )
         )
 
-        guard case let .completedCompact(completed) = state else {
-            return XCTFail("Expected completed compact state")
-        }
-        XCTAssertEqual(completed.threadID, "thread-completed")
+        XCTAssertEqual(state, .hidden)
     }
 
-    func testExpiredCompletionReturnsToQuotaOrHidden() {
+    func testFrontmostChatGPTRemainsHiddenWhenNoTaskIsActive() {
         let now = Date(timeIntervalSince1970: 2_000_000_000)
         let task = makeSession(id: "thread-completed", at: now.addingTimeInterval(-4))
         let completion = CompletedSession(session: task, completedAt: now.addingTimeInterval(-4))
         let usage = UsageSnapshot(windows: [])
 
-        let quotaState = NotchPresentationReducer.reduce(
+        let frontmostState = NotchPresentationReducer.reduce(
             NotchPresentationInput(
                 now: now,
                 isChatGPTFrontmost: true,
@@ -91,8 +88,23 @@ final class NotchPresentationReducerTests: XCTestCase {
             )
         )
 
-        if case .quotaCompact = quotaState {} else { XCTFail("Expected quota state") }
-        if case .hidden = hiddenState {} else { XCTFail("Expected hidden state") }
+        XCTAssertEqual(frontmostState, .hidden)
+        XCTAssertEqual(hiddenState, .hidden)
+    }
+
+    func testHoverWithoutAnActiveTaskRemainsHidden() {
+        let state = NotchPresentationReducer.reduce(
+            NotchPresentationInput(
+                now: Date(timeIntervalSince1970: 2_000_000_000),
+                isChatGPTFrontmost: true,
+                activeSessions: [],
+                recentCompletion: nil,
+                usage: nil,
+                isHovered: true
+            )
+        )
+
+        XCTAssertEqual(state, .hidden)
     }
 
     func testHoverExpandsAllActiveSessionsInRecentOrder() {

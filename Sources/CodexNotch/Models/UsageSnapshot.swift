@@ -39,4 +39,25 @@ struct UsageSnapshot: Equatable, Sendable {
         self.resetCreditsAvailable = resetCreditsAvailable
         self.fetchedAt = fetchedAt
     }
+
+    var weeklyWindow: UsageWindow? {
+        windows.first { window in
+            if case .weekly = window.kind { return true }
+            return false
+        }
+    }
+}
+
+enum WeeklyQuotaLevel: Equatable, Sendable {
+    case healthy
+    case critical
+    case unavailable
+
+    init(weeklyWindow: UsageWindow?) {
+        guard let weeklyWindow else {
+            self = .unavailable
+            return
+        }
+        self = weeklyWindow.remainingPercent < 20 ? .critical : .healthy
+    }
 }

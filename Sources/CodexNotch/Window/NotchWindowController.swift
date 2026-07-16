@@ -10,6 +10,7 @@ final class NotchWindowController: NSWindowController {
     private var screenObserver: NSObjectProtocol?
     private var hostingView: NSHostingView<AnyView>?
     private var statusItem: NSStatusItem?
+    private var lastPresentedExpanded: Bool?
 
     init() {
         let panel = NotchPanel(contentRect: NSRect(x: 0, y: 0, width: 1, height: 1))
@@ -51,13 +52,30 @@ final class NotchWindowController: NSWindowController {
         if isHidden {
             panel.ignoresMouseEvents = true
             panel.orderOut(nil)
+            panel.alphaValue = 1
+            lastPresentedExpanded = nil
             return
         }
 
         let frame = state.isExpanded ? layout.expandedFrame : layout.compactFrame
-        panel.setFrame(frame, display: true)
+        let wasVisible = panel.isVisible
+        let shouldAnimateFrame = wasVisible
+            && lastPresentedExpanded != nil
+            && lastPresentedExpanded != state.isExpanded
+        panel.setFrame(frame, display: true, animate: shouldAnimateFrame)
         panel.ignoresMouseEvents = false
-        panel.orderFrontRegardless()
+        if wasVisible {
+            panel.orderFrontRegardless()
+        } else {
+            panel.alphaValue = 0
+            panel.orderFrontRegardless()
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.2
+                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                panel.animator().alphaValue = 1
+            }
+        }
+        lastPresentedExpanded = state.isExpanded
     }
 
     deinit {

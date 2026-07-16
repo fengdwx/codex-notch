@@ -181,6 +181,9 @@ final class NotchRuntimeCoordinator {
 
     private func apply(snapshot: ActiveSessionStoreSnapshot, now: Date) {
         activeSessions = snapshot.activeSessions
+        if activeSessions.isEmpty {
+            resetHoverState()
+        }
         if let completion = snapshot.latestCompletion,
            completion.completedAt > (recentCompletion?.completedAt ?? .distantPast) {
             recentCompletion = completion
@@ -270,6 +273,15 @@ final class NotchRuntimeCoordinator {
             deadline: .now() + Self.hoverCollapseDelay,
             execute: workItem
         )
+    }
+
+    private func resetHoverState() {
+        hoverExpandWorkItem?.cancel()
+        hoverExpandWorkItem = nil
+        hoverCollapseWorkItem?.cancel()
+        hoverCollapseWorkItem = nil
+        isPointerInside = false
+        isHovered = false
     }
 
     private func openThread(_ threadID: String) {

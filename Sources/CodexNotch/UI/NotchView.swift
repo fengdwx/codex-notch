@@ -98,8 +98,7 @@ struct NotchView: View {
                 ExpandedNotchView(
                     content: content,
                     now: model.now,
-                    onOpenThread: model.onOpenThread,
-                    onActivateChatGPT: model.onActivateChatGPT
+                    onOpenThread: model.onOpenThread
                 )
             }
         }
@@ -178,18 +177,10 @@ private struct NotchAttachedShape: Shape {
 }
 
 private struct CompactNotchView: View {
-    enum IconKind {
+    enum IconKind: Equatable {
         case quota
         case working
         case completed
-
-        var color: Color {
-            switch self {
-            case .quota: return NotchPalette.accent
-            case .working: return NotchPalette.warning
-            case .completed: return NotchPalette.success
-            }
-        }
 
         var fallbackSystemName: String {
             switch self {
@@ -212,7 +203,7 @@ private struct CompactNotchView: View {
             HStack(spacing: 0) {
                 HStack(spacing: 0) {
                     Spacer(minLength: 0)
-                    CompactAppIconView(status: icon, isHovered: isHovered)
+                    CompactAppIconView(status: icon)
                 }
                 .frame(width: 38)
 
@@ -223,7 +214,7 @@ private struct CompactNotchView: View {
                     case .completed:
                         CompactCompletionView()
                     case .quota, .working:
-                        CompactQuotaView(window: usage?.windows.first, isHovered: isHovered)
+                        CompactQuotaView(usage: usage, isHovered: isHovered)
                     }
                     Spacer(minLength: 0)
                 }
@@ -246,24 +237,15 @@ private struct CompactNotchView: View {
 
 private struct CompactAppIconView: View {
     let status: CompactNotchView.IconKind
-    let isHovered: Bool
 
     var body: some View {
-        ZStack {
-            if let image = ChatGPTIconAsset.templateImage {
-                Image(nsImage: image)
-                    .renderingMode(.template)
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
-                    .foregroundStyle(NotchPalette.primaryText.opacity(0.92))
+        Group {
+            if status == .working {
+                RunningChatGPTIcon(size: 18)
             } else {
-                Image(systemName: status.fallbackSystemName)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(NotchPalette.primaryText.opacity(0.92))
+                ChatGPTMark(size: 18, fallbackSystemName: status.fallbackSystemName)
             }
         }
-        .frame(width: isHovered ? 17.5 : 16.5, height: isHovered ? 17.5 : 16.5)
         .offset(x: 2)
         .frame(width: 28, height: 32)
         .accessibilityHidden(true)
@@ -271,41 +253,16 @@ private struct CompactAppIconView: View {
 }
 
 private struct CompactQuotaView: View {
-    let window: UsageWindow?
+    let usage: UsageSnapshot?
     let isHovered: Bool
 
-    private var remainingPercent: Double {
-        window?.remainingPercent ?? 0
-    }
-
-    private var progressColor: Color {
-        if remainingPercent <= 20 { return NotchPalette.danger }
-        if remainingPercent <= 50 { return NotchPalette.warning }
-        return NotchPalette.accent
-    }
-
     var body: some View {
-        ZStack {
-            Circle()
-                .stroke(NotchPalette.track, lineWidth: 1.5)
-
-            if window != nil {
-                Circle()
-                    .trim(from: 0, to: remainingPercent / 100)
-                    .stroke(
-                        progressColor,
-                        style: StrokeStyle(lineWidth: 1.5, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-            }
-
-            Text(window.map { NotchText.percent($0.remainingPercent) } ?? "—")
-                .font(.system(size: window == nil ? 8 : 6.2, weight: .bold, design: .rounded))
-                .foregroundStyle(window == nil ? NotchPalette.secondaryText : NotchPalette.primaryText)
-                .monospacedDigit()
-                .lineLimit(1)
-        }
-        .frame(width: isHovered ? 22 : 20, height: isHovered ? 22 : 20)
+        WeeklyQuotaRing(
+            usage: usage,
+            diameter: isHovered ? 22 : 20,
+            lineWidth: 1.5,
+            fontSize: 6.2
+        )
         .offset(x: -2)
         .frame(width: 28, height: 32)
         .accessibilityHidden(true)
@@ -332,177 +289,297 @@ private enum ChatGPTIconAsset {
             return nil
         }
         guard let resourceURL = Bundle(url: appURL)?.url(
-            forResource: "chatgptTemplate",
+            forResource: "chatgptTemplate@2x",
             withExtension: "png"
-        ) else {
+        ), let image = NSImage(contentsOf: resourceURL) else {
             return nil
         }
-        return NSImage(contentsOf: resourceURL)
+        image.size = NSSize(width: 18, height: 18)
+        image.isTemplate = true
+        return image
     }()
+}
+
+private struct ChatGPTMark: View {
+    let size: CGFloat
+    var fallbackSystemName = "sparkles"
+
+    var body: some View {
+        Group {
+            if let image = ChatGPTIconAsset.templateImage {
+                Image(nsImage: image)
+                    .renderingMode(.template)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .foregroundStyle(NotchPalette.primaryText.opacity(0.96))
+            } else {
+                Image(systemName: fallbackSystemName)
+                    .font(.system(size: size * 0.72, weight: .semibold))
+                    .foregroundStyle(NotchPalette.primaryText.opacity(0.96))
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+private struct RunningChatGPTIcon: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isPulsing = false
+
+    let size: CGFloat
+
+    var body: some View {
+        ZStack {
+            if !reduceMotion {
+                Circle()
+                    .stroke(NotchPalette.accent.opacity(isPulsing ? 0 : 0.55), lineWidth: 1)
+                    .frame(width: size + 7, height: size + 7)
+                    .scaleEffect(isPulsing ? 1.22 : 0.78)
+                    .opacity(isPulsing ? 0 : 1)
+            }
+
+            ChatGPTMark(size: size)
+        }
+        .frame(width: size + 8, height: size + 8)
+        .onAppear {
+            guard !reduceMotion else { return }
+            isPulsing = true
+        }
+        .animation(
+            reduceMotion
+                ? nil
+                : .easeOut(duration: 1.45).repeatForever(autoreverses: false),
+            value: isPulsing
+        )
+    }
+}
+
+private struct WeeklyQuotaRing: View {
+    let usage: UsageSnapshot?
+    let diameter: CGFloat
+    let lineWidth: CGFloat
+    let fontSize: CGFloat
+
+    private var window: UsageWindow? {
+        usage?.weeklyWindow
+    }
+
+    private var remainingPercent: Double {
+        window?.remainingPercent ?? 0
+    }
+
+    private var level: WeeklyQuotaLevel {
+        WeeklyQuotaLevel(weeklyWindow: window)
+    }
+
+    private var progressColor: Color {
+        switch level {
+        case .healthy:
+            return NotchPalette.success
+        case .critical:
+            return NotchPalette.danger
+        case .unavailable:
+            return NotchPalette.secondaryText
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(NotchPalette.track, lineWidth: lineWidth)
+
+            if window != nil {
+                Circle()
+                    .trim(from: 0, to: remainingPercent / 100)
+                    .stroke(
+                        progressColor,
+                        style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+            }
+
+            Text(window.map { NotchText.percent($0.remainingPercent) } ?? "—")
+                .font(.system(
+                    size: window == nil ? fontSize + 1 : fontSize,
+                    weight: .bold,
+                    design: .rounded
+                ))
+                .foregroundStyle(
+                    window == nil ? NotchPalette.secondaryText : NotchPalette.primaryText
+                )
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(width: diameter, height: diameter)
+        .animation(.easeInOut(duration: 0.28), value: remainingPercent)
+    }
 }
 
 private struct ExpandedNotchView: View {
     let content: ExpandedContent
     let now: Date
     let onOpenThread: (String) -> Void
-    let onActivateChatGPT: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(content.sessions.isEmpty ? "Codex 额度" : "Codex 任务")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(NotchPalette.primaryText)
-                    Text(content.sessions.isEmpty ? "当前账号使用情况" : "点击任务可直接跳转")
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
-                        .foregroundStyle(NotchPalette.secondaryText)
-                }
+        VStack(alignment: .leading, spacing: 8) {
+            ExpandedRunningHeader(sessions: content.sessions, now: now)
 
-                Spacer()
-
-                Button("打开 ChatGPT", action: onActivateChatGPT)
-                    .buttonStyle(NotchTextButtonStyle())
-            }
-
-            if content.sessions.isEmpty {
-                UsageDetailView(usage: content.usage)
-            } else {
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 6) {
-                        ForEach(content.sessions) { session in
-                            SessionRowView(
-                                session: session,
-                                now: now,
-                                action: { onOpenThread(session.threadID) }
-                            )
-                        }
-                    }
-                }
-                .frame(maxHeight: 111)
-
-                if let usage = content.usage, !usage.windows.isEmpty {
-                    UsageSummaryLine(usage: usage)
+            HStack(spacing: 7) {
+                ForEach(Array(content.sessions.prefix(2))) { session in
+                    SessionCardView(
+                        session: session,
+                        now: now,
+                        action: { onOpenThread(session.threadID) }
+                    )
                 }
             }
+            .frame(height: 46)
+
+            WeeklyQuotaCard(usage: content.usage, now: now)
         }
-        .padding(.horizontal, 13)
-        .padding(.top, 40)
+        .padding(.horizontal, 12)
+        .padding(.top, 38)
         .padding(.bottom, 10)
     }
 }
 
-private struct SessionRowView: View {
+private struct ExpandedRunningHeader: View {
+    let sessions: [SessionActivity]
+    let now: Date
+
+    var body: some View {
+        HStack(spacing: 8) {
+            RunningChatGPTIcon(size: 16)
+
+            Text(sessions.count > 1 ? "\(sessions.count) 个任务运行中" : "Codex 正在运行")
+                .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                .foregroundStyle(NotchPalette.primaryText)
+
+            Spacer(minLength: 8)
+
+            if let primary = sessions.first {
+                Text(NotchText.formatDuration(
+                    seconds: max(0, now.timeIntervalSince(primary.startedAt))
+                ))
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundStyle(NotchPalette.secondaryText)
+                .monospacedDigit()
+            }
+        }
+        .frame(height: 24)
+    }
+}
+
+private struct SessionCardView: View {
     let session: SessionActivity
     let now: Date
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
+            HStack(spacing: 7) {
                 Circle()
-                    .fill(NotchPalette.warning)
-                    .frame(width: 7, height: 7)
-                    .shadow(color: NotchPalette.warning.opacity(0.65), radius: 4)
+                    .fill(NotchPalette.success)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: NotchPalette.success.opacity(0.55), radius: 3)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(NotchText.projectName(cwd: session.cwd))
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .font(.system(size: 10.5, weight: .semibold, design: .rounded))
                         .foregroundStyle(NotchPalette.primaryText)
                         .lineLimit(1)
-                    Text(NotchText.sessionSubtitle(session, now: now))
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
+                    Text("运行 \(NotchText.formatDuration(seconds: max(0, now.timeIntervalSince(session.startedAt))))")
+                        .font(.system(size: 8.5, weight: .medium, design: .rounded))
                         .foregroundStyle(NotchPalette.secondaryText)
                         .lineLimit(1)
+                        .monospacedDigit()
                 }
 
-                Spacer(minLength: 6)
+                Spacer(minLength: 4)
 
                 Image(systemName: "arrow.up.right")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 8.5, weight: .semibold))
                     .foregroundStyle(NotchPalette.secondaryText)
             }
             .padding(.horizontal, 9)
-            .padding(.vertical, 7)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(NotchPalette.row)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .stroke(NotchPalette.border, lineWidth: 0.5)
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(NotchButtonStyle())
     }
 }
 
-private struct UsageDetailView: View {
+private struct WeeklyQuotaCard: View {
     let usage: UsageSnapshot?
+    let now: Date
 
-    var body: some View {
-        if let usage, !usage.windows.isEmpty {
-            VStack(spacing: 7) {
-                ForEach(usage.windows) { window in
-                    UsageWindowRow(window: window)
-                }
-                if let credits = usage.resetCreditsAvailable {
-                    Text("可重置额度：\(credits)")
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
-                        .foregroundStyle(NotchPalette.secondaryText)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-        } else {
-            HStack(spacing: 8) {
-                Image(systemName: "questionmark.circle")
-                Text("额度暂不可用，请稍后重试")
-            }
-            .font(.system(size: 11, weight: .medium, design: .rounded))
-            .foregroundStyle(NotchPalette.secondaryText)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
+    private var window: UsageWindow? {
+        usage?.weeklyWindow
     }
-}
-
-private struct UsageSummaryLine: View {
-    let usage: UsageSnapshot
 
     var body: some View {
         HStack(spacing: 10) {
-            ForEach(usage.windows) { window in
-                HStack(spacing: 4) {
-                    Text(NotchText.windowLabel(window.kind))
-                    Text(NotchText.percent(window.remainingPercent))
-                        .foregroundStyle(NotchPalette.primaryText)
-                }
-                .font(.system(size: 9, weight: .medium, design: .rounded))
-                .foregroundStyle(NotchPalette.secondaryText)
+            WeeklyQuotaRing(
+                usage: usage,
+                diameter: 38,
+                lineWidth: 2.5,
+                fontSize: 9
+            )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("本周额度")
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .foregroundStyle(NotchPalette.primaryText)
+
+                Text(resetTimestampText)
+                    .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                    .foregroundStyle(NotchPalette.secondaryText)
+                    .lineLimit(1)
             }
-            Spacer(minLength: 0)
+
+            Spacer(minLength: 8)
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("距离重置")
+                    .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                    .foregroundStyle(NotchPalette.secondaryText)
+
+                Text(resetCountdownText)
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(NotchPalette.primaryText)
+                    .monospacedDigit()
+            }
+        }
+        .padding(.horizontal, 10)
+        .frame(maxWidth: .infinity, minHeight: 56, maxHeight: 56)
+        .background(NotchPalette.row)
+        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .stroke(NotchPalette.border, lineWidth: 0.5)
         }
     }
-}
 
-private struct UsageWindowRow: View {
-    let window: UsageWindow
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(NotchText.windowLabel(window.kind))
-                Spacer()
-                Text("已用 \(NotchText.percent(window.usedPercent)) · 剩余 \(NotchText.percent(window.remainingPercent))")
-            }
-            .font(.system(size: 10, weight: .semibold, design: .rounded))
-            .foregroundStyle(NotchPalette.primaryText)
-
-            GeometryReader { proxy in
-                Capsule()
-                    .fill(NotchPalette.track)
-                    .overlay(alignment: .leading) {
-                        Capsule()
-                            .fill(NotchPalette.accent)
-                            .frame(width: proxy.size.width * window.remainingPercent / 100)
-                    }
-            }
-            .frame(height: 5)
+    private var resetTimestampText: String {
+        guard let resetAt = window?.resetAt else {
+            return "重置时间暂不可用"
         }
+        return "重置于 \(NotchText.resetTimestamp(resetAt))"
+    }
+
+    private var resetCountdownText: String {
+        guard let resetAt = window?.resetAt else {
+            return "--:--:--"
+        }
+        return NotchText.resetCountdown(resetAt: resetAt, now: now)
     }
 }
 
@@ -512,6 +589,7 @@ private enum NotchPalette {
     static let secondaryText = Color.white.opacity(0.6)
     static let chip = Color.white.opacity(0.13)
     static let row = Color.white.opacity(0.09)
+    static let border = Color.white.opacity(0.1)
     static let track = Color.white.opacity(0.13)
     static let accent = Color(red: 0.38, green: 0.66, blue: 1.0)
     static let warning = Color(red: 1.0, green: 0.68, blue: 0.28)
@@ -525,15 +603,6 @@ private struct NotchButtonStyle: ButtonStyle {
             .opacity(configuration.isPressed ? 0.72 : 1)
             .scaleEffect(configuration.isPressed ? 0.985 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-    }
-}
-
-private struct NotchTextButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 10, weight: .semibold, design: .rounded))
-            .foregroundStyle(NotchPalette.accent)
-            .opacity(configuration.isPressed ? 0.65 : 1)
     }
 }
 
@@ -586,6 +655,31 @@ enum NotchText {
             return String(format: "%02d:%02d:%02d", hours, minutes, remainingSeconds)
         }
         return String(format: "%02d:%02d", minutes, remainingSeconds)
+    }
+
+    static func resetTimestamp(
+        _ date: Date,
+        timeZone: TimeZone = .current
+    ) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return formatter.string(from: date)
+    }
+
+    static func resetCountdown(resetAt: Date, now: Date) -> String {
+        let total = max(0, Int(resetAt.timeIntervalSince(now).rounded(.down)))
+        let days = total / 86_400
+        let hours = (total % 86_400) / 3_600
+        let minutes = (total % 3_600) / 60
+        let seconds = total % 60
+
+        if days > 0 {
+            return String(format: "%d天 %02d:%02d:%02d", days, hours, minutes, seconds)
+        }
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
 
     private static func formatDuration(seconds: Int) -> String {
