@@ -449,7 +449,7 @@ private struct WeeklyQuotaRing: View {
                         progressColor,
                         style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
                     )
-                    .rotationEffect(.degrees(-90))
+                    .rotationEffect(.degrees(-45))
 
                 if activity == .running, !reduceMotion {
                     Circle()
@@ -458,7 +458,7 @@ private struct WeeklyQuotaRing: View {
                             progressColor.opacity(0.96),
                             style: StrokeStyle(lineWidth: lineWidth + 0.8, lineCap: .round)
                         )
-                        .rotationEffect(.degrees(highlightActive ? 360 : 0))
+                        .rotationEffect(.degrees((highlightActive ? 360 : 0) - 45))
                         .shadow(color: progressColor.opacity(0.6), radius: 2)
                         .animation(
                             .linear(duration: 1.45).repeatForever(autoreverses: false),
