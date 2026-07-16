@@ -55,7 +55,7 @@ final class NotchGeometryTests: XCTestCase {
         let layout = NotchGeometry.layout(metrics: metrics)
 
         XCTAssertEqual(layout.mode, .notch)
-        XCTAssertEqual(layout.compactFrame.width, 241, accuracy: 0.1)
+        XCTAssertEqual(layout.compactFrame.width, 261, accuracy: 0.1)
         XCTAssertEqual(layout.compactFrame.height, 32, accuracy: 0.1)
         XCTAssertEqual(layout.compactFrame.midX, 755.5, accuracy: 0.1)
         XCTAssertEqual(layout.compactFrame.maxY, 982, accuracy: 0.1)

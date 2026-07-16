@@ -214,7 +214,7 @@ private struct CompactNotchView: View {
                     Spacer(minLength: 0)
                     CompactAppIconView(status: icon, isHovered: isHovered)
                 }
-                .frame(width: 28)
+                .frame(width: 38)
 
                 Spacer(minLength: 0)
 
@@ -227,7 +227,7 @@ private struct CompactNotchView: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .frame(width: 28)
+                .frame(width: 38)
             }
             .contentShape(Rectangle())
         }
