@@ -6,7 +6,7 @@
 
 **Architecture:** 使用 AppKit `NSPanel` 负责刘海窗口和屏幕定位，SwiftUI 负责紧凑态与展开态 UI。额度由本地 Codex 登录态请求 usage 接口，任务状态由 FSEvents 加增量 JSONL 解析获得，纯状态 reducer 决定最终展示。
 
-**Tech Stack:** Swift 6、macOS 14+、AppKit、SwiftUI、Foundation、CoreServices/FSEvents、ServiceManagement、Swift Package Manager、XCTest。
+**Tech Stack:** Swift 5.9+ 语言模式、macOS 14+、AppKit、SwiftUI、Foundation、CoreServices/FSEvents、ServiceManagement、Swift Package Manager、XCTest。
 
 ---
 
@@ -16,7 +16,7 @@
 - 独立应用，不依赖 Atoll、CodexIsland、CodexBar、CC Switch、hooks 或 app-server。
 - 每个任务按“失败测试 → 最小实现 → 测试通过 → 提交”推进。
 - 不提交 token、auth 文件、真实 rollout、完整 usage 响应或用户消息正文。
-- 当前机器存在 Swift 编译器与 SDK 小版本不匹配，Task 0 未通过前不进入业务代码。
+- 当前机器存在 Swift 编译器与 SDK 小版本不匹配，Task 0 未通过前不进入业务代码。发布给普通用户的是已构建的 `.app`，普通用户不需要安装 Swift 或 Xcode。
 
 ### Task 0: 固定工具链并建立隔离工作区
 
@@ -48,7 +48,7 @@ sudo xcodebuild -runFirstLaunch
 xcrun swift --version
 ```
 
-Expected: 命令无 SDK compatibility error。若未安装完整 Xcode，本步骤是实施前唯一外部前置条件。
+Expected: 命令无 SDK compatibility error。若未安装完整 Xcode，本步骤是开发者构建源码前的前置条件；普通用户使用 release app 不受影响。
 
 **Step 3: 创建忽略规则**
 
@@ -110,7 +110,7 @@ final class SmokeTests: XCTestCase {
 **Step 2: 创建 `Package.swift` 并运行测试**
 
 ```swift
-// swift-tools-version: 6.0
+// swift-tools-version: 5.9
 import PackageDescription
 
 let package = Package(
@@ -120,7 +120,8 @@ let package = Package(
     targets: [
         .executableTarget(name: "CodexNotch"),
         .testTarget(name: "CodexNotchTests", dependencies: ["CodexNotch"])
-    ]
+    ],
+    swiftLanguageVersions: [.v5]
 )
 ```
 
@@ -695,7 +696,7 @@ Expected: 全量单测通过，无未取消异步任务警告。
 
 **Step 4: 创建构建脚本**
 
-脚本执行 release build，把二进制复制到 `.build/CodexNotch.app/Contents/MacOS/`，复制 Info.plist，最后执行：
+脚本执行 release build，把二进制复制到 `.build/CodexNotch.app/Contents/MacOS/`，复制 Info.plist，最后执行 ad-hoc 签名。后续发布时再用 Developer ID 签名、公证并压缩为 `.dmg`；GitHub Release 同时提供 `.app.zip` 和源码。
 
 ```bash
 codesign --force --deep --sign - .build/CodexNotch.app
@@ -703,6 +704,8 @@ codesign --verify --deep --strict .build/CodexNotch.app
 ```
 
 **Step 5: 构建与提交**
+
+普通用户的安装说明只包含下载、解压、拖入 Applications，不要求 Swift、Xcode 或命令行工具。源码贡献者说明使用 Xcode 15+ 或等价的 Swift 5.9+ 工具链。
 
 Run:
 
@@ -714,7 +717,7 @@ git add Resources Sources/CodexNotch/MenuBar Sources/CodexNotch/Settings scripts
 git commit -m "feat: package CodexNotch as a login item app"
 ```
 
-Expected: 签名验证成功，Dock 不出现图标，设置可开关登录时启动。
+Expected: 签名验证成功，Dock 不出现图标，设置可开关登录时启动。普通用户安装 release app 时不需要 Swift、Xcode 或命令行工具。
 
 ### Task 12: 真实环境验收与隐私检查
 

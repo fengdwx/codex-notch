@@ -94,7 +94,7 @@ codex://threads/<thread-id>
 
 V1 包含额度概览、运行中任务常驻、完成短提示、多任务列表、精确跳转、前台触发、全屏与多 Space 支持、无刘海降级和登录时启动。
 
-V1 不包含 CC Switch 成本统计、5 小时硬编码、任务控制、宠物动画、音乐模块、插件系统、云同步、远程通知和 Mac App Store 分发。个人本地使用先采用 ad-hoc 签名；稳定后再考虑 Developer ID、公证和自动更新。
+V1 不包含 CC Switch 成本统计、5 小时硬编码、任务控制、宠物动画、音乐模块、插件系统、云同步、远程通知和 Mac App Store 分发。项目开源发布时提供已构建的 `.app.zip`，普通用户不需要安装 Swift 或 Xcode；源码贡献者再按 README 安装匹配的 Xcode 工具链。个人本地使用先采用 ad-hoc 签名；稳定后再考虑 Developer ID、公证和自动更新。
 
 ## 9. 验收场景
 
