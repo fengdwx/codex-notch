@@ -326,7 +326,7 @@ private struct CompactQuotaView: View {
             activity: activity,
             diameter: indicatorDiameter,
             lineWidth: 1.75,
-            fontSize: 10
+            fontSize: 10.5
         )
     }
 }
@@ -490,6 +490,18 @@ private struct QuotaValueText: View {
     let isAvailable: Bool
     let fontSize: CGFloat
 
+    private var textColor: Color {
+        isAvailable ? NotchPalette.primaryText : NotchPalette.secondaryText
+    }
+
+    private var outlineColor: Color {
+        Color.black.opacity(isAvailable ? 0.88 : 0.56)
+    }
+
+    private var outlineOffset: CGFloat {
+        isAvailable ? 0.8 : 0.6
+    }
+
     var body: some View {
         Text(value)
             .font(.system(
@@ -497,57 +509,22 @@ private struct QuotaValueText: View {
                 weight: .bold,
                 design: .rounded
             ))
-            .foregroundStyle(isAvailable ? NotchPalette.primaryText : NotchPalette.secondaryText)
+            .foregroundStyle(textColor)
             .monospacedDigit()
             .lineLimit(1)
             .minimumScaleFactor(0.72)
+            // A text-only outline keeps the liquid fully visible while
+            // preserving contrast as the wave crosses behind each glyph.
+            .shadow(color: outlineColor, radius: 0.35, x: -outlineOffset, y: 0)
+            .shadow(color: outlineColor, radius: 0.35, x: outlineOffset, y: 0)
+            .shadow(color: outlineColor, radius: 0.35, x: 0, y: -outlineOffset)
+            .shadow(color: outlineColor, radius: 0.35, x: 0, y: outlineOffset)
             .shadow(
-                color: .black.opacity(isAvailable ? 0.9 : 0.45),
+                color: .black.opacity(isAvailable ? 0.64 : 0.35),
                 radius: 1.15,
                 x: 0,
                 y: 0.4
             )
-    }
-}
-
-private struct QuotaValueLens: View {
-    let value: String
-    let isAvailable: Bool
-    let diameter: CGFloat
-    let fontSize: CGFloat
-
-    private var lensWidth: CGFloat {
-        let textWidth = fontSize * CGFloat(value.count) * 0.57 + 5
-        return min(diameter - 4, max(fontSize * 1.45, textWidth))
-    }
-
-    private var lensHeight: CGFloat {
-        min(diameter - 8, max(fontSize * 1.35, 13))
-    }
-
-    var body: some View {
-        ZStack {
-            Capsule()
-                .fill(Color.black.opacity(isAvailable ? 0.7 : 0.46))
-                .overlay {
-                    Capsule()
-                        .stroke(
-                            Color.white.opacity(isAvailable ? 0.17 : 0.1),
-                            lineWidth: 0.55
-                        )
-                }
-                .shadow(color: .black.opacity(0.46), radius: 1.3, x: 0, y: 0.6)
-
-            QuotaValueText(
-                value: value,
-                isAvailable: isAvailable,
-                fontSize: fontSize
-            )
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 1)
-        }
-        .frame(width: lensWidth, height: lensHeight)
-        .accessibilityHidden(true)
     }
 }
 
@@ -608,12 +585,10 @@ private struct QuotaWaveBall: View {
                     .animation(.easeOut(duration: 0.5), value: completionPulse)
             }
 
-            // The liquid moves only behind this stable, dark lens. It keeps
-            // the percentage readable while preserving the solid-ball shape.
-            QuotaValueLens(
+            // The value uses glyph-only outlining: nothing masks the liquid.
+            QuotaValueText(
                 value: window.map { NotchText.quotaNumber($0.remainingPercent) } ?? "—",
                 isAvailable: window != nil,
-                diameter: diameter,
                 fontSize: fontSize
             )
         }

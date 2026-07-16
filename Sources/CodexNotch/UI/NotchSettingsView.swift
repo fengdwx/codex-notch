@@ -30,7 +30,7 @@ struct NotchSettingsView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
 
-                Text("数字固定显示在指标内；波浪球会用独立读数镜片隔开液面动画。")
+                Text("数字固定显示在指标内；波浪球只给字形加细描边，不遮挡液面。")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } header: {
@@ -129,28 +129,9 @@ private struct QuotaStylePreviewGraphic: View {
                     .stroke(Color.white.opacity(0.18), lineWidth: 1)
             }
 
-            previewQuotaValue
-        }
-        .frame(width: 52, height: 52)
-    }
-
-    @ViewBuilder
-    private var previewQuotaValue: some View {
-        if style == .waveBall {
-            ZStack {
-                Capsule()
-                    .fill(Color.black.opacity(0.7))
-                    .overlay {
-                        Capsule()
-                            .stroke(Color.white.opacity(0.17), lineWidth: 0.7)
-                    }
-                    .shadow(color: .black.opacity(0.46), radius: 1.4, x: 0, y: 0.6)
-                previewQuotaText
-            }
-            .frame(width: 31, height: 23)
-        } else {
             previewQuotaText
         }
+        .frame(width: 52, height: 52)
     }
 
     private var previewQuotaText: some View {
@@ -158,7 +139,11 @@ private struct QuotaStylePreviewGraphic: View {
             .font(.system(size: 10, weight: .bold, design: .rounded))
             .foregroundStyle(.white)
             .monospacedDigit()
-            .shadow(color: .black.opacity(0.9), radius: 1.2)
+            .shadow(color: .black.opacity(0.88), radius: 0.35, x: -0.8, y: 0)
+            .shadow(color: .black.opacity(0.88), radius: 0.35, x: 0.8, y: 0)
+            .shadow(color: .black.opacity(0.88), radius: 0.35, x: 0, y: -0.8)
+            .shadow(color: .black.opacity(0.88), radius: 0.35, x: 0, y: 0.8)
+            .shadow(color: .black.opacity(0.64), radius: 1.15, x: 0, y: 0.4)
     }
 }
 
