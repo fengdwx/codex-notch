@@ -23,7 +23,13 @@ final class RolloutActivityMonitor {
     }
 
     func start() {
-        scanRecentRollouts()
+        // Historical rollout files can be very large on a long-lived Codex
+        // installation. Do not block the main thread before the quota badge
+        // has a chance to render; the serial scan queue also preserves the
+        // ordering relative to later FSEvents callbacks.
+        scanQueue.async { [weak self] in
+            self?.scanRecentRollouts()
+        }
         changeSource.start()
     }
 
