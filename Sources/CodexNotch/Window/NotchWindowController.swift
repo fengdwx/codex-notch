@@ -1,10 +1,12 @@
 import AppKit
 import Foundation
+import SwiftUI
 
 final class NotchWindowController: NSWindowController {
     var onScreenParametersChanged: (() -> Void)?
 
     private var screenObserver: NSObjectProtocol?
+    private var hostingView: NSHostingView<AnyView>?
 
     init() {
         let panel = NotchPanel(contentRect: NSRect(x: 0, y: 0, width: 1, height: 1))
@@ -15,6 +17,20 @@ final class NotchWindowController: NSWindowController {
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         observeScreenChanges()
+    }
+
+    func setRootView<Content: View>(_ rootView: Content) {
+        guard let panel = window as? NotchPanel else { return }
+        let hostingView = NSHostingView(rootView: AnyView(rootView))
+        hostingView.translatesAutoresizingMaskIntoConstraints = false
+        panel.contentView = hostingView
+        NSLayoutConstraint.activate([
+            hostingView.leadingAnchor.constraint(equalTo: panel.contentView!.leadingAnchor),
+            hostingView.trailingAnchor.constraint(equalTo: panel.contentView!.trailingAnchor),
+            hostingView.topAnchor.constraint(equalTo: panel.contentView!.topAnchor),
+            hostingView.bottomAnchor.constraint(equalTo: panel.contentView!.bottomAnchor)
+        ])
+        self.hostingView = hostingView
     }
 
     func apply(layout: NotchLayout, state: NotchPresentationState) {
