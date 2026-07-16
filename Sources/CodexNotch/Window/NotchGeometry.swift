@@ -52,7 +52,7 @@ enum NotchGeometry {
         metrics: NotchScreenMetrics,
         compactSize: NSSize = NSSize(width: 264, height: 32),
         quotaExpandedSize: NSSize = NSSize(width: 420, height: 94),
-        expandedSize: NSSize = NSSize(width: 420, height: 150)
+        expandedSize: NSSize = NSSize(width: 420, height: 176)
     ) -> NotchLayout {
         guard let left = metrics.auxiliaryTopLeftArea,
               let right = metrics.auxiliaryTopRightArea,

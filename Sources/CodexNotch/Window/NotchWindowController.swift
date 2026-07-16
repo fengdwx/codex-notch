@@ -137,8 +137,8 @@ final class NotchWindowController: NSWindowController {
             ))
 
         case let .expanded(content):
-            menu.addItem(disabledItem(title: content.sessions.isEmpty ? "Codex 额度" : "Codex 任务"))
-            if content.sessions.isEmpty {
+            menu.addItem(disabledItem(title: content.conversations.isEmpty ? "Codex 额度" : "Codex 最近对话"))
+            if content.conversations.isEmpty {
                 if let usage = content.usage, !usage.windows.isEmpty {
                     for window in usage.windows {
                         menu.addItem(disabledItem(title: NotchText.compactWindow(window)))
@@ -150,10 +150,10 @@ final class NotchWindowController: NSWindowController {
                 menu.addItem(actionItem(title: "打开 ChatGPT", representedObject: "__activate__"))
             } else {
                 menu.addItem(NSMenuItem.separator())
-                for session in content.sessions {
+                for conversation in content.conversations {
                     menu.addItem(actionItem(
-                        title: "\(NotchText.projectName(cwd: session.cwd)) · \(session.turnID)",
-                        representedObject: session.threadID
+                        title: conversation.title ?? NotchText.projectName(cwd: conversation.cwd),
+                        representedObject: conversation.threadID
                     ))
                 }
             }
@@ -211,7 +211,7 @@ private enum PresentationFrameKind: Equatable {
         case .quotaCompact, .workingCompact, .completedCompact:
             self = .compact
         case let .expanded(content):
-            self = content.sessions.isEmpty ? .quotaExpanded : .taskExpanded
+            self = content.conversations.isEmpty ? .quotaExpanded : .taskExpanded
         }
     }
 }

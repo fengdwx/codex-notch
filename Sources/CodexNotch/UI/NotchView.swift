@@ -115,11 +115,16 @@ struct NotchView: View {
                 bottomRadius: isExpanded ? 22 : 14
             )
         )
-        .shadow(
-            color: isExpanded ? Color.black.opacity(0.48) : Color.clear,
-            radius: 12,
-            y: 6
-        )
+        .overlay {
+            NotchAttachedShape(
+                shoulderDepth: 6,
+                bottomRadius: isExpanded ? 22 : 14
+            )
+            .stroke(
+                isExpanded ? NotchPalette.border : Color.clear,
+                lineWidth: 0.5
+            )
+        }
         .onHover { hovering in
             withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
                 isPointerInside = hovering
@@ -194,6 +199,14 @@ private struct CompactNotchView: View {
             case .completed: return "checkmark.circle.fill"
             }
         }
+
+        var quotaActivity: QuotaRingActivity {
+            switch self {
+            case .quota: return .idle
+            case .working: return .running
+            case .completed: return .completed
+            }
+        }
     }
 
     let icon: IconKind
@@ -215,12 +228,11 @@ private struct CompactNotchView: View {
                 Spacer(minLength: 0)
 
                 HStack(spacing: 0) {
-                    switch icon {
-                    case .completed:
-                        CompactCompletionView()
-                    case .quota, .working:
-                        CompactQuotaView(usage: usage, isHovered: isHovered)
-                    }
+                    CompactQuotaView(
+                        usage: usage,
+                        activity: icon.quotaActivity,
+                        isHovered: isHovered
+                    )
                     Spacer(minLength: 0)
                 }
                 .frame(width: 38)
@@ -245,9 +257,12 @@ private struct CompactAppIconView: View {
 
     var body: some View {
         Group {
-            if status == .working {
+            switch status {
+            case .working:
                 RunningChatGPTIcon(size: 18)
-            } else {
+            case .completed:
+                CompletedChatGPTIcon(size: 18)
+            case .quota:
                 ChatGPTMark(size: 18, fallbackSystemName: status.fallbackSystemName)
             }
         }
@@ -259,11 +274,13 @@ private struct CompactAppIconView: View {
 
 private struct CompactQuotaView: View {
     let usage: UsageSnapshot?
+    let activity: QuotaRingActivity
     let isHovered: Bool
 
     var body: some View {
         WeeklyQuotaRing(
             usage: usage,
+            activity: activity,
             diameter: isHovered ? 22 : 20,
             lineWidth: 1.5,
             fontSize: 8.5
@@ -274,14 +291,45 @@ private struct CompactQuotaView: View {
     }
 }
 
-private struct CompactCompletionView: View {
+private enum QuotaRingActivity: Equatable {
+    case idle
+    case running
+    case completed
+}
+
+private struct CompletedChatGPTIcon: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hasSettled = false
+
+    let size: CGFloat
+
     var body: some View {
-        Image(systemName: "checkmark")
-            .font(.system(size: 11, weight: .bold))
-            .foregroundStyle(NotchPalette.success)
-            .offset(x: -2)
-            .frame(width: 28, height: 32)
-            .accessibilityHidden(true)
+        ZStack {
+            if !reduceMotion {
+                Circle()
+                    .stroke(NotchPalette.success.opacity(hasSettled ? 0 : 0.7), lineWidth: 1)
+                    .frame(width: size + 8, height: size + 8)
+                    .scaleEffect(hasSettled ? 1.18 : 0.78)
+            }
+
+            ChatGPTMark(size: size)
+
+            Image(systemName: "checkmark")
+                .font(.system(size: 5.5, weight: .black))
+                .foregroundStyle(Color.black)
+                .frame(width: 9, height: 9)
+                .background(NotchPalette.success, in: Circle())
+                .offset(x: 7, y: 7)
+        }
+        .frame(width: size + 8, height: size + 8)
+        .onAppear {
+            guard !reduceMotion else { return }
+            hasSettled = true
+        }
+        .animation(
+            reduceMotion ? nil : .easeOut(duration: 0.48),
+            value: hasSettled
+        )
     }
 }
 
@@ -362,9 +410,15 @@ private struct RunningChatGPTIcon: View {
 
 private struct WeeklyQuotaRing: View {
     let usage: UsageSnapshot?
+    let activity: QuotaRingActivity
     let diameter: CGFloat
     let lineWidth: CGFloat
     let fontSize: CGFloat
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var displayedProgress: CGFloat = 0
+    @State private var highlightActive = false
+    @State private var completionPulse = false
 
     private var window: UsageWindow? {
         usage?.weeklyWindow
@@ -374,19 +428,13 @@ private struct WeeklyQuotaRing: View {
         window?.remainingPercent ?? 0
     }
 
-    private var level: WeeklyQuotaLevel {
-        WeeklyQuotaLevel(weeklyWindow: window)
+    private var targetProgress: CGFloat {
+        CGFloat(min(max(remainingPercent, 0), 100) / 100)
     }
 
     private var progressColor: Color {
-        switch level {
-        case .healthy:
-            return NotchPalette.success
-        case .critical:
-            return NotchPalette.danger
-        case .unavailable:
-            return NotchPalette.secondaryText
-        }
+        guard window != nil else { return NotchPalette.secondaryText }
+        return QuotaColorScale.color(for: remainingPercent)
     }
 
     var body: some View {
@@ -396,12 +444,37 @@ private struct WeeklyQuotaRing: View {
 
             if window != nil {
                 Circle()
-                    .trim(from: 0, to: remainingPercent / 100)
+                    .trim(from: 0, to: displayedProgress)
                     .stroke(
                         progressColor,
                         style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
+
+                if activity == .running, !reduceMotion {
+                    Circle()
+                        .trim(from: 0, to: 0.16)
+                        .stroke(
+                            progressColor.opacity(0.96),
+                            style: StrokeStyle(lineWidth: lineWidth + 0.8, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(highlightActive ? 360 : 0))
+                        .shadow(color: progressColor.opacity(0.6), radius: 2)
+                        .animation(
+                            .linear(duration: 1.45).repeatForever(autoreverses: false),
+                            value: highlightActive
+                        )
+                }
+
+                if activity == .completed, !reduceMotion {
+                    Circle()
+                        .stroke(
+                            progressColor.opacity(completionPulse ? 0 : 0.7),
+                            lineWidth: 1
+                        )
+                        .scaleEffect(completionPulse ? 1.32 : 0.84)
+                        .animation(.easeOut(duration: 0.5), value: completionPulse)
+                }
             }
 
             Text(window.map { NotchText.quotaNumber($0.remainingPercent) } ?? "—")
@@ -418,7 +491,70 @@ private struct WeeklyQuotaRing: View {
                 .minimumScaleFactor(0.75)
         }
         .frame(width: diameter, height: diameter)
-        .animation(.easeInOut(duration: 0.28), value: remainingPercent)
+        .onAppear {
+            updateProgress(forAppearance: true)
+            updateActivityAnimation()
+        }
+        .onChange(of: remainingPercent) { _, _ in
+            updateProgress()
+        }
+        .onChange(of: activity) { _, _ in
+            updateActivityAnimation()
+        }
+        .onChange(of: reduceMotion) { _, _ in
+            updateActivityAnimation()
+        }
+    }
+
+    private func updateProgress(forAppearance: Bool = false) {
+        guard window != nil else {
+            displayedProgress = 0
+            return
+        }
+        if reduceMotion {
+            displayedProgress = targetProgress
+        } else if forAppearance, activity == .running {
+            displayedProgress = 1
+            withAnimation(.easeOut(duration: 0.9)) {
+                displayedProgress = targetProgress
+            }
+        } else if forAppearance {
+            displayedProgress = targetProgress
+        } else {
+            withAnimation(.easeInOut(duration: 0.42)) {
+                displayedProgress = targetProgress
+            }
+        }
+    }
+
+    private func updateActivityAnimation() {
+        guard !reduceMotion else {
+            highlightActive = false
+            completionPulse = false
+            displayedProgress = targetProgress
+            return
+        }
+
+        switch activity {
+        case .idle:
+            highlightActive = false
+            completionPulse = false
+            updateProgress()
+        case .running:
+            completionPulse = false
+            displayedProgress = 1
+            withAnimation(.easeOut(duration: 0.9)) {
+                displayedProgress = targetProgress
+            }
+            highlightActive = true
+        case .completed:
+            highlightActive = false
+            displayedProgress = targetProgress
+            completionPulse = false
+            withAnimation(.easeOut(duration: 0.5)) {
+                completionPulse = true
+            }
+        }
     }
 }
 
@@ -428,52 +564,75 @@ private struct ExpandedNotchView: View {
     let onOpenThread: (String) -> Void
 
     var body: some View {
-        Group {
-            if content.sessions.isEmpty {
-                WeeklyQuotaProgressView(usage: content.usage, now: now)
-            } else {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 7) {
-                        ForEach(Array(content.sessions.prefix(2))) { session in
-                            SessionCardView(
-                                session: session,
-                                now: now,
-                                action: { onOpenThread(session.threadID) }
-                            )
+        VStack(alignment: .leading, spacing: 0) {
+            WeeklyQuotaProgressView(usage: content.usage, now: now)
+
+            if !content.conversations.isEmpty {
+                Spacer(minLength: 7)
+
+                Rectangle()
+                    .fill(NotchPalette.border)
+                    .frame(height: 0.5)
+
+                Spacer(minLength: 6)
+
+                Text("最近对话")
+                    .font(.system(size: 9, weight: .semibold, design: .rounded))
+                    .foregroundStyle(NotchPalette.secondaryText)
+
+                Spacer(minLength: 4)
+
+                VStack(spacing: 0) {
+                    ForEach(
+                        Array(content.conversations.enumerated()),
+                        id: \.offset
+                    ) { index, conversation in
+                        ConversationRowView(
+                            conversation: conversation,
+                            now: now,
+                            action: { onOpenThread(conversation.threadID) }
+                        )
+
+                        if index < content.conversations.count - 1 {
+                            Rectangle()
+                                .fill(NotchPalette.border)
+                                .frame(height: 0.5)
+                                .padding(.leading, 31)
                         }
                     }
-                    .frame(height: 46)
-
-                    WeeklyQuotaProgressView(usage: content.usage, now: now)
+                }
+                .background(NotchPalette.row.opacity(0.62))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(NotchPalette.border, lineWidth: 0.5)
                 }
             }
         }
         .padding(.horizontal, 14)
         .padding(.top, 40)
-        .padding(.bottom, 12)
+        .padding(.bottom, 10)
     }
 }
 
-private struct SessionCardView: View {
-    let session: SessionActivity
+private struct ConversationRowView: View {
+    let conversation: ConversationSummary
     let now: Date
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 7) {
-                Circle()
-                    .fill(NotchPalette.success)
-                    .frame(width: 6, height: 6)
-                    .shadow(color: NotchPalette.success.opacity(0.55), radius: 3)
+            HStack(spacing: 8) {
+                ConversationStatusView(activity: conversation.activity)
+                    .frame(width: 14)
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(NotchText.projectName(cwd: session.cwd))
-                        .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                    Text(conversation.title ?? NotchText.projectName(cwd: conversation.cwd))
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
                         .foregroundStyle(NotchPalette.primaryText)
                         .lineLimit(1)
-                    Text("运行 \(NotchText.formatDuration(seconds: max(0, now.timeIntervalSince(session.startedAt))))")
-                        .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                    Text(metadataText)
+                        .font(.system(size: 8, weight: .medium, design: .rounded))
                         .foregroundStyle(NotchPalette.secondaryText)
                         .lineLimit(1)
                         .monospacedDigit()
@@ -482,20 +641,62 @@ private struct SessionCardView: View {
                 Spacer(minLength: 4)
 
                 Image(systemName: "arrow.up.right")
-                    .font(.system(size: 8.5, weight: .semibold))
+                    .font(.system(size: 8, weight: .semibold))
                     .foregroundStyle(NotchPalette.secondaryText)
             }
             .padding(.horizontal, 9)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(NotchPalette.row)
-            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .stroke(NotchPalette.border, lineWidth: 0.5)
-            }
+            .frame(maxWidth: .infinity, minHeight: 30, maxHeight: 30)
             .contentShape(Rectangle())
         }
         .buttonStyle(NotchButtonStyle())
+    }
+
+    private var metadataText: String {
+        let project = NotchText.projectName(cwd: conversation.cwd)
+        switch conversation.activity {
+        case let .running(startedAt):
+            return "运行 \(NotchText.formatDuration(seconds: max(0, now.timeIntervalSince(startedAt)))) · \(project)"
+        case let .completed(completedAt):
+            return "已完成 · \(NotchText.relativeTime(from: completedAt, now: now)) · \(project)"
+        }
+    }
+}
+
+private struct ConversationStatusView: View {
+    let activity: ConversationActivity
+
+    var body: some View {
+        switch activity {
+        case .running:
+            RunningStatusDot()
+        case .completed:
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(NotchPalette.success)
+        }
+    }
+}
+
+private struct RunningStatusDot: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isPulsing = false
+
+    var body: some View {
+        Circle()
+            .fill(NotchPalette.success)
+            .frame(width: 6, height: 6)
+            .scaleEffect(isPulsing ? 1.15 : 0.82)
+            .opacity(isPulsing ? 0.62 : 1)
+            .onAppear {
+                guard !reduceMotion else { return }
+                isPulsing = true
+            }
+            .animation(
+                reduceMotion
+                    ? nil
+                    : .easeInOut(duration: 0.9).repeatForever(autoreverses: true),
+                value: isPulsing
+            )
     }
 }
 
@@ -507,19 +708,9 @@ private struct WeeklyQuotaProgressView: View {
         usage?.weeklyWindow
     }
 
-    private var level: WeeklyQuotaLevel {
-        WeeklyQuotaLevel(weeklyWindow: window)
-    }
-
     private var progressColor: Color {
-        switch level {
-        case .healthy:
-            return NotchPalette.success
-        case .critical:
-            return NotchPalette.danger
-        case .unavailable:
-            return NotchPalette.secondaryText
-        }
+        guard window != nil else { return NotchPalette.secondaryText }
+        return QuotaColorScale.color(for: window?.remainingPercent ?? 0)
     }
 
     var body: some View {
@@ -531,7 +722,7 @@ private struct WeeklyQuotaProgressView: View {
 
                 Spacer()
 
-                Text(window.map { NotchText.quotaNumber($0.remainingPercent) } ?? "—")
+                Text(window.map { NotchText.percent($0.remainingPercent) } ?? "—")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(progressColor)
                     .monospacedDigit()
@@ -581,6 +772,22 @@ private struct WeeklyQuotaProgressView: View {
             return "--:--:--"
         }
         return NotchText.resetCountdown(resetAt: resetAt, now: now)
+    }
+}
+
+enum QuotaColorScale {
+    static func hue(for remainingPercent: Double) -> Double {
+        let finiteValue = remainingPercent.isFinite ? remainingPercent : 0
+        let clampedValue = min(max(finiteValue, 0), 100)
+        return clampedValue / 100 * 0.34
+    }
+
+    static func color(for remainingPercent: Double) -> Color {
+        Color(
+            hue: hue(for: remainingPercent),
+            saturation: 0.82,
+            brightness: 0.96
+        )
     }
 }
 
@@ -648,6 +855,14 @@ enum NotchText {
         guard let cwd, !cwd.isEmpty else { return "未命名任务" }
         let name = URL(fileURLWithPath: cwd).lastPathComponent
         return name.isEmpty ? cwd : name
+    }
+
+    static func relativeTime(from date: Date, now: Date) -> String {
+        let seconds = max(0, Int(now.timeIntervalSince(date).rounded(.down)))
+        if seconds < 60 { return "刚刚" }
+        if seconds < 3_600 { return "\(seconds / 60)分钟前" }
+        if seconds < 86_400 { return "\(seconds / 3_600)小时前" }
+        return "\(seconds / 86_400)天前"
     }
 
     static func formatDuration(seconds: TimeInterval) -> String {

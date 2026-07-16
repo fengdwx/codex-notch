@@ -54,6 +54,14 @@ final class NotchTextTests: XCTestCase {
         XCTAssertEqual(WeeklyQuotaLevel(weeklyWindow: nil), .unavailable)
     }
 
+    func testQuotaColorScaleMovesFromRedToGreen() {
+        XCTAssertEqual(QuotaColorScale.hue(for: 0), 0, accuracy: 0.001)
+        XCTAssertEqual(QuotaColorScale.hue(for: 50), 0.17, accuracy: 0.001)
+        XCTAssertEqual(QuotaColorScale.hue(for: 100), 0.34, accuracy: 0.001)
+        XCTAssertEqual(QuotaColorScale.hue(for: -10), 0, accuracy: 0.001)
+        XCTAssertEqual(QuotaColorScale.hue(for: 120), 0.34, accuracy: 0.001)
+    }
+
     func testResetTimestampIncludesSeconds() {
         let timeZone = TimeZone(secondsFromGMT: 8 * 3_600)!
         let date = Date(timeIntervalSince1970: 1_768_377_845)
