@@ -2,7 +2,11 @@ import Foundation
 
 struct ActiveSessionStoreSnapshot: Equatable, Sendable {
     let activeSessions: [SessionActivity]
-    let latestCompletion: CompletedSession?
+    let recentCompletions: [CompletedSession]
+
+    var latestCompletion: CompletedSession? {
+        recentCompletions.first
+    }
 }
 
 actor ActiveSessionStore {
@@ -13,10 +17,15 @@ actor ActiveSessionStore {
     }
 
     private let staleAfter: TimeInterval
+    private let historyRetention: TimeInterval
     private var rollouts: [String: RolloutState] = [:]
 
-    init(staleAfter: TimeInterval = 6 * 60 * 60) {
+    init(
+        staleAfter: TimeInterval = 6 * 60 * 60,
+        historyRetention: TimeInterval = 24 * 60 * 60
+    ) {
         self.staleAfter = staleAfter
+        self.historyRetention = historyRetention
     }
 
     func replace(
@@ -38,19 +47,25 @@ actor ActiveSessionStore {
     }
 
     func snapshot(now: Date = .now) -> ActiveSessionStoreSnapshot {
-        let cutoff = now.addingTimeInterval(-staleAfter)
-        rollouts = rollouts.filter { $0.value.lastModifiedAt >= cutoff }
+        let activeCutoff = now.addingTimeInterval(-staleAfter)
+        let retentionCutoff = now.addingTimeInterval(-max(staleAfter, historyRetention))
+        rollouts = rollouts.filter { $0.value.lastModifiedAt >= retentionCutoff }
 
         let active = rollouts.values
+            .filter { $0.lastModifiedAt >= activeCutoff }
             .flatMap(\.active)
             .sorted { $0.lastActivityAt > $1.lastActivityAt }
-        let latestCompletion = rollouts.values
+        let sortedCompletions = rollouts.values
             .flatMap(\.completed)
-            .max { $0.completedAt < $1.completedAt }
+            .sorted { $0.completedAt > $1.completedAt }
+        var seenThreadIDs = Set<String>()
+        let recentCompletions = sortedCompletions.filter { completion in
+            seenThreadIDs.insert(completion.session.threadID).inserted
+        }
 
         return ActiveSessionStoreSnapshot(
             activeSessions: active,
-            latestCompletion: latestCompletion
+            recentCompletions: recentCompletions
         )
     }
 

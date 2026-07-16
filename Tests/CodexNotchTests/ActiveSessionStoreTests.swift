@@ -77,10 +77,95 @@ final class ActiveSessionStoreTests: XCTestCase {
         XCTAssertEqual(snapshot.latestCompletion?.completedAt, completedAt)
     }
 
+    func testSnapshotSortsAndDeduplicatesRecentCompletionsByThread() async {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let store = ActiveSessionStore()
+        let olderDuplicate = makeCompletedSession(
+            threadID: "thread-a",
+            turnID: "turn-a-old",
+            at: now.addingTimeInterval(-30)
+        )
+        let otherThread = makeCompletedSession(
+            threadID: "thread-b",
+            turnID: "turn-b",
+            at: now.addingTimeInterval(-20)
+        )
+        let newerDuplicate = makeCompletedSession(
+            threadID: "thread-a",
+            turnID: "turn-a-new",
+            at: now.addingTimeInterval(-10)
+        )
+
+        await store.replace(
+            rolloutID: "a-old",
+            reduction: ActiveSessionReduction(active: [], completed: [olderDuplicate]),
+            lastModifiedAt: olderDuplicate.lastActivityAt
+        )
+        await store.replace(
+            rolloutID: "b",
+            reduction: ActiveSessionReduction(active: [], completed: [otherThread]),
+            lastModifiedAt: otherThread.lastActivityAt
+        )
+        await store.replace(
+            rolloutID: "a-new",
+            reduction: ActiveSessionReduction(active: [], completed: [newerDuplicate]),
+            lastModifiedAt: newerDuplicate.lastActivityAt
+        )
+
+        let snapshot = await store.snapshot(now: now)
+
+        XCTAssertEqual(snapshot.recentCompletions.map(\.session.threadID), ["thread-a", "thread-b"])
+        XCTAssertEqual(snapshot.recentCompletions.first?.session.turnID, "turn-a-new")
+    }
+
+    func testCompletedHistoryOutlivesActiveSessionStaleness() async {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let eightHoursAgo = now.addingTimeInterval(-(8 * 60 * 60))
+        let staleActive = makeReduction(threadID: "thread-active", turnID: "turn-active", at: eightHoursAgo)
+        let completed = makeCompletedSession(
+            threadID: "thread-completed",
+            turnID: "turn-completed",
+            at: eightHoursAgo
+        )
+        let store = ActiveSessionStore(staleAfter: 6 * 60 * 60)
+
+        await store.replace(
+            rolloutID: "active",
+            reduction: staleActive,
+            lastModifiedAt: eightHoursAgo
+        )
+        await store.replace(
+            rolloutID: "completed",
+            reduction: ActiveSessionReduction(active: [], completed: [completed]),
+            lastModifiedAt: eightHoursAgo
+        )
+
+        let snapshot = await store.snapshot(now: now)
+
+        XCTAssertTrue(snapshot.activeSessions.isEmpty)
+        XCTAssertEqual(snapshot.recentCompletions.map(\.session.threadID), ["thread-completed"])
+    }
+
     private func makeReduction(threadID: String, turnID: String, at: Date) -> ActiveSessionReduction {
         ActiveSessionReducer.reduce([
             RolloutEvent(timestamp: at, kind: .sessionMeta(threadID: threadID, cwd: nil, originator: nil)),
             RolloutEvent(timestamp: at, kind: .taskStarted(turnID: turnID))
         ])
+    }
+
+    private func makeCompletedSession(
+        threadID: String,
+        turnID: String,
+        at date: Date
+    ) -> SessionActivity {
+        SessionActivity(
+            threadID: threadID,
+            turnID: turnID,
+            title: "Conversation \(threadID)",
+            cwd: "/tmp/project",
+            originator: nil,
+            startedAt: date.addingTimeInterval(-4),
+            lastActivityAt: date
+        )
     }
 }
