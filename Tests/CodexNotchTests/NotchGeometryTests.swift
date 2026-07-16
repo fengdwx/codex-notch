@@ -111,6 +111,35 @@ final class NotchGeometryTests: XCTestCase {
         )
     }
 
+    func testFrameInterpolationStartsWithCompactIslandAndKeepsTopEdgeFixed() {
+        let compactFrame = NSRect(x: 612, y: 950, width: 289, height: 32)
+        let expandedFrame = NSRect(x: 546.5, y: 774, width: 420, height: 208)
+
+        let start = NotchTopAnchoredFrameInterpolator.frame(
+            from: compactFrame,
+            to: expandedFrame,
+            progress: 0
+        )
+        let middle = NotchTopAnchoredFrameInterpolator.frame(
+            from: compactFrame,
+            to: expandedFrame,
+            progress: 0.5
+        )
+        let end = NotchTopAnchoredFrameInterpolator.frame(
+            from: compactFrame,
+            to: expandedFrame,
+            progress: 1
+        )
+
+        XCTAssertEqual(start, compactFrame)
+        XCTAssertEqual(end, expandedFrame)
+        XCTAssertEqual(middle.maxY, compactFrame.maxY, accuracy: 0.001)
+        XCTAssertEqual(middle.maxY, expandedFrame.maxY, accuracy: 0.001)
+        XCTAssertEqual(middle.midX, compactFrame.midX, accuracy: 0.001)
+        XCTAssertGreaterThan(middle.height, compactFrame.height)
+        XCTAssertLessThan(middle.height, expandedFrame.height)
+    }
+
     func testMissingAuxiliaryAreasUseMenuBarFallback() {
         let metrics = NotchScreenMetrics(
             frame: NSRect(x: 0, y: 0, width: 1920, height: 1080),

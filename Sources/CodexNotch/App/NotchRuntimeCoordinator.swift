@@ -374,7 +374,8 @@ final class NotchRuntimeCoordinator {
         viewModel.update(
             state: displayState,
             now: renderDate,
-            cameraSafeAreaInset: max(0, screen.safeAreaInsets.top)
+            cameraSafeAreaInset: max(0, screen.safeAreaInsets.top),
+            compactWidth: layout.compactFrame.width
         )
         windowController.apply(layout: layout, state: displayState)
     }

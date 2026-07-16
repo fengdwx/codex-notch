@@ -184,3 +184,52 @@ enum NotchGeometry {
         return NSRect(x: x, y: y, width: width, height: height)
     }
 }
+
+/// Interpolates a panel from its current compact frame to its target frame
+/// while holding the physical-notch edge fixed. AppKit's built-in window
+/// animator resizes around a visual center on some releases, so the notch
+/// panel uses these explicit frames instead.
+enum NotchTopAnchoredFrameInterpolator {
+    static func frame(
+        from start: NSRect,
+        to target: NSRect,
+        progress: CGFloat
+    ) -> NSRect {
+        let clampedProgress = min(max(progress, 0), 1)
+        let normalizedStart = NSRect(
+            x: start.minX,
+            y: target.maxY - start.height,
+            width: start.width,
+            height: start.height
+        )
+        let width = interpolated(
+            from: normalizedStart.width,
+            to: target.width,
+            progress: clampedProgress
+        )
+        let height = interpolated(
+            from: normalizedStart.height,
+            to: target.height,
+            progress: clampedProgress
+        )
+        let x = interpolated(
+            from: normalizedStart.minX,
+            to: target.minX,
+            progress: clampedProgress
+        )
+        return NSRect(
+            x: x,
+            y: target.maxY - height,
+            width: width,
+            height: height
+        )
+    }
+
+    private static func interpolated(
+        from start: CGFloat,
+        to target: CGFloat,
+        progress: CGFloat
+    ) -> CGFloat {
+        start + (target - start) * progress
+    }
+}

@@ -5,6 +5,7 @@ final class NotchViewModel: ObservableObject {
     @Published private(set) var state: NotchPresentationState
     @Published private(set) var now: Date
     @Published private(set) var cameraSafeAreaInset: CGFloat
+    @Published private(set) var compactWidth: CGFloat
 
     var onOpenThread: (String) -> Void
     var onActivateChatGPT: () -> Void
@@ -14,6 +15,7 @@ final class NotchViewModel: ObservableObject {
         state: NotchPresentationState = .hidden,
         now: Date = .now,
         cameraSafeAreaInset: CGFloat = 0,
+        compactWidth: CGFloat = NotchCompactLayout.minimumWidth,
         onOpenThread: @escaping (String) -> Void = { _ in },
         onActivateChatGPT: @escaping () -> Void = {},
         onHoverChanged: @escaping (Bool) -> Void = { _ in }
@@ -21,6 +23,7 @@ final class NotchViewModel: ObservableObject {
         self.state = state
         self.now = now
         self.cameraSafeAreaInset = cameraSafeAreaInset
+        self.compactWidth = compactWidth
         self.onOpenThread = onOpenThread
         self.onActivateChatGPT = onActivateChatGPT
         self.onHoverChanged = onHoverChanged
@@ -29,11 +32,13 @@ final class NotchViewModel: ObservableObject {
     func update(
         state: NotchPresentationState,
         now: Date,
-        cameraSafeAreaInset: CGFloat = 0
+        cameraSafeAreaInset: CGFloat = 0,
+        compactWidth: CGFloat = NotchCompactLayout.minimumWidth
     ) {
         self.state = state
         self.now = now
         self.cameraSafeAreaInset = cameraSafeAreaInset
+        self.compactWidth = compactWidth
     }
 }
 
@@ -120,9 +125,12 @@ struct NotchView: View {
                     content: content,
                     now: model.now,
                     cameraSafeAreaInset: model.cameraSafeAreaInset,
+                    compactWidth: model.compactWidth,
+                    quotaDisplayStyle: quotaDisplayStyle,
+                    isHovered: isPointerInside,
+                    onActivateChatGPT: model.onActivateChatGPT,
                     onOpenThread: model.onOpenThread
                 )
-                .transition(.opacity)
             }
         }
         // The panel's top edge is the physical-notch anchor. Keep the SwiftUI
@@ -146,7 +154,6 @@ struct NotchView: View {
                 lineWidth: 0.5
             )
         }
-        .animation(.easeInOut(duration: 0.24), value: isExpanded)
         .onHover { hovering in
             withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
                 isPointerInside = hovering
@@ -867,9 +874,36 @@ private struct ExpandedNotchView: View {
     let content: ExpandedContent
     let now: Date
     let cameraSafeAreaInset: CGFloat
+    let compactWidth: CGFloat
+    let quotaDisplayStyle: QuotaDisplayStyle
+    let isHovered: Bool
+    let onActivateChatGPT: () -> Void
     let onOpenThread: (String) -> Void
 
     var body: some View {
+        ZStack(alignment: .top) {
+            detailContent
+
+            // Keep the original compact island visible at the top. The detail
+            // body is revealed underneath it as the panel's bottom edge grows.
+            CompactNotchView(
+                icon: headerIcon,
+                title: headerTitle,
+                subtitle: headerSubtitle,
+                usage: content.usage,
+                quotaDisplayStyle: quotaDisplayStyle,
+                isHovered: isHovered,
+                action: headerAction
+            )
+            .frame(
+                width: compactWidth,
+                height: NotchCompactLayout.height
+            )
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private var detailContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             WeeklyQuotaProgressView(usage: content.usage, now: now)
 
@@ -921,6 +955,47 @@ private struct ExpandedNotchView: View {
         .padding(.top, cameraSafeAreaInset + 8)
         .padding(.bottom, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private var headerIcon: CompactNotchView.IconKind {
+        if !content.sessions.isEmpty {
+            return .working
+        }
+        if !content.conversations.isEmpty {
+            return .completed
+        }
+        return .quota
+    }
+
+    private var headerTitle: String {
+        switch headerIcon {
+        case .working:
+            return "Codex 运行中"
+        case .completed:
+            return "Codex 已完成"
+        case .quota:
+            return "Codex"
+        }
+    }
+
+    private var headerSubtitle: String {
+        if let session = content.sessions.first {
+            return NotchText.sessionSubtitle(session, now: now)
+        }
+        if let conversation = content.conversations.first {
+            return NotchText.projectName(cwd: conversation.cwd)
+        }
+        return NotchText.quotaSubtitle(usage: content.usage)
+    }
+
+    private var headerAction: () -> Void {
+        if let session = content.sessions.first {
+            return { onOpenThread(session.threadID) }
+        }
+        if let conversation = content.conversations.first {
+            return { onOpenThread(conversation.threadID) }
+        }
+        return onActivateChatGPT
     }
 }
 
