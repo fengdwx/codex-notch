@@ -33,7 +33,6 @@ struct NotchView: View {
     @ObservedObject private var model: NotchViewModel
     @AppStorage(QuotaDisplayStyle.storageKey)
     private var quotaDisplayStyleRaw = QuotaDisplayStyle.defaultStyle.rawValue
-    @Environment(\.openSettings) private var openSettings
     @State private var isPointerInside = false
 
     private var quotaDisplayStyle: QuotaDisplayStyle {
@@ -142,9 +141,7 @@ struct NotchView: View {
             model.onHoverChanged(hovering)
         }
         .contextMenu {
-            Button {
-                openSettings()
-            } label: {
+            SettingsLink {
                 Label("设置…", systemImage: "gearshape")
             }
         }
