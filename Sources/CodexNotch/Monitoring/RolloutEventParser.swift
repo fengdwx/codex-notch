@@ -1,6 +1,14 @@
 import Foundation
 
 enum RolloutEventParser {
+    private static let fractionalISO8601Formatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static let ISO8601Formatter = ISO8601DateFormatter()
+
     static func parse(data: Data) -> [RolloutEvent] {
         data.split(separator: 0x0A, omittingEmptySubsequences: true)
             .compactMap { parseLine(Data($0)) }
@@ -12,7 +20,10 @@ enum RolloutEventParser {
             return nil
         }
 
-        let timestamp = envelope.timestamp.flatMap { ISO8601DateFormatter().date(from: $0) }
+        let timestamp = envelope.timestamp.flatMap { value in
+            fractionalISO8601Formatter.date(from: value)
+                ?? ISO8601Formatter.date(from: value)
+        }
         let payloadType = envelope.payload?.type
 
         switch type {

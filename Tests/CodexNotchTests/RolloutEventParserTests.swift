@@ -37,6 +37,20 @@ final class RolloutEventParserTests: XCTestCase {
         XCTAssertEqual(timestamps.first, Date(timeIntervalSince1970: 1_784_192_400))
     }
 
+    func testFractionalISO8601TimestampsArePreserved() {
+        let data = Data(
+            #"{"timestamp":"2026-07-16T09:00:00.123Z","type":"event_msg","payload":{"type":"task_started","turn_id":"turn-fractional"}}"#
+                .utf8
+        )
+
+        let event = RolloutEventParser.parseLine(data)
+
+        XCTAssertEqual(
+            event?.timestamp,
+            Date(timeIntervalSince1970: 1_784_192_400.123)
+        )
+    }
+
     private func fixtureData(_ name: String) throws -> Data {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
