@@ -14,6 +14,7 @@ final class NotchTextTests: XCTestCase {
         let window = UsageWindow(id: "weekly", kind: .weekly, usedPercent: 25)
 
         XCTAssertEqual(NotchText.percent(window.remainingPercent), "75%")
+        XCTAssertEqual(NotchText.quotaNumber(window.remainingPercent), "75")
         XCTAssertEqual(NotchText.compactWindow(window), "每周余75%")
     }
 

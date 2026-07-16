@@ -266,7 +266,7 @@ private struct CompactQuotaView: View {
             usage: usage,
             diameter: isHovered ? 22 : 20,
             lineWidth: 1.5,
-            fontSize: 6.2
+            fontSize: 8.5
         )
         .offset(x: -2)
         .frame(width: 28, height: 32)
@@ -404,7 +404,7 @@ private struct WeeklyQuotaRing: View {
                     .rotationEffect(.degrees(-90))
             }
 
-            Text(window.map { NotchText.percent($0.remainingPercent) } ?? "—")
+            Text(window.map { NotchText.quotaNumber($0.remainingPercent) } ?? "—")
                 .font(.system(
                     size: window == nil ? fontSize + 1 : fontSize,
                     weight: .bold,
@@ -531,8 +531,8 @@ private struct WeeklyQuotaProgressView: View {
 
                 Spacer()
 
-                Text(window.map { NotchText.percent($0.remainingPercent) } ?? "—")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                Text(window.map { NotchText.quotaNumber($0.remainingPercent) } ?? "—")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(progressColor)
                     .monospacedDigit()
             }
@@ -627,6 +627,10 @@ enum NotchText {
 
     static func percent(_ value: Double) -> String {
         "\(Int(value.rounded()))%"
+    }
+
+    static func quotaNumber(_ value: Double) -> String {
+        "\(Int(value.rounded()))"
     }
 
     static func quotaSubtitle(usage: UsageSnapshot?) -> String {
