@@ -65,7 +65,7 @@ final class NotchPresentationReducerTests: XCTestCase {
         XCTAssertEqual(session.threadID, "thread-completed")
     }
 
-    func testCompletedStateExpiresBackToPersistentQuota() {
+    func testMostRecentCompletionKeepsCompactCompletionState() {
         let now = Date(timeIntervalSince1970: 2_000_000_000)
         let task = makeSession(id: "thread-completed", at: now.addingTimeInterval(-4))
         let completion = CompletedSession(session: task, completedAt: now.addingTimeInterval(-4))
@@ -92,8 +92,8 @@ final class NotchPresentationReducerTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(frontmostState, .quotaCompact(usage))
-        XCTAssertEqual(hiddenState, .quotaCompact(usage))
+        XCTAssertEqual(frontmostState, .completedCompact(task, usage: usage))
+        XCTAssertEqual(hiddenState, .completedCompact(task, usage: usage))
     }
 
     func testIdleQuotaIsAlwaysVisible() {

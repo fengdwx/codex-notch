@@ -1,8 +1,6 @@
 import Foundation
 
 enum NotchPresentationReducer {
-    static let completionFeedbackDuration: TimeInterval = 2.5
-
     static func reduce(_ input: NotchPresentationInput) -> NotchPresentationState {
         let sessions = input.activeSessions.sorted { $0.lastActivityAt > $1.lastActivityAt }
 
@@ -17,10 +15,12 @@ enum NotchPresentationReducer {
             )
         }
         if let completion = input.recentCompletions.first {
-            let age = input.now.timeIntervalSince(completion.completedAt)
-            if age >= 0, age <= completionFeedbackDuration {
-                return .completedCompact(completion.session, usage: input.usage)
-            }
+            // The compact island still shows quota on the right, while its
+            // left app mark remains a completion acknowledgement until the
+            // next active task supersedes it. Recent-completion history is
+            // already retained by ActiveSessionStore, so do not discard this
+            // visible state after a couple of seconds.
+            return .completedCompact(completion.session, usage: input.usage)
         }
 
         return .quotaCompact(input.usage)
