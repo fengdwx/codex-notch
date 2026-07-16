@@ -371,13 +371,19 @@ final class NotchRuntimeCoordinator {
             metrics: metrics,
             expandedSize: expandedContentSize(for: displayState)
         )
+        let targetFrame = layout.frame(for: displayState)
+        // The controller allocates the final canvas before the SwiftUI state
+        // changes. That lets the island grow within one stable window instead
+        // of animating the NSPanel itself.
+        windowController.prepare(layout: layout, state: displayState)
         viewModel.update(
             state: displayState,
             now: renderDate,
             cameraSafeAreaInset: max(0, screen.safeAreaInsets.top),
-            compactWidth: layout.compactFrame.width
+            compactWidth: layout.compactFrame.width,
+            surfaceSize: targetFrame.size
         )
-        windowController.apply(layout: layout, state: displayState)
+        windowController.settleFrame(layout: layout, state: displayState)
     }
 
     private func preferredScreen() -> NSScreen? {

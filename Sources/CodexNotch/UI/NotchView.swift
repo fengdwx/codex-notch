@@ -6,6 +6,7 @@ final class NotchViewModel: ObservableObject {
     @Published private(set) var now: Date
     @Published private(set) var cameraSafeAreaInset: CGFloat
     @Published private(set) var compactWidth: CGFloat
+    @Published private(set) var surfaceSize: CGSize
 
     var onOpenThread: (String) -> Void
     var onActivateChatGPT: () -> Void
@@ -16,6 +17,10 @@ final class NotchViewModel: ObservableObject {
         now: Date = .now,
         cameraSafeAreaInset: CGFloat = 0,
         compactWidth: CGFloat = NotchCompactLayout.minimumWidth,
+        surfaceSize: CGSize = CGSize(
+            width: NotchCompactLayout.minimumWidth,
+            height: NotchCompactLayout.height
+        ),
         onOpenThread: @escaping (String) -> Void = { _ in },
         onActivateChatGPT: @escaping () -> Void = {},
         onHoverChanged: @escaping (Bool) -> Void = { _ in }
@@ -24,6 +29,7 @@ final class NotchViewModel: ObservableObject {
         self.now = now
         self.cameraSafeAreaInset = cameraSafeAreaInset
         self.compactWidth = compactWidth
+        self.surfaceSize = surfaceSize
         self.onOpenThread = onOpenThread
         self.onActivateChatGPT = onActivateChatGPT
         self.onHoverChanged = onHoverChanged
@@ -33,12 +39,40 @@ final class NotchViewModel: ObservableObject {
         state: NotchPresentationState,
         now: Date,
         cameraSafeAreaInset: CGFloat = 0,
-        compactWidth: CGFloat = NotchCompactLayout.minimumWidth
+        compactWidth: CGFloat = NotchCompactLayout.minimumWidth,
+        surfaceSize: CGSize = CGSize(
+            width: NotchCompactLayout.minimumWidth,
+            height: NotchCompactLayout.height
+        )
     ) {
-        self.state = state
-        self.now = now
-        self.cameraSafeAreaInset = cameraSafeAreaInset
-        self.compactWidth = compactWidth
+        let wasExpanded = Self.isExpanded(self.state)
+        let willBeExpanded = Self.isExpanded(state)
+        let changesSurface = wasExpanded != willBeExpanded
+            || self.surfaceSize != surfaceSize
+            || self.compactWidth != compactWidth
+
+        let applyUpdate = {
+            self.state = state
+            self.now = now
+            self.cameraSafeAreaInset = cameraSafeAreaInset
+            self.compactWidth = compactWidth
+            self.surfaceSize = surfaceSize
+        }
+
+        if changesSurface {
+            let expands = surfaceSize.height > self.surfaceSize.height + 0.5
+                || surfaceSize.width > self.surfaceSize.width + 0.5
+            withAnimation(NotchPresentationMotion.animation(forExpanding: expands)) {
+                applyUpdate()
+            }
+        } else {
+            applyUpdate()
+        }
+    }
+
+    private static func isExpanded(_ state: NotchPresentationState) -> Bool {
+        if case .expanded = state { return true }
+        return false
     }
 }
 
@@ -59,6 +93,23 @@ struct NotchView: View {
 
     private var isHidden: Bool {
         model.state == .hidden
+    }
+
+    private var surfaceSize: CGSize {
+        if isHidden || isExpanded {
+            return model.surfaceSize
+        }
+        return CGSize(
+            width: model.compactWidth,
+            height: NotchCompactLayout.height
+        )
+    }
+
+    private var surfaceShape: NotchAttachedShape {
+        NotchAttachedShape(
+            shoulderDepth: 6,
+            bottomRadius: isExpanded ? 22 : 14
+        )
     }
 
     init(
@@ -131,25 +182,22 @@ struct NotchView: View {
                     onActivateChatGPT: model.onActivateChatGPT,
                     onOpenThread: model.onOpenThread
                 )
+                .transition(.opacity)
             }
         }
-        // The panel's top edge is the physical-notch anchor. Keep the SwiftUI
-        // content on that same edge while the AppKit window grows downward.
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .contentShape(Rectangle())
-        .background(isHidden ? Color.clear : NotchPalette.background)
-        .clipShape(
-            NotchAttachedShape(
-                shoulderDepth: 6,
-                bottomRadius: isExpanded ? 22 : 14
-            )
+        // The panel is already at its final size before this state changes.
+        // Animate this one visible surface from the compact island downward;
+        // clear canvas around it never becomes part of the notch itself.
+        .frame(
+            width: surfaceSize.width,
+            height: surfaceSize.height,
+            alignment: .top
         )
+        .contentShape(surfaceShape)
+        .background(isHidden ? Color.clear : NotchPalette.background)
+        .clipShape(surfaceShape)
         .overlay {
-            NotchAttachedShape(
-                shoulderDepth: 6,
-                bottomRadius: isExpanded ? 22 : 14
-            )
-            .stroke(
+            surfaceShape.stroke(
                 isExpanded ? NotchPalette.border : Color.clear,
                 lineWidth: 0.5
             )
@@ -165,6 +213,7 @@ struct NotchView: View {
                 Label("设置…", systemImage: "gearshape")
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 

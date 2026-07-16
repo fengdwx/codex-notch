@@ -10,25 +10,8 @@ final class NotchWindowController: NSWindowController {
     private var screenObserver: NSObjectProtocol?
     private var hostingView: NSHostingView<AnyView>?
     private var statusItem: NSStatusItem?
-    private var lastFrameKind: PresentationFrameKind?
-
-    private enum FrameAnimation {
-        static let expandDuration: TimeInterval = 0.34
-        static let collapseDuration: TimeInterval = 0.26
-
-        static let expandCurve = CAMediaTimingFunction(
-            controlPoints: 0.22,
-            0.94,
-            0.34,
-            1
-        )
-        static let collapseCurve = CAMediaTimingFunction(
-            controlPoints: 0.48,
-            0,
-            0.76,
-            0.72
-        )
-    }
+    private var deferredFrameWorkItem: DispatchWorkItem?
+    private var deferredFrameIdentifier: UUID?
 
     init() {
         let panel = NotchPanel(contentRect: NSRect(x: 0, y: 0, width: 1, height: 1))
@@ -53,10 +36,15 @@ final class NotchWindowController: NSWindowController {
         self.hostingView = hostingView
     }
 
-    func apply(layout: NotchLayout, state: NotchPresentationState) {
+    /// Atoll's motion model is intentional here: make room for the final panel
+    /// first, then let SwiftUI animate the visible island inside that stable
+    /// canvas. Repeatedly resizing an NSPanel during a SwiftUI layout pass is
+    /// both visually rough and prone to re-entrant layout crashes.
+    func prepare(layout: NotchLayout, state: NotchPresentationState) {
         guard let panel = window as? NotchPanel else { return }
 
         if layout.mode == .menuBarFallback {
+            cancelDeferredFrameSettlement()
             panel.ignoresMouseEvents = true
             panel.orderOut(nil)
             showFallbackMenu(for: state)
@@ -64,25 +52,11 @@ final class NotchWindowController: NSWindowController {
         }
 
         hideFallbackMenu()
-        let frameKind = PresentationFrameKind(state: state)
-        let frame: NSRect
-        switch frameKind {
-        case .hoverSensor:
-            frame = layout.hoverSensorFrame
-        case .compact:
-            frame = layout.compactFrame
-        case .quotaExpanded:
-            frame = layout.quotaExpandedFrame
-        case .taskExpanded:
-            frame = layout.expandedFrame
-        }
+        let frame = layout.frame(for: state)
         let wasVisible = panel.isVisible
-        let shouldAnimateFrame = wasVisible
-            && lastFrameKind != nil
-            && !panel.frame.equalTo(frame)
-        if shouldAnimateFrame {
-            animateFrameChange(of: panel, to: frame)
-        } else {
+        cancelDeferredFrameSettlement()
+
+        if shouldSetFrameImmediately(from: panel.frame, to: frame, wasVisible: wasVisible) {
             panel.setFrame(frame, display: true)
         }
         panel.ignoresMouseEvents = false
@@ -97,26 +71,70 @@ final class NotchWindowController: NSWindowController {
                 panel.animator().alphaValue = 1
             }
         }
-        lastFrameKind = frameKind
     }
 
-    private func animateFrameChange(of panel: NSPanel, to frame: NSRect) {
-        let isExpanding = frame.height > panel.frame.height
-        // Compact and expanded frames share their top edge. Let AppKit animate
-        // that one change as a transaction instead of repeatedly setting a
-        // frame from a timer while SwiftUI is measuring the expanded content.
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = isExpanding
-                ? FrameAnimation.expandDuration
-                : FrameAnimation.collapseDuration
-            context.timingFunction = isExpanding
-                ? FrameAnimation.expandCurve
-                : FrameAnimation.collapseCurve
-            panel.animator().setFrame(frame, display: true)
+    /// Once the SwiftUI surface has visibly collapsed, remove the unused clear
+    /// canvas so it cannot intercept clicks outside the compact notch.
+    func settleFrame(layout: NotchLayout, state: NotchPresentationState) {
+        guard layout.mode == .notch,
+              let panel = window as? NotchPanel else {
+            return
         }
+
+        let targetFrame = layout.frame(for: state)
+        guard shouldDeferFrameSettlement(from: panel.frame, to: targetFrame) else {
+            return
+        }
+
+        let identifier = UUID()
+        deferredFrameIdentifier = identifier
+        let workItem = DispatchWorkItem { [weak self, weak panel] in
+            guard let self,
+                  let panel,
+                  self.deferredFrameIdentifier == identifier else {
+                return
+            }
+            panel.setFrame(targetFrame, display: true)
+            self.deferredFrameIdentifier = nil
+            self.deferredFrameWorkItem = nil
+        }
+        deferredFrameWorkItem = workItem
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + NotchPresentationMotion.collapseDuration,
+            execute: workItem
+        )
+    }
+
+    private func shouldSetFrameImmediately(
+        from current: NSRect,
+        to target: NSRect,
+        wasVisible: Bool
+    ) -> Bool {
+        guard wasVisible else { return true }
+        guard !current.equalTo(target) else { return false }
+
+        let growsWidth = target.width > current.width + 0.5
+        let growsHeight = target.height > current.height + 0.5
+        let changesTopAttachment = abs(target.maxY - current.maxY) > 0.5
+        return growsWidth || growsHeight || changesTopAttachment
+    }
+
+    private func shouldDeferFrameSettlement(from current: NSRect, to target: NSRect) -> Bool {
+        let growsWidth = target.width > current.width + 0.5
+        let growsHeight = target.height > current.height + 0.5
+        let shrinksWidth = target.width < current.width - 0.5
+        let shrinksHeight = target.height < current.height - 0.5
+        return (shrinksWidth || shrinksHeight) && !(growsWidth || growsHeight)
+    }
+
+    private func cancelDeferredFrameSettlement() {
+        deferredFrameWorkItem?.cancel()
+        deferredFrameWorkItem = nil
+        deferredFrameIdentifier = nil
     }
 
     deinit {
+        cancelDeferredFrameSettlement()
         if let screenObserver {
             NotificationCenter.default.removeObserver(screenObserver)
         }
@@ -230,24 +248,6 @@ final class NotchWindowController: NSWindowController {
             onActivateChatGPT?()
         } else {
             onOpenThread?(representedObject)
-        }
-    }
-}
-
-private enum PresentationFrameKind: Equatable {
-    case hoverSensor
-    case compact
-    case quotaExpanded
-    case taskExpanded
-
-    init(state: NotchPresentationState) {
-        switch state {
-        case .hidden:
-            self = .hoverSensor
-        case .quotaCompact, .workingCompact, .completedCompact:
-            self = .compact
-        case let .expanded(content):
-            self = content.conversations.isEmpty ? .quotaExpanded : .taskExpanded
         }
     }
 }

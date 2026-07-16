@@ -47,6 +47,19 @@ struct NotchLayout: Equatable {
     let expandedFrame: NSRect
 }
 
+extension NotchLayout {
+    func frame(for state: NotchPresentationState) -> NSRect {
+        switch state {
+        case .hidden:
+            hoverSensorFrame
+        case .quotaCompact, .workingCompact, .completedCompact:
+            compactFrame
+        case let .expanded(content):
+            content.conversations.isEmpty ? quotaExpandedFrame : expandedFrame
+        }
+    }
+}
+
 enum NotchCompactLayout {
     static let sideWingWidth: CGFloat = 52
     static let minimumWidth: CGFloat = 289
