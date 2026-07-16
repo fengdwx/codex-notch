@@ -3,8 +3,6 @@ import SwiftUI
 struct NotchSettingsView: View {
     @AppStorage(QuotaDisplayStyle.storageKey)
     private var quotaDisplayStyleRaw = QuotaDisplayStyle.defaultStyle.rawValue
-    @AppStorage(QuotaLabelPlacement.storageKey)
-    private var quotaLabelPlacementRaw = QuotaLabelPlacement.defaultPlacement.rawValue
 
     private var selectedStyle: QuotaDisplayStyle {
         QuotaDisplayStyle.fromStoredValue(quotaDisplayStyleRaw)
@@ -14,17 +12,6 @@ struct NotchSettingsView: View {
         Binding(
             get: { selectedStyle },
             set: { quotaDisplayStyleRaw = $0.rawValue }
-        )
-    }
-
-    private var selectedLabelPlacement: QuotaLabelPlacement {
-        QuotaLabelPlacement.fromStoredValue(quotaLabelPlacementRaw)
-    }
-
-    private var selectedLabelPlacementBinding: Binding<QuotaLabelPlacement> {
-        Binding(
-            get: { selectedLabelPlacement },
-            set: { quotaLabelPlacementRaw = $0.rawValue }
         )
     }
 
@@ -43,17 +30,7 @@ struct NotchSettingsView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
 
-                Divider()
-
-                Picker("数字位置", selection: selectedLabelPlacementBinding) {
-                    ForEach(QuotaLabelPlacement.allCases) { placement in
-                        Label(placement.title, systemImage: placement.systemImage)
-                            .tag(placement)
-                    }
-                }
-                .pickerStyle(.radioGroup)
-
-                Text(selectedLabelPlacement.subtitle)
+                Text("数字固定显示在指标内；波浪球会用独立读数镜片隔开液面动画。")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             } header: {
@@ -61,10 +38,7 @@ struct NotchSettingsView: View {
             }
 
             Section {
-                QuotaStylePreview(
-                    style: selectedStyle,
-                    labelPlacement: selectedLabelPlacement
-                )
+                QuotaStylePreview(style: selectedStyle)
             } header: {
                 Text("预览")
             }
@@ -86,7 +60,6 @@ struct NotchSettingsView: View {
 
 private struct QuotaStylePreview: View {
     let style: QuotaDisplayStyle
-    let labelPlacement: QuotaLabelPlacement
 
     private let previewPercent = 58.0
     private let previewProgress = 0.58
@@ -95,7 +68,6 @@ private struct QuotaStylePreview: View {
         HStack(spacing: 14) {
             QuotaStylePreviewGraphic(
                 style: style,
-                labelPlacement: labelPlacement,
                 progress: previewProgress
             )
 
@@ -126,25 +98,11 @@ private struct QuotaStylePreview: View {
 
 private struct QuotaStylePreviewGraphic: View {
     let style: QuotaDisplayStyle
-    let labelPlacement: QuotaLabelPlacement
     let progress: CGFloat
 
     var body: some View {
-        Group {
-            if labelPlacement == .beside {
-                HStack(spacing: 5) {
-                    graphic
-                    previewQuotaText
-                }
-            } else {
-                graphic
-            }
-        }
-        .frame(
-            width: labelPlacement == .beside ? 78 : 52,
-            height: 52,
-            alignment: .leading
-        )
+        graphic
+            .frame(width: 52, height: 52)
     }
 
     @ViewBuilder
@@ -171,11 +129,28 @@ private struct QuotaStylePreviewGraphic: View {
                     .stroke(Color.white.opacity(0.18), lineWidth: 1)
             }
 
-            if labelPlacement == .inside {
-                previewQuotaText
-            }
+            previewQuotaValue
         }
         .frame(width: 52, height: 52)
+    }
+
+    @ViewBuilder
+    private var previewQuotaValue: some View {
+        if style == .waveBall {
+            ZStack {
+                Capsule()
+                    .fill(Color.black.opacity(0.7))
+                    .overlay {
+                        Capsule()
+                            .stroke(Color.white.opacity(0.17), lineWidth: 0.7)
+                    }
+                    .shadow(color: .black.opacity(0.46), radius: 1.4, x: 0, y: 0.6)
+                previewQuotaText
+            }
+            .frame(width: 31, height: 23)
+        } else {
+            previewQuotaText
+        }
     }
 
     private var previewQuotaText: some View {

@@ -41,16 +41,10 @@ struct NotchView: View {
     @ObservedObject private var model: NotchViewModel
     @AppStorage(QuotaDisplayStyle.storageKey)
     private var quotaDisplayStyleRaw = QuotaDisplayStyle.defaultStyle.rawValue
-    @AppStorage(QuotaLabelPlacement.storageKey)
-    private var quotaLabelPlacementRaw = QuotaLabelPlacement.defaultPlacement.rawValue
     @State private var isPointerInside = false
 
     private var quotaDisplayStyle: QuotaDisplayStyle {
         QuotaDisplayStyle.fromStoredValue(quotaDisplayStyleRaw)
-    }
-
-    private var quotaLabelPlacement: QuotaLabelPlacement {
-        QuotaLabelPlacement.fromStoredValue(quotaLabelPlacementRaw)
     }
 
     private var isExpanded: Bool {
@@ -96,7 +90,6 @@ struct NotchView: View {
                     subtitle: NotchText.quotaSubtitle(usage: usage),
                     usage: usage,
                     quotaDisplayStyle: quotaDisplayStyle,
-                    quotaLabelPlacement: quotaLabelPlacement,
                     isHovered: isPointerInside,
                     action: model.onActivateChatGPT
                 )
@@ -109,7 +102,6 @@ struct NotchView: View {
                         : "已运行 \(NotchText.formatDuration(seconds: max(0, model.now.timeIntervalSince(primary.startedAt))))",
                     usage: usage,
                     quotaDisplayStyle: quotaDisplayStyle,
-                    quotaLabelPlacement: quotaLabelPlacement,
                     isHovered: isPointerInside,
                     action: { model.onOpenThread(primary.threadID) }
                 )
@@ -120,7 +112,6 @@ struct NotchView: View {
                     subtitle: NotchText.projectName(cwd: session.cwd),
                     usage: usage,
                     quotaDisplayStyle: quotaDisplayStyle,
-                    quotaLabelPlacement: quotaLabelPlacement,
                     isHovered: isPointerInside,
                     action: { model.onOpenThread(session.threadID) }
                 )
@@ -248,7 +239,6 @@ private struct CompactNotchView: View {
     let subtitle: String
     let usage: UsageSnapshot?
     let quotaDisplayStyle: QuotaDisplayStyle
-    let quotaLabelPlacement: QuotaLabelPlacement
     let isHovered: Bool
     let action: () -> Void
 
@@ -263,14 +253,13 @@ private struct CompactNotchView: View {
 
                 Spacer(minLength: 0)
 
-                // Keep the entire quota control centered in the right safe
-                // area. Both styles use the same wing, so an optional number
-                // never moves the visual weight toward the camera cutout.
+                // Keep the complete quota control centered in the right safe
+                // area. Its number is always inside the indicator, so neither
+                // display style shifts visual weight toward the camera cutout.
                 CompactQuotaView(
                     usage: usage,
                     activity: icon.quotaActivity,
                     style: quotaDisplayStyle,
-                    labelPlacement: quotaLabelPlacement,
                     isHovered: isHovered
                 )
             }
@@ -313,53 +302,21 @@ private struct CompactQuotaView: View {
     let usage: UsageSnapshot?
     let activity: QuotaRingActivity
     let style: QuotaDisplayStyle
-    let labelPlacement: QuotaLabelPlacement
     let isHovered: Bool
 
-    private var showsBesideLabel: Bool {
-        labelPlacement == .beside
-    }
-
     private var indicatorDiameter: CGFloat {
-        isHovered ? 24 : 22
-    }
-
-    private var quotaText: String {
-        usage?.weeklyWindow.map { NotchText.quotaNumber($0.remainingPercent) } ?? "—"
-    }
-
-    private var quotaTextColor: Color {
-        guard let window = usage?.weeklyWindow else {
-            return NotchPalette.secondaryText
-        }
-        return QuotaColorScale.color(for: window.remainingPercent)
+        isHovered ? 26 : 24
     }
 
     var body: some View {
-        Group {
-            if showsBesideLabel {
-                HStack(spacing: 4) {
-                    quotaIndicator
-                    Text(quotaText)
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundStyle(quotaTextColor)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .shadow(color: .black.opacity(0.75), radius: 1.2)
-                        .frame(width: 22, alignment: .leading)
-                }
-            } else {
-                quotaIndicator
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .center)
-        .frame(
-            width: NotchCompactLayout.sideWingWidth,
-            height: NotchCompactLayout.height,
-            alignment: .center
-        )
-        .accessibilityHidden(true)
+        quotaIndicator
+            .frame(maxWidth: .infinity, alignment: .center)
+            .frame(
+                width: NotchCompactLayout.sideWingWidth,
+                height: NotchCompactLayout.height,
+                alignment: .center
+            )
+            .accessibilityHidden(true)
     }
 
     private var quotaIndicator: some View {
@@ -367,10 +324,9 @@ private struct CompactQuotaView: View {
             style: style,
             usage: usage,
             activity: activity,
-            labelPlacement: labelPlacement,
             diameter: indicatorDiameter,
             lineWidth: 1.75,
-            fontSize: 9
+            fontSize: 10
         )
     }
 }
@@ -502,7 +458,6 @@ private struct QuotaIndicatorView: View {
     let style: QuotaDisplayStyle
     let usage: UsageSnapshot?
     let activity: QuotaRingActivity
-    let labelPlacement: QuotaLabelPlacement
     let diameter: CGFloat
     let lineWidth: CGFloat
     let fontSize: CGFloat
@@ -514,7 +469,6 @@ private struct QuotaIndicatorView: View {
                 style: style,
                 usage: usage,
                 activity: activity,
-                labelPlacement: labelPlacement,
                 diameter: diameter,
                 lineWidth: lineWidth,
                 fontSize: fontSize
@@ -523,7 +477,6 @@ private struct QuotaIndicatorView: View {
             QuotaWaveBall(
                 usage: usage,
                 activity: activity,
-                labelPlacement: labelPlacement,
                 diameter: diameter,
                 lineWidth: lineWidth,
                 fontSize: fontSize
@@ -532,10 +485,75 @@ private struct QuotaIndicatorView: View {
     }
 }
 
+private struct QuotaValueText: View {
+    let value: String
+    let isAvailable: Bool
+    let fontSize: CGFloat
+
+    var body: some View {
+        Text(value)
+            .font(.system(
+                size: isAvailable ? fontSize : fontSize + 1,
+                weight: .bold,
+                design: .rounded
+            ))
+            .foregroundStyle(isAvailable ? NotchPalette.primaryText : NotchPalette.secondaryText)
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+            .shadow(
+                color: .black.opacity(isAvailable ? 0.9 : 0.45),
+                radius: 1.15,
+                x: 0,
+                y: 0.4
+            )
+    }
+}
+
+private struct QuotaValueLens: View {
+    let value: String
+    let isAvailable: Bool
+    let diameter: CGFloat
+    let fontSize: CGFloat
+
+    private var lensWidth: CGFloat {
+        let textWidth = fontSize * CGFloat(value.count) * 0.57 + 5
+        return min(diameter - 4, max(fontSize * 1.45, textWidth))
+    }
+
+    private var lensHeight: CGFloat {
+        min(diameter - 8, max(fontSize * 1.35, 13))
+    }
+
+    var body: some View {
+        ZStack {
+            Capsule()
+                .fill(Color.black.opacity(isAvailable ? 0.7 : 0.46))
+                .overlay {
+                    Capsule()
+                        .stroke(
+                            Color.white.opacity(isAvailable ? 0.17 : 0.1),
+                            lineWidth: 0.55
+                        )
+                }
+                .shadow(color: .black.opacity(0.46), radius: 1.3, x: 0, y: 0.6)
+
+            QuotaValueText(
+                value: value,
+                isAvailable: isAvailable,
+                fontSize: fontSize
+            )
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 1)
+        }
+        .frame(width: lensWidth, height: lensHeight)
+        .accessibilityHidden(true)
+    }
+}
+
 private struct QuotaWaveBall: View {
     let usage: UsageSnapshot?
     let activity: QuotaRingActivity
-    let labelPlacement: QuotaLabelPlacement
     let diameter: CGFloat
     let lineWidth: CGFloat
     let fontSize: CGFloat
@@ -590,26 +608,14 @@ private struct QuotaWaveBall: View {
                     .animation(.easeOut(duration: 0.5), value: completionPulse)
             }
 
-            if labelPlacement == .inside {
-                Text(window.map { NotchText.quotaNumber($0.remainingPercent) } ?? "—")
-                    .font(.system(
-                        size: window == nil ? fontSize + 1 : fontSize,
-                        weight: .bold,
-                        design: .rounded
-                    ))
-                    .foregroundStyle(
-                        window == nil ? NotchPalette.secondaryText : NotchPalette.primaryText
-                    )
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                    .shadow(
-                        color: .black.opacity(window == nil ? 0 : 0.9),
-                        radius: 1.2,
-                        x: 0,
-                        y: 0
-                    )
-            }
+            // The liquid moves only behind this stable, dark lens. It keeps
+            // the percentage readable while preserving the solid-ball shape.
+            QuotaValueLens(
+                value: window.map { NotchText.quotaNumber($0.remainingPercent) } ?? "—",
+                isAvailable: window != nil,
+                diameter: diameter,
+                fontSize: fontSize
+            )
         }
         .frame(width: diameter, height: diameter)
         .onAppear {
@@ -715,7 +721,6 @@ private struct WeeklyQuotaRing: View {
     let style: QuotaDisplayStyle
     let usage: UsageSnapshot?
     let activity: QuotaRingActivity
-    let labelPlacement: QuotaLabelPlacement
     let diameter: CGFloat
     let lineWidth: CGFloat
     let fontSize: CGFloat
@@ -807,26 +812,11 @@ private struct WeeklyQuotaRing: View {
                 }
             }
 
-            if labelPlacement == .inside {
-                Text(window.map { NotchText.quotaNumber($0.remainingPercent) } ?? "—")
-                    .font(.system(
-                        size: window == nil ? fontSize + 1 : fontSize,
-                        weight: .bold,
-                        design: .rounded
-                    ))
-                    .foregroundStyle(
-                        window == nil ? NotchPalette.secondaryText : NotchPalette.primaryText
-                    )
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                    .shadow(
-                        color: .black.opacity(window == nil ? 0 : 0.9),
-                        radius: 1.2,
-                        x: 0,
-                        y: 0
-                    )
-            }
+            QuotaValueText(
+                value: window.map { NotchText.quotaNumber($0.remainingPercent) } ?? "—",
+                isAvailable: window != nil,
+                fontSize: fontSize
+            )
         }
         .frame(width: diameter, height: diameter)
         .onAppear {

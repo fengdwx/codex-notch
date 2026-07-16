@@ -41,57 +41,6 @@ enum QuotaDisplayStyle: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-enum QuotaLabelPlacement: String, CaseIterable, Identifiable, Sendable {
-    case inside
-    case beside
-
-    static let storageKey = "quotaLabelPlacement"
-    static let legacyStorageKey = "waveQuotaLabelPlacement"
-    static let defaultPlacement: QuotaLabelPlacement = .inside
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .inside:
-            return "指标内数字"
-        case .beside:
-            return "指标旁数字"
-        }
-    }
-
-    var subtitle: String {
-        switch self {
-        case .inside:
-            return "数字显示在圆环或波浪球内，刘海最紧凑"
-        case .beside:
-            return "数字显示在圆环或波浪球右侧，指标保持完整"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .inside:
-            return "textformat"
-        case .beside:
-            return "arrow.right"
-        }
-    }
-
-    static func fromStoredValue(_ rawValue: String) -> QuotaLabelPlacement {
-        Self(rawValue: rawValue) ?? Self.defaultPlacement
-    }
-
-    static func migrateLegacyValue(in defaults: UserDefaults = .standard) {
-        guard defaults.object(forKey: storageKey) == nil,
-              let legacyValue = defaults.string(forKey: legacyStorageKey) else {
-            return
-        }
-
-        defaults.set(fromStoredValue(legacyValue).rawValue, forKey: storageKey)
-    }
-}
-
 enum QuotaRingMath {
     static let clockwiseStartAngleDegrees = -90.0
 
