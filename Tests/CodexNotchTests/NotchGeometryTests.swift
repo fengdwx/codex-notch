@@ -54,9 +54,10 @@ final class NotchGeometryTests: XCTestCase {
         let layout = NotchGeometry.layout(metrics: metrics)
 
         XCTAssertEqual(layout.mode, .notch)
-        XCTAssertLessThanOrEqual(layout.compactFrame.width, 280)
+        XCTAssertEqual(layout.compactFrame.width, 271, accuracy: 0.1)
+        XCTAssertEqual(layout.compactFrame.height, 32, accuracy: 0.1)
         XCTAssertEqual(layout.compactFrame.midX, 755.5, accuracy: 0.1)
-        XCTAssertEqual(layout.compactFrame.maxY, 950, accuracy: 0.1)
+        XCTAssertEqual(layout.compactFrame.maxY, 982, accuracy: 0.1)
     }
 
     func testMissingAuxiliaryAreasUseMenuBarFallback() {

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 final class NotchViewModel: ObservableObject {
@@ -118,11 +119,11 @@ private struct CompactNotchView: View {
             }
         }
 
-        var systemName: String {
+        var fallbackSystemName: String {
             switch self {
-            case .quota: return "gauge.with.dots.needle.67percent"
+            case .quota: return "sparkles"
             case .working: return "sparkles"
-            case .completed: return "checkmark"
+            case .completed: return "checkmark.circle.fill"
             }
         }
     }
@@ -135,53 +136,118 @@ private struct CompactNotchView: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 9) {
-                Image(systemName: icon.systemName)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(icon.color)
-                    .frame(width: 18)
+            HStack(spacing: 0) {
+                CompactAppIconView(status: icon)
 
-                Text(title)
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(NotchPalette.primaryText)
-                    .lineLimit(1)
-                    .layoutPriority(1)
+                Spacer(minLength: 0)
 
-                Spacer(minLength: 8)
-
-                if let usage, !usage.windows.isEmpty {
-                    CompactUsageView(usage: usage)
-                } else {
-                    Text(subtitle)
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
-                        .foregroundStyle(NotchPalette.secondaryText)
-                        .lineLimit(1)
+                switch icon {
+                case .completed:
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(NotchPalette.success)
+                        .frame(width: 26, height: 26)
+                case .quota, .working:
+                    CompactUsageRing(window: usage?.windows.first)
                 }
             }
-            .padding(.horizontal, 13)
-            .padding(.vertical, 4)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 3)
             .contentShape(Rectangle())
         }
         .buttonStyle(NotchButtonStyle())
+        .accessibilityLabel(accessibilityText)
+    }
+
+    private var accessibilityText: String {
+        var parts = [title, subtitle]
+        if let usage, !usage.windows.isEmpty {
+            parts.append(NotchText.quotaSubtitle(usage: usage))
+        }
+        return parts.joined(separator: "，")
     }
 }
 
-private struct CompactUsageView: View {
-    let usage: UsageSnapshot
+private struct CompactAppIconView: View {
+    let status: CompactNotchView.IconKind
 
     var body: some View {
-        HStack(spacing: 5) {
-            ForEach(Array(usage.windows.prefix(1))) { window in
-                Text(NotchText.compactWindow(window))
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(NotchPalette.primaryText)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(NotchPalette.chip)
-                    .clipShape(Capsule())
+        ZStack(alignment: .bottomTrailing) {
+            Group {
+                if let image = ChatGPTIconAsset.image {
+                    Image(nsImage: image)
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFit()
+                } else {
+                    Image(systemName: status.fallbackSystemName)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(NotchPalette.primaryText)
+                }
             }
+            .frame(width: 19, height: 19)
+
+            Circle()
+                .fill(status.color)
+                .frame(width: 6, height: 6)
+                .overlay {
+                    Circle().stroke(NotchPalette.background, lineWidth: 1.5)
+                }
+                .offset(x: 1, y: 1)
         }
+        .frame(width: 22, height: 22)
+        .accessibilityHidden(true)
     }
+}
+
+private struct CompactUsageRing: View {
+    let window: UsageWindow?
+
+    private var remainingPercent: Double {
+        window?.remainingPercent ?? 0
+    }
+
+    private var progressColor: Color {
+        if remainingPercent <= 20 { return NotchPalette.danger }
+        if remainingPercent <= 50 { return NotchPalette.warning }
+        return NotchPalette.accent
+    }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(NotchPalette.track, lineWidth: 2)
+
+            if window != nil {
+                Circle()
+                    .trim(from: 0, to: remainingPercent / 100)
+                    .stroke(
+                        progressColor,
+                        style: StrokeStyle(lineWidth: 2, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+            }
+
+            Text(window.map { NotchText.percent($0.remainingPercent) } ?? "—")
+                .font(.system(size: 7.5, weight: .bold, design: .rounded))
+                .foregroundStyle(window == nil ? NotchPalette.secondaryText : NotchPalette.primaryText)
+                .monospacedDigit()
+        }
+        .frame(width: 26, height: 26)
+        .accessibilityHidden(true)
+    }
+}
+
+private enum ChatGPTIconAsset {
+    static let image: NSImage? = {
+        let workspace = NSWorkspace.shared
+        guard let appURL = workspace.urlForApplication(
+            withBundleIdentifier: AppIdentity.chatGPTCodexBundleIdentifier
+        ) else {
+            return nil
+        }
+        return workspace.icon(forFile: appURL.path)
+    }()
 }
 
 private struct ExpandedNotchView: View {
@@ -359,6 +425,7 @@ private enum NotchPalette {
     static let accent = Color(red: 0.38, green: 0.66, blue: 1.0)
     static let warning = Color(red: 1.0, green: 0.68, blue: 0.28)
     static let success = Color(red: 0.34, green: 0.88, blue: 0.55)
+    static let danger = Color(red: 1.0, green: 0.35, blue: 0.35)
 }
 
 private struct NotchButtonStyle: ButtonStyle {

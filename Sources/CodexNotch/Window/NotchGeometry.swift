@@ -48,7 +48,7 @@ struct NotchLayout: Equatable {
 enum NotchGeometry {
     static func layout(
         metrics: NotchScreenMetrics,
-        compactSize: NSSize = NSSize(width: 280, height: 42),
+        compactSize: NSSize = NSSize(width: 272, height: 32),
         expandedSize: NSSize = NSSize(width: 720, height: 180)
     ) -> NotchLayout {
         guard let left = metrics.auxiliaryTopLeftArea,
@@ -69,16 +69,20 @@ enum NotchGeometry {
         // cutout. Keep the compact badge close to that gap instead of using a
         // wide fixed pill that covers the user's window.
         let notchWidth = right.minX - left.maxX
-        let compactWidth = min(compactSize.width, max(260, notchWidth + 96))
+        let compactWidth = min(compactSize.width, max(260, notchWidth + 86))
+        let compactHeight = min(
+            compactSize.height,
+            max(28, metrics.safeAreaInsets.top)
+        )
         return NotchLayout(
             mode: .notch,
             centerX: centerX,
             compactFrame: frame(
                 centeredAt: centerX,
-                size: NSSize(width: compactWidth, height: compactSize.height),
+                size: NSSize(width: compactWidth, height: compactHeight),
                 screenFrame: metrics.frame,
                 visibleFrame: metrics.visibleFrame,
-                topInset: metrics.safeAreaInsets.top
+                topInset: 0
             ),
             expandedFrame: frame(
                 centeredAt: centerX,
