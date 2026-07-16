@@ -51,6 +51,32 @@ final class ActiveSessionStoreTests: XCTestCase {
         XCTAssertTrue(result.isEmpty)
     }
 
+    func testSnapshotIncludesMostRecentCompletion() async {
+        let startedAt = Date(timeIntervalSince1970: 2_000_000_000)
+        let completedAt = startedAt.addingTimeInterval(4)
+        let completedSession = SessionActivity(
+            threadID: "thread-completed",
+            turnID: "turn-completed",
+            cwd: "/tmp/project",
+            originator: nil,
+            startedAt: startedAt,
+            lastActivityAt: completedAt
+        )
+        let store = ActiveSessionStore()
+
+        await store.replace(
+            rolloutID: "rollout",
+            reduction: ActiveSessionReduction(active: [], completed: [completedSession]),
+            lastModifiedAt: completedAt
+        )
+
+        let snapshot = await store.snapshot(now: completedAt)
+
+        XCTAssertEqual(snapshot.activeSessions, [])
+        XCTAssertEqual(snapshot.latestCompletion?.session.threadID, "thread-completed")
+        XCTAssertEqual(snapshot.latestCompletion?.completedAt, completedAt)
+    }
+
     private func makeReduction(threadID: String, turnID: String, at: Date) -> ActiveSessionReduction {
         ActiveSessionReducer.reduce([
             RolloutEvent(timestamp: at, kind: .sessionMeta(threadID: threadID, cwd: nil, originator: nil)),

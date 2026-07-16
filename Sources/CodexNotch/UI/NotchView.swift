@@ -1,14 +1,15 @@
 import SwiftUI
 
-struct NotchView: View {
-    let state: NotchPresentationState
-    let now: Date
-    let onOpenThread: (String) -> Void
-    let onActivateChatGPT: () -> Void
-    let onHoverChanged: (Bool) -> Void
+final class NotchViewModel: ObservableObject {
+    @Published private(set) var state: NotchPresentationState
+    @Published private(set) var now: Date
+
+    var onOpenThread: (String) -> Void
+    var onActivateChatGPT: () -> Void
+    var onHoverChanged: (Bool) -> Void
 
     init(
-        state: NotchPresentationState,
+        state: NotchPresentationState = .hidden,
         now: Date = .now,
         onOpenThread: @escaping (String) -> Void = { _ in },
         onActivateChatGPT: @escaping () -> Void = {},
@@ -21,9 +22,40 @@ struct NotchView: View {
         self.onHoverChanged = onHoverChanged
     }
 
+    func update(state: NotchPresentationState, now: Date) {
+        self.state = state
+        self.now = now
+    }
+}
+
+struct NotchView: View {
+    @ObservedObject private var model: NotchViewModel
+
+    init(
+        state: NotchPresentationState,
+        now: Date = .now,
+        onOpenThread: @escaping (String) -> Void = { _ in },
+        onActivateChatGPT: @escaping () -> Void = {},
+        onHoverChanged: @escaping (Bool) -> Void = { _ in }
+    ) {
+        self.init(
+            model: NotchViewModel(
+                state: state,
+                now: now,
+                onOpenThread: onOpenThread,
+                onActivateChatGPT: onActivateChatGPT,
+                onHoverChanged: onHoverChanged
+            )
+        )
+    }
+
+    init(model: NotchViewModel) {
+        _model = ObservedObject(wrappedValue: model)
+    }
+
     var body: some View {
         Group {
-            switch state {
+            switch model.state {
             case .hidden:
                 EmptyView()
             case let .quotaCompact(usage):
@@ -32,15 +64,15 @@ struct NotchView: View {
                     title: "Codex",
                     subtitle: NotchText.quotaSubtitle(usage: usage),
                     usage: usage,
-                    action: onActivateChatGPT
+                    action: model.onActivateChatGPT
                 )
             case let .workingCompact(primary, count, usage):
                 CompactNotchView(
                     icon: .working,
                     title: count > 1 ? "Codex 正在运行 · \(count) 个任务" : "Codex 正在运行",
-                    subtitle: NotchText.sessionSubtitle(primary, now: now),
+                    subtitle: NotchText.sessionSubtitle(primary, now: model.now),
                     usage: usage,
-                    action: { onOpenThread(primary.threadID) }
+                    action: { model.onOpenThread(primary.threadID) }
                 )
             case let .completedCompact(session):
                 CompactNotchView(
@@ -48,14 +80,14 @@ struct NotchView: View {
                     title: "Codex 已完成",
                     subtitle: NotchText.projectName(cwd: session.cwd),
                     usage: nil,
-                    action: { onOpenThread(session.threadID) }
+                    action: { model.onOpenThread(session.threadID) }
                 )
             case let .expanded(content):
                 ExpandedNotchView(
                     content: content,
-                    now: now,
-                    onOpenThread: onOpenThread,
-                    onActivateChatGPT: onActivateChatGPT
+                    now: model.now,
+                    onOpenThread: model.onOpenThread,
+                    onActivateChatGPT: model.onActivateChatGPT
                 )
             }
         }
@@ -66,7 +98,7 @@ struct NotchView: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(NotchPalette.border, lineWidth: 1)
         }
-        .onHover(perform: onHoverChanged)
+        .onHover(perform: model.onHoverChanged)
     }
 }
 
