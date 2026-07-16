@@ -14,7 +14,7 @@ final class NotchTextTests: XCTestCase {
         let window = UsageWindow(id: "weekly", kind: .weekly, usedPercent: 25)
 
         XCTAssertEqual(NotchText.percent(window.remainingPercent), "75%")
-        XCTAssertEqual(NotchText.compactWindow(window), "每周 75%")
+        XCTAssertEqual(NotchText.compactWindow(window), "每周余75%")
     }
 
     func testProjectNameUsesLastPathComponent() {
@@ -25,5 +25,13 @@ final class NotchTextTests: XCTestCase {
     func testDurationFormatsHoursWhenNeeded() {
         XCTAssertEqual(NotchText.formatDuration(seconds: 65), "01:05")
         XCTAssertEqual(NotchText.formatDuration(seconds: 3661), "01:01:01")
+    }
+
+    func testQuotaSubtitleIncludesRemainingAndUsedPercent() {
+        let usage = UsageSnapshot(
+            windows: [UsageWindow(id: "primary", kind: .weekly, usedPercent: 20)]
+        )
+
+        XCTAssertEqual(NotchText.quotaSubtitle(usage: usage), "每周剩余 80% · 已用 20%")
     }
 }

@@ -48,7 +48,7 @@ struct NotchLayout: Equatable {
 enum NotchGeometry {
     static func layout(
         metrics: NotchScreenMetrics,
-        compactSize: NSSize = NSSize(width: 420, height: 42),
+        compactSize: NSSize = NSSize(width: 280, height: 42),
         expandedSize: NSSize = NSSize(width: 720, height: 180)
     ) -> NotchLayout {
         guard let left = metrics.auxiliaryTopLeftArea,
@@ -65,20 +65,27 @@ enum NotchGeometry {
         }
 
         let centerX = (left.maxX + right.minX) / 2
+        // The auxiliary areas describe the safe regions beside the camera
+        // cutout. Keep the compact badge close to that gap instead of using a
+        // wide fixed pill that covers the user's window.
+        let notchWidth = right.minX - left.maxX
+        let compactWidth = min(compactSize.width, max(260, notchWidth + 96))
         return NotchLayout(
             mode: .notch,
             centerX: centerX,
             compactFrame: frame(
                 centeredAt: centerX,
-                size: compactSize,
+                size: NSSize(width: compactWidth, height: compactSize.height),
                 screenFrame: metrics.frame,
-                visibleFrame: metrics.visibleFrame
+                visibleFrame: metrics.visibleFrame,
+                topInset: metrics.safeAreaInsets.top
             ),
             expandedFrame: frame(
                 centeredAt: centerX,
                 size: expandedSize,
                 screenFrame: metrics.frame,
-                visibleFrame: metrics.visibleFrame
+                visibleFrame: metrics.visibleFrame,
+                topInset: metrics.safeAreaInsets.top
             )
         )
     }
@@ -87,7 +94,8 @@ enum NotchGeometry {
         centeredAt centerX: CGFloat,
         size: NSSize,
         screenFrame: NSRect,
-        visibleFrame: NSRect
+        visibleFrame: NSRect,
+        topInset: CGFloat = 0
     ) -> NSRect {
         let width = min(size.width, visibleFrame.width)
         let height = min(size.height, screenFrame.height)
@@ -95,7 +103,10 @@ enum NotchGeometry {
         let maxX = max(minX, visibleFrame.maxX - width)
         let proposedX = centerX - width / 2
         let x = min(max(proposedX, minX), maxX)
-        let y = screenFrame.maxY - height
+        // A MacBook's central top area is a physical cutout, not drawable
+        // pixels. Place the panel below the safe-area inset so its text is
+        // rendered on the display rather than behind the camera.
+        let y = screenFrame.maxY - min(max(0, topInset), screenFrame.height) - height
         return NSRect(x: x, y: y, width: width, height: height)
     }
 }

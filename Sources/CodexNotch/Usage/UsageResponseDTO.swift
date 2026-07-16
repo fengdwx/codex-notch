@@ -3,18 +3,23 @@ import Foundation
 struct UsageResponseDTO: Decodable {
     let primaryWindow: WindowDTO?
     let secondaryWindow: WindowDTO?
+    let rateLimit: RateLimitDTO?
     let rateLimitResetCredits: ResetCreditsDTO?
 
     enum CodingKeys: String, CodingKey {
         case primaryWindow = "primary_window"
         case secondaryWindow = "secondary_window"
+        case rateLimit = "rate_limit"
         case rateLimitResetCredits = "rate_limit_reset_credits"
     }
 
     func snapshot(fetchedAt: Date = .now) -> UsageSnapshot {
+        // The current ChatGPT endpoint nests the windows under `rate_limit`.
+        // Keep the top-level fields as a compatibility fallback because older
+        // responses (and our fixtures) exposed them directly.
         let windows = [
-            makeWindow(id: "primary", dto: primaryWindow),
-            makeWindow(id: "secondary", dto: secondaryWindow)
+            makeWindow(id: "primary", dto: primaryWindow ?? rateLimit?.primaryWindow),
+            makeWindow(id: "secondary", dto: secondaryWindow ?? rateLimit?.secondaryWindow)
         ].compactMap { $0 }
 
         return UsageSnapshot(
@@ -37,6 +42,16 @@ struct UsageResponseDTO: Decodable {
             usedPercent: usedPercent,
             resetAt: dto.resetAt
         )
+    }
+}
+
+struct RateLimitDTO: Decodable {
+    let primaryWindow: WindowDTO?
+    let secondaryWindow: WindowDTO?
+
+    enum CodingKeys: String, CodingKey {
+        case primaryWindow = "primary_window"
+        case secondaryWindow = "secondary_window"
     }
 }
 

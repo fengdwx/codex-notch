@@ -37,6 +37,21 @@ final class CodexUsageClientTests: XCTestCase {
         XCTAssertEqual(snapshot.windows.map(\.id), ["primary", "secondary"])
     }
 
+    func testCurrentResponseReadsWindowsNestedUnderRateLimit() async throws {
+        let responseData = try Data(contentsOf: fixtureURL("usage-nested-rate-limit.json"))
+        MockURLProtocol.requestHandler = { _ in
+            (self.response(status: 200), responseData)
+        }
+
+        let snapshot = try await makeClient().fetch()
+
+        XCTAssertEqual(snapshot.windows.count, 1)
+        XCTAssertEqual(snapshot.windows.first?.kind, .weekly)
+        XCTAssertEqual(snapshot.windows.first?.usedPercent, 20)
+        XCTAssertEqual(snapshot.windows.first?.remainingPercent, 80)
+        XCTAssertEqual(snapshot.resetCreditsAvailable, 2)
+    }
+
     func testUnauthorizedResponseRequiresReauthentication() async throws {
         MockURLProtocol.requestHandler = { _ in
             (self.response(status: 401), Data())

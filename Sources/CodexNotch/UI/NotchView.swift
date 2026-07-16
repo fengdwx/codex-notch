@@ -69,8 +69,10 @@ struct NotchView: View {
             case let .workingCompact(primary, count, usage):
                 CompactNotchView(
                     icon: .working,
-                    title: count > 1 ? "Codex 正在运行 · \(count) 个任务" : "Codex 正在运行",
-                    subtitle: NotchText.sessionSubtitle(primary, now: model.now),
+                    title: "Codex 运行中",
+                    subtitle: count > 1
+                        ? "\(count) 个任务"
+                        : "已运行 \(NotchText.formatDuration(seconds: max(0, model.now.timeIntervalSince(primary.startedAt))))",
                     usage: usage,
                     action: { model.onOpenThread(primary.threadID) }
                 )
@@ -139,25 +141,25 @@ private struct CompactNotchView: View {
                     .foregroundStyle(icon.color)
                     .frame(width: 18)
 
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(title)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(NotchPalette.primaryText)
-                        .lineLimit(1)
-                    Text(subtitle)
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
-                        .foregroundStyle(NotchPalette.secondaryText)
-                        .lineLimit(1)
-                }
+                Text(title)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(NotchPalette.primaryText)
+                    .lineLimit(1)
+                    .layoutPriority(1)
 
                 Spacer(minLength: 8)
 
                 if let usage, !usage.windows.isEmpty {
                     CompactUsageView(usage: usage)
+                } else {
+                    Text(subtitle)
+                        .font(.system(size: 9, weight: .medium, design: .rounded))
+                        .foregroundStyle(NotchPalette.secondaryText)
+                        .lineLimit(1)
                 }
             }
             .padding(.horizontal, 13)
-            .padding(.vertical, 7)
+            .padding(.vertical, 4)
             .contentShape(Rectangle())
         }
         .buttonStyle(NotchButtonStyle())
@@ -169,7 +171,7 @@ private struct CompactUsageView: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            ForEach(Array(usage.windows.prefix(2))) { window in
+            ForEach(Array(usage.windows.prefix(1))) { window in
                 Text(NotchText.compactWindow(window))
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundStyle(NotchPalette.primaryText)
@@ -327,7 +329,7 @@ private struct UsageWindowRow: View {
             HStack {
                 Text(NotchText.windowLabel(window.kind))
                 Spacer()
-                Text("\(NotchText.percent(window.remainingPercent)) 剩余")
+                Text("已用 \(NotchText.percent(window.usedPercent)) · 剩余 \(NotchText.percent(window.remainingPercent))")
             }
             .font(.system(size: 10, weight: .semibold, design: .rounded))
             .foregroundStyle(NotchPalette.primaryText)
@@ -392,7 +394,7 @@ enum NotchText {
     }
 
     static func compactWindow(_ window: UsageWindow) -> String {
-        "\(windowLabel(window.kind)) \(percent(window.remainingPercent))"
+        "\(windowLabel(window.kind))余\(percent(window.remainingPercent))"
     }
 
     static func percent(_ value: Double) -> String {
@@ -403,7 +405,7 @@ enum NotchText {
         guard let usage, let window = usage.windows.first else {
             return "额度暂不可用"
         }
-        return "\(windowLabel(window.kind))剩余 \(percent(window.remainingPercent))"
+        return "\(windowLabel(window.kind))剩余 \(percent(window.remainingPercent)) · 已用 \(percent(window.usedPercent))"
     }
 
     static func sessionSubtitle(_ session: SessionActivity, now: Date) -> String {
