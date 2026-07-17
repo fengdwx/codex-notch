@@ -56,11 +56,7 @@ final class NotchTextTests: XCTestCase {
         ])
 
         XCTAssertEqual(usage.resetScheduledWindows.map(\.id), ["rolling", "weekly"])
-        XCTAssertEqual(
-            NotchText.resetScheduleDisclosureTitle(windows: usage.resetScheduledWindows),
-            "查看 2 个额度的重置时间"
-        )
-        XCTAssertEqual(NotchText.resetScheduleDisclosureTitle(windows: []), "重置时间暂不可用")
+        XCTAssertEqual(usage.resetScheduledWindows.count, 2)
     }
 
     func testWeeklyWindowIsSelectedWithoutFallingBackToRollingQuota() {
