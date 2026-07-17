@@ -31,7 +31,7 @@ final class QuotaDisplayStyleTests: XCTestCase {
 
     func testCompactAppIconUsesOpticalCorrectionInsideSharedIndicatorContainer() {
         XCTAssertEqual(NotchCompactLayout.indicatorDiameter, 24)
-        XCTAssertEqual(NotchCompactLayout.appMarkSize, 22)
+        XCTAssertEqual(NotchCompactLayout.appMarkSize, 20)
         XCTAssertLessThan(
             NotchCompactLayout.appMarkSize,
             NotchCompactLayout.indicatorDiameter

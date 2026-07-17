@@ -65,7 +65,7 @@ enum NotchCompactLayout {
     static let minimumWidth: CGFloat = 289
     static let height: CGFloat = 32
     static let indicatorDiameter: CGFloat = 24
-    static let appMarkSize: CGFloat = 22
+    static let appMarkSize: CGFloat = 20
 }
 
 enum NotchExpandedLayout {
