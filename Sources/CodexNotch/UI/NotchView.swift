@@ -1279,17 +1279,30 @@ private struct ResetScheduleDisclosure: View {
                         ? NotchPalette.secondaryText
                         : NotchPalette.primaryText.opacity(0.82)
                 )
-                .frame(maxWidth: .infinity, minHeight: 13, alignment: .leading)
+                .padding(.horizontal, 8)
+                .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
+                .background(
+                    windows.isEmpty
+                        ? NotchPalette.row.opacity(0.35)
+                        : NotchPalette.row.opacity(0.78),
+                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(NotchPalette.border, lineWidth: 0.5)
+                }
                 .contentShape(Rectangle())
             }
             .buttonStyle(NotchButtonStyle())
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
             .accessibilityLabel("重置次数：\(title)")
             .accessibilityHint(windows.isEmpty ? "接口暂未返回重置时间" : "点击展开或收起对应额度的重置时间")
 
             if isExpanded, !windows.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(Array(windows.enumerated()), id: \.element.id) { index, window in
-                        ResetScheduleRow(window: window, now: now)
+                        ResetScheduleRow(index: index + 1, window: window, now: now)
 
                         if index < windows.count - 1 {
                             Rectangle()
@@ -1313,11 +1326,15 @@ private struct ResetScheduleDisclosure: View {
 }
 
 private struct ResetScheduleRow: View {
+    let index: Int
     let window: UsageWindow
     let now: Date
 
     var body: some View {
         HStack(spacing: 6) {
+            Text("重置项 \(index)")
+                .frame(width: 35, alignment: .leading)
+
             Text(NotchText.windowLabel(window.kind))
                 .frame(width: 44, alignment: .leading)
 

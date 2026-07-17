@@ -68,7 +68,7 @@ enum NotchCompactLayout {
 
 enum NotchExpandedLayout {
     static let width: CGFloat = 420
-    static let resetScheduleControlHeight: CGFloat = 18
+    static let resetScheduleControlHeight: CGFloat = 29
     static let quotaContentHeight: CGFloat = 94 + resetScheduleControlHeight
     static let twoConversationContentHeight: CGFloat = 176 + resetScheduleControlHeight
     static let conversationRowHeight: CGFloat = 30
