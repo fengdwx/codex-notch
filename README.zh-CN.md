@@ -4,6 +4,12 @@
 
 CodexNotch 是一个独立的 macOS 原生小程序：Codex 任务运行时出现在刘海两侧，同时显示活动状态和周额度；空闲时也保留紧凑额度指示器，悬停实体刘海可展开详情。它不依赖 Atoll、CodexIsland、CC Switch 或其他宿主程序。
 
+## 产品演示
+
+[![17 秒 CodexNotch 产品演示](docs/assets/codex-notch-demo.gif)](docs/assets/codex-notch-demo.mp4)
+
+*来自真实 App 的 17 秒实时录制：展示紧凑运行态与周额度指示器，录屏不含任务标题或用户消息内容。[打开 MP4 视频](docs/assets/codex-notch-demo.mp4)。*
+
 ## 功能
 
 - Codex 任务运行时，即使切换到其他应用，也在刘海旁保持工作状态；空闲时保留紧凑周额度指示器。

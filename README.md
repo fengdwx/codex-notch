@@ -4,6 +4,12 @@ English · [简体中文](README.zh-CN.md)
 
 CodexNotch is a standalone native macOS app. While a Codex task is running, it lives around the MacBook notch and shows activity plus weekly quota. When idle, it keeps a compact quota indicator; hovering the physical notch opens the details. It has no dependency on Atoll, CodexIsland, CC Switch, or another host app.
 
+## Product demo
+
+[![17-second CodexNotch product demo](docs/assets/codex-notch-demo.gif)](docs/assets/codex-notch-demo.mp4)
+
+*A 17-second live capture from the real app. It shows the compact running state and its weekly-quota indicator; the capture contains no task title or user-message content. [Open the MP4](docs/assets/codex-notch-demo.mp4).*
+
 ## Features
 
 - Keeps the running Codex state visible beside the notch even when another app is frontmost; a compact weekly-quota indicator remains when idle.

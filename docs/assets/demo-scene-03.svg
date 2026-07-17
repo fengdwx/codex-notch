@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#06110d"/>
+      <stop offset="0.5" stop-color="#123324"/>
+      <stop offset="1" stop-color="#07130f"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <text x="960" y="550" text-anchor="middle" fill="#f4fff8" font-family="Helvetica Neue, Helvetica, Arial" font-size="77" font-weight="700">Hover for the full picture.</text>
+  <text x="960" y="626" text-anchor="middle" fill="#b3d6bf" font-family="Helvetica Neue, Helvetica, Arial" font-size="34">One downward reveal. No floating dashboard.</text>
+  <g transform="translate(336 728)">
+    <rect width="380" height="90" rx="18" fill="#123a29" stroke="#4ce08d" stroke-opacity=".45"/>
+    <text x="190" y="38" text-anchor="middle" fill="#77eaa9" font-family="Helvetica Neue, Helvetica, Arial" font-size="22" letter-spacing="3">01</text>
+    <text x="190" y="68" text-anchor="middle" fill="#effcf3" font-family="Helvetica Neue, Helvetica, Arial" font-size="27">Weekly quota</text>
+  </g>
+  <g transform="translate(770 728)">
+    <rect width="380" height="90" rx="18" fill="#123a29" stroke="#4ce08d" stroke-opacity=".45"/>
+    <text x="190" y="38" text-anchor="middle" fill="#77eaa9" font-family="Helvetica Neue, Helvetica, Arial" font-size="22" letter-spacing="3">02</text>
+    <text x="190" y="68" text-anchor="middle" fill="#effcf3" font-family="Helvetica Neue, Helvetica, Arial" font-size="27">Precise reset time</text>
+  </g>
+  <g transform="translate(1204 728)">
+    <rect width="380" height="90" rx="18" fill="#123a29" stroke="#4ce08d" stroke-opacity=".45"/>
+    <text x="190" y="38" text-anchor="middle" fill="#77eaa9" font-family="Helvetica Neue, Helvetica, Arial" font-size="22" letter-spacing="3">03</text>
+    <text x="190" y="68" text-anchor="middle" fill="#effcf3" font-family="Helvetica Neue, Helvetica, Arial" font-size="27">Recent conversations</text>
+  </g>
+</svg>

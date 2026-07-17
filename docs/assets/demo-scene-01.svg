@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07130f"/>
+      <stop offset="0.52" stop-color="#0c241b"/>
+      <stop offset="1" stop-color="#06110d"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="0%" r="82%">
+      <stop offset="0" stop-color="#1fa66d" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#1fa66d" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <rect width="1920" height="720" fill="url(#glow)"/>
+  <path d="M0 784H1920 M0 928H1920 M320 0V1080 M640 0V1080 M960 0V1080 M1280 0V1080 M1600 0V1080" stroke="#9be4bf" stroke-opacity=".06"/>
+  <circle cx="160" cy="400" r="6" fill="#4ce08d"/>
+  <text x="196" y="406" fill="#98d5b3" font-family="Helvetica Neue, Helvetica, Arial" font-size="25" letter-spacing="6">THE CODEx SIGNAL</text>
+  <text x="152" y="550" fill="#f6fff9" font-family="Helvetica Neue, Helvetica, Arial" font-size="104" font-weight="700">CodexNotch</text>
+  <text x="158" y="625" fill="#b9d5c5" font-family="Helvetica Neue, Helvetica, Arial" font-size="38">Your Codex signal, exactly where you look.</text>
+  <rect x="158" y="710" width="506" height="56" rx="28" fill="#143b2a" stroke="#4ce08d" stroke-opacity=".36"/>
+  <text x="190" y="746" fill="#c5f3d7" font-family="Helvetica Neue, Helvetica, Arial" font-size="23" letter-spacing="2">NATIVE macOS  ·  NO HOST APP</text>
+  <text x="158" y="950" fill="#6fa389" font-family="Helvetica Neue, Helvetica, Arial" font-size="25">A live, privacy-safe capture from the real app.</text>
+</svg>

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07130f"/>
+      <stop offset="0.48" stop-color="#102d21"/>
+      <stop offset="1" stop-color="#07130f"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <path d="M180 608H812" stroke="#4ce08d" stroke-width="2" stroke-opacity=".54"/>
+  <circle cx="812" cy="608" r="7" fill="#4ce08d"/>
+  <text x="180" y="560" fill="#71e4a5" font-family="Helvetica Neue, Helvetica, Arial" font-size="26" letter-spacing="4">LIVE TASK STATE</text>
+  <text x="180" y="678" fill="#effcf3" font-family="Helvetica Neue, Helvetica, Arial" font-size="39">A restrained running echo</text>
+  <text x="180" y="728" fill="#a7cbb4" font-family="Helvetica Neue, Helvetica, Arial" font-size="28">keeps one active task visible.</text>
+  <path d="M1740 608H1108" stroke="#4ce08d" stroke-width="2" stroke-opacity=".54"/>
+  <circle cx="1108" cy="608" r="7" fill="#4ce08d"/>
+  <text x="1740" y="560" text-anchor="end" fill="#71e4a5" font-family="Helvetica Neue, Helvetica, Arial" font-size="26" letter-spacing="4">WEEKLY QUOTA</text>
+  <text x="1740" y="678" text-anchor="end" fill="#effcf3" font-family="Helvetica Neue, Helvetica, Arial" font-size="39">The number stays inside</text>
+  <text x="1740" y="728" text-anchor="end" fill="#a7cbb4" font-family="Helvetica Neue, Helvetica, Arial" font-size="28">the indicator — clear at a glance.</text>
+  <text x="960" y="926" text-anchor="middle" fill="#88b99d" font-family="Helvetica Neue, Helvetica, Arial" font-size="27">Running state and remaining quota, always in the notch.</text>
+</svg>

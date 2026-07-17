@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07130f"/>
+      <stop offset=".5" stop-color="#0f2e21"/>
+      <stop offset="1" stop-color="#05100c"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="0%" r="70%">
+      <stop offset="0" stop-color="#4ce08d" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#4ce08d" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <rect width="1920" height="560" fill="url(#glow)"/>
+  <text x="960" y="565" text-anchor="middle" fill="#f4fff8" font-family="Helvetica Neue, Helvetica, Arial" font-size="76" font-weight="700">Built for the real MacBook notch.</text>
+  <text x="960" y="640" text-anchor="middle" fill="#b7d9c3" font-family="Helvetica Neue, Helvetica, Arial" font-size="35">Local, native, and deliberately quiet.</text>
+  <rect x="714" y="736" width="492" height="64" rx="32" fill="#4ce08d"/>
+  <text x="960" y="777" text-anchor="middle" fill="#092016" font-family="Helvetica Neue, Helvetica, Arial" font-size="29" font-weight="700">OPEN A TASK · KEEP WORKING</text>
+</svg>
