@@ -64,6 +64,12 @@ final class QuotaDisplayStyleTests: XCTestCase {
         XCTAssertGreaterThan(QuotaRingGradientMotion.duration, 0)
     }
 
+    func testStoppedRingUsesSolidColorWhileRunningRingUsesGradient() {
+        XCTAssertEqual(QuotaRingAppearance.colorMode(for: .running), .gradient)
+        XCTAssertEqual(QuotaRingAppearance.colorMode(for: .idle), .solid)
+        XCTAssertEqual(QuotaRingAppearance.colorMode(for: .completed), .solid)
+    }
+
     func testRecentConversationLimitOffersOneThroughFiveAndFallsBackToTwo() {
         XCTAssertEqual(
             RecentConversationLimit.allCases.map(\.rawValue),

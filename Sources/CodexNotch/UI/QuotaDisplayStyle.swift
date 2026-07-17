@@ -53,6 +53,23 @@ enum QuotaRingGradientMotion {
     static let duration = 1.8
 }
 
+enum QuotaRingActivity: Equatable {
+    case idle
+    case running
+    case completed
+}
+
+enum QuotaRingColorMode: Equatable {
+    case solid
+    case gradient
+}
+
+enum QuotaRingAppearance {
+    static func colorMode(for activity: QuotaRingActivity) -> QuotaRingColorMode {
+        activity == .running ? .gradient : .solid
+    }
+}
+
 enum QuotaRingMath {
     static let clockwiseStartAngleDegrees = -90.0
 

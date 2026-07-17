@@ -394,12 +394,6 @@ private struct CompactQuotaView: View {
     }
 }
 
-private enum QuotaRingActivity: Equatable {
-    case idle
-    case running
-    case completed
-}
-
 private struct CompletedChatGPTIcon: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hasSettled = false
@@ -797,7 +791,7 @@ private struct WeeklyQuotaRing: View {
                 .stroke(NotchPalette.track, lineWidth: lineWidth)
 
             if window != nil {
-                gradientQuotaStroke
+                quotaStroke
 
                 if activity == .completed, !reduceMotion {
                     Circle()
@@ -833,18 +827,25 @@ private struct WeeklyQuotaRing: View {
     }
 
     @ViewBuilder
-    private var gradientQuotaStroke: some View {
-        quotaStroke(gradientAngle: gradientAngle)
-    }
-
-    private func quotaStroke(gradientAngle: Double) -> some View {
-        Circle()
-            .trim(from: progressTrim.from, to: progressTrim.to)
-            .stroke(
+    private var quotaStroke: some View {
+        switch QuotaRingAppearance.colorMode(for: activity) {
+        case .solid:
+            quotaArc(progressColor)
+        case .gradient:
+            quotaArc(
                 QuotaRingGradient.gradient(
                     progressColor: progressColor,
                     angle: gradientAngle
-                ),
+                )
+            )
+        }
+    }
+
+    private func quotaArc<S: ShapeStyle>(_ shapeStyle: S) -> some View {
+        Circle()
+            .trim(from: progressTrim.from, to: progressTrim.to)
+            .stroke(
+                shapeStyle,
                 style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
             )
             .rotationEffect(.degrees(QuotaRingMath.clockwiseStartAngleDegrees))
