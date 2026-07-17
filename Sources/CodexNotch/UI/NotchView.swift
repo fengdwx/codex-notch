@@ -348,12 +348,12 @@ private struct CompactAppIconView: View {
         Group {
             switch status {
             case .working:
-                RunningChatGPTIcon(size: NotchCompactLayout.indicatorDiameter)
+                RunningChatGPTIcon(size: NotchCompactLayout.appMarkSize)
             case .completed:
-                CompletedChatGPTIcon(size: NotchCompactLayout.indicatorDiameter)
+                CompletedChatGPTIcon(size: NotchCompactLayout.appMarkSize)
             case .quota:
                 ChatGPTMark(
-                    size: NotchCompactLayout.indicatorDiameter,
+                    size: NotchCompactLayout.appMarkSize,
                     fallbackSystemName: status.fallbackSystemName
                 )
             }
@@ -611,16 +611,7 @@ private struct QuotaWaveBall: View {
             Circle()
                 .fill(NotchPalette.track)
 
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
-                QuotaWaveShape(
-                    fillProgress: displayedProgress,
-                    phase: reduceMotion
-                        ? 0
-                        : context.date.timeIntervalSinceReferenceDate * waveSpeed
-                )
-                .fill(progressColor)
-                .clipShape(Circle())
-            }
+            waveFill
 
             Circle()
                 .stroke(NotchPalette.border, lineWidth: lineWidth)
@@ -658,13 +649,29 @@ private struct QuotaWaveBall: View {
         }
     }
 
-    private var waveSpeed: Double {
-        switch activity {
-        case .running:
-            return 2.0
-        case .idle, .completed:
-            return 0.65
+    @ViewBuilder
+    private var waveFill: some View {
+        if QuotaWaveMotion.shouldAnimate(
+            isTaskRunning: activity == .running,
+            reduceMotion: reduceMotion
+        ) {
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+                waveShape(
+                    phase: context.date.timeIntervalSinceReferenceDate * 2.0
+                )
+            }
+        } else {
+            waveShape(phase: 0)
         }
+    }
+
+    private func waveShape(phase: Double) -> some View {
+        QuotaWaveShape(
+            fillProgress: displayedProgress,
+            phase: phase
+        )
+        .fill(progressColor)
+        .clipShape(Circle())
     }
 
     private func updateProgress(forAppearance: Bool = false) {
@@ -993,6 +1000,27 @@ private struct ExpandedNotchView: View {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .stroke(NotchPalette.border, lineWidth: 0.5)
                 }
+            }
+
+            Spacer(minLength: 6)
+
+            HStack {
+                Spacer(minLength: 0)
+
+                SettingsLink {
+                    Label("设置", systemImage: "gearshape")
+                        .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(NotchPalette.secondaryText)
+                        .padding(.horizontal, 9)
+                        .frame(height: 24)
+                        .background(NotchPalette.row.opacity(0.82), in: Capsule())
+                        .overlay {
+                            Capsule()
+                                .stroke(NotchPalette.border, lineWidth: 0.5)
+                        }
+                }
+                .buttonStyle(NotchButtonStyle())
+                .accessibilityLabel("打开设置")
             }
         }
         .padding(.horizontal, 14)

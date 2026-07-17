@@ -29,11 +29,28 @@ final class QuotaDisplayStyleTests: XCTestCase {
         XCTAssertEqual(QuotaRingMath.clockwiseStartAngleDegrees, -90)
     }
 
-    func testCompactAppIconAndQuotaStylesUseOneFixedDiameter() {
+    func testCompactAppIconUsesOpticalCorrectionInsideSharedIndicatorContainer() {
         XCTAssertEqual(NotchCompactLayout.indicatorDiameter, 24)
+        XCTAssertEqual(NotchCompactLayout.appMarkSize, 22)
+        XCTAssertLessThan(
+            NotchCompactLayout.appMarkSize,
+            NotchCompactLayout.indicatorDiameter
+        )
         XCTAssertLessThanOrEqual(
             NotchCompactLayout.indicatorDiameter,
             NotchCompactLayout.sideWingWidth
+        )
+    }
+
+    func testWaveMotionRunsOnlyWhileATaskIsRunning() {
+        XCTAssertTrue(
+            QuotaWaveMotion.shouldAnimate(isTaskRunning: true, reduceMotion: false)
+        )
+        XCTAssertFalse(
+            QuotaWaveMotion.shouldAnimate(isTaskRunning: false, reduceMotion: false)
+        )
+        XCTAssertFalse(
+            QuotaWaveMotion.shouldAnimate(isTaskRunning: true, reduceMotion: true)
         )
     }
 

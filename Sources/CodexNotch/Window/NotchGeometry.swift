@@ -65,13 +65,15 @@ enum NotchCompactLayout {
     static let minimumWidth: CGFloat = 289
     static let height: CGFloat = 32
     static let indicatorDiameter: CGFloat = 24
+    static let appMarkSize: CGFloat = 22
 }
 
 enum NotchExpandedLayout {
     static let width: CGFloat = 420
     static let resetScheduleControlHeight: CGFloat = 39
-    static let quotaContentHeight: CGFloat = 101 + resetScheduleControlHeight
-    static let twoConversationContentHeight: CGFloat = 221 + resetScheduleControlHeight
+    static let settingsFooterHeight: CGFloat = 30
+    static let quotaContentHeight: CGFloat = 101 + resetScheduleControlHeight + settingsFooterHeight
+    static let twoConversationContentHeight: CGFloat = 221 + resetScheduleControlHeight + settingsFooterHeight
     static let conversationRowHeight: CGFloat = 40
     static let conversationSeparatorHeight: CGFloat = 0.5
     static let resetScheduleRowHeight: CGFloat = 34

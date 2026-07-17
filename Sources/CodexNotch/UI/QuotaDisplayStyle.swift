@@ -23,7 +23,7 @@ enum QuotaDisplayStyle: String, CaseIterable, Identifiable, Sendable {
         case .clockwiseRing:
             return "缺口从12点顺时针展开"
         case .waveBall:
-            return "液面高度加轻微波浪动画"
+            return "任务运行时液面轻微起伏"
         }
     }
 
@@ -38,6 +38,12 @@ enum QuotaDisplayStyle: String, CaseIterable, Identifiable, Sendable {
 
     static func fromStoredValue(_ rawValue: String) -> QuotaDisplayStyle {
         Self(rawValue: rawValue) ?? Self.defaultStyle
+    }
+}
+
+enum QuotaWaveMotion {
+    static func shouldAnimate(isTaskRunning: Bool, reduceMotion: Bool) -> Bool {
+        isTaskRunning && !reduceMotion
     }
 }
 
