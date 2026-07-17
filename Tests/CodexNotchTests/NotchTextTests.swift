@@ -46,6 +46,23 @@ final class NotchTextTests: XCTestCase {
         XCTAssertEqual(NotchText.resetCredits(usage: nil), "重置 —")
     }
 
+    func testResetScheduleKeepsEveryKnownWindowAndSortsByTime() {
+        let first = Date(timeIntervalSince1970: 2_000)
+        let second = Date(timeIntervalSince1970: 3_000)
+        let usage = UsageSnapshot(windows: [
+            UsageWindow(id: "weekly", kind: .weekly, usedPercent: 20, resetAt: second),
+            UsageWindow(id: "unknown", kind: .daily, usedPercent: 10),
+            UsageWindow(id: "rolling", kind: .rolling(hours: 5), usedPercent: 30, resetAt: first)
+        ])
+
+        XCTAssertEqual(usage.resetScheduledWindows.map(\.id), ["rolling", "weekly"])
+        XCTAssertEqual(
+            NotchText.resetScheduleDisclosureTitle(windows: usage.resetScheduledWindows),
+            "查看 2 个额度的重置时间"
+        )
+        XCTAssertEqual(NotchText.resetScheduleDisclosureTitle(windows: []), "重置时间暂不可用")
+    }
+
     func testWeeklyWindowIsSelectedWithoutFallingBackToRollingQuota() {
         let rolling = UsageWindow(id: "primary", kind: .rolling(hours: 5), usedPercent: 10)
         let weekly = UsageWindow(id: "secondary", kind: .weekly, usedPercent: 25)

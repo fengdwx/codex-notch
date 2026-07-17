@@ -46,6 +46,21 @@ struct UsageSnapshot: Equatable, Sendable {
             return false
         }
     }
+
+    /// The usage endpoint provides a reset timestamp per quota window. Reset
+    /// credits only expose their available count, so never invent a separate
+    /// schedule for each credit.
+    var resetScheduledWindows: [UsageWindow] {
+        windows
+            .filter { $0.resetAt != nil }
+            .sorted { lhs, rhs in
+                guard let lhsResetAt = lhs.resetAt,
+                      let rhsResetAt = rhs.resetAt else {
+                    return false
+                }
+                return lhsResetAt < rhsResetAt
+            }
+    }
 }
 
 enum WeeklyQuotaLevel: Equatable, Sendable {

@@ -37,6 +37,7 @@ final class NotchRuntimeCoordinator {
     private var isChatGPTFrontmost = false
     private var isHovered = false
     private var isPointerInside = false
+    private var isResetScheduleExpanded = false
     private var activeSessions: [SessionActivity] = []
     private var recentCompletions: [CompletedSession] = []
     private var usage: UsageSnapshot?
@@ -91,6 +92,9 @@ final class NotchRuntimeCoordinator {
         }
         viewModel.onHoverChanged = { [weak self] hovered in
             self?.setHovered(hovered)
+        }
+        viewModel.onResetScheduleExpandedChanged = { [weak self] isExpanded in
+            self?.setResetScheduleExpanded(isExpanded)
         }
 
         windowController.onScreenParametersChanged = { [weak self] in
@@ -148,6 +152,7 @@ final class NotchRuntimeCoordinator {
         stopObservingPreferenceChanges()
         isPointerInside = false
         isHovered = false
+        isResetScheduleExpanded = false
 
         frontmostMonitor.stop()
         rolloutMonitor.stop()
@@ -270,6 +275,7 @@ final class NotchRuntimeCoordinator {
             self.hoverCollapseWorkItem = nil
             guard self.isHovered, !self.isPointerInside else { return }
             self.isHovered = false
+            self.isResetScheduleExpanded = false
             self.render()
         }
         hoverCollapseWorkItem = workItem
@@ -286,6 +292,16 @@ final class NotchRuntimeCoordinator {
         hoverCollapseWorkItem = nil
         isPointerInside = false
         isHovered = false
+        isResetScheduleExpanded = false
+    }
+
+    private func setResetScheduleExpanded(_ isExpanded: Bool) {
+        guard isHovered, isPointerInside,
+              isResetScheduleExpanded != isExpanded else {
+            return
+        }
+        isResetScheduleExpanded = isExpanded
+        render()
     }
 
     private func openThread(_ threadID: String) {
@@ -321,14 +337,38 @@ final class NotchRuntimeCoordinator {
         preferencesObserver = nil
     }
 
-    private func expandedContentSize(for state: NotchPresentationState) -> NSSize {
+    private func expandedContentSize(
+        for state: NotchPresentationState,
+        isResetScheduleExpanded: Bool
+    ) -> NSSize {
         guard case let .expanded(content) = state,
               !content.conversations.isEmpty else {
-            return NotchExpandedLayout.taskContentSize(conversationCount: 2)
+            return NotchExpandedLayout.taskContentSize(
+                conversationCount: 2,
+                isResetScheduleExpanded: isResetScheduleExpanded,
+                resetWindowCount: resetWindowCount(in: state)
+            )
         }
         return NotchExpandedLayout.taskContentSize(
-            conversationCount: content.conversations.count
+            conversationCount: content.conversations.count,
+            isResetScheduleExpanded: isResetScheduleExpanded,
+            resetWindowCount: content.usage?.resetScheduledWindows.count ?? 0
         )
+    }
+
+    private func quotaExpandedContentSize(
+        for state: NotchPresentationState,
+        isResetScheduleExpanded: Bool
+    ) -> NSSize {
+        NotchExpandedLayout.quotaContentSize(
+            isResetScheduleExpanded: isResetScheduleExpanded,
+            resetWindowCount: resetWindowCount(in: state)
+        )
+    }
+
+    private func resetWindowCount(in state: NotchPresentationState) -> Int {
+        guard case let .expanded(content) = state else { return 0 }
+        return content.usage?.resetScheduledWindows.count ?? 0
     }
 
     private func render(now: Date? = nil) {
@@ -367,9 +407,23 @@ final class NotchRuntimeCoordinator {
         let displayState = stateForWindow.limitingRecentConversations(
             to: recentConversationLimit
         )
+        guard case .expanded = displayState else {
+            isResetScheduleExpanded = false
+            return renderCompactState(displayState, now: renderDate, screen: screen, metrics: metrics)
+        }
+        if resetWindowCount(in: displayState) == 0 {
+            isResetScheduleExpanded = false
+        }
         let layout = NotchGeometry.layout(
             metrics: metrics,
-            expandedSize: expandedContentSize(for: displayState)
+            quotaExpandedSize: quotaExpandedContentSize(
+                for: displayState,
+                isResetScheduleExpanded: isResetScheduleExpanded
+            ),
+            expandedSize: expandedContentSize(
+                for: displayState,
+                isResetScheduleExpanded: isResetScheduleExpanded
+            )
         )
         let targetFrame = layout.frame(for: displayState)
         // The controller allocates the final canvas before the SwiftUI state
@@ -381,7 +435,28 @@ final class NotchRuntimeCoordinator {
             now: renderDate,
             cameraSafeAreaInset: max(0, screen.safeAreaInsets.top),
             compactWidth: layout.compactFrame.width,
-            surfaceSize: targetFrame.size
+            surfaceSize: targetFrame.size,
+            isResetScheduleExpanded: isResetScheduleExpanded
+        )
+        windowController.settleFrame(layout: layout, state: displayState)
+    }
+
+    private func renderCompactState(
+        _ displayState: NotchPresentationState,
+        now: Date,
+        screen: NSScreen,
+        metrics: NotchScreenMetrics
+    ) {
+        let layout = NotchGeometry.layout(metrics: metrics)
+        let targetFrame = layout.frame(for: displayState)
+        windowController.prepare(layout: layout, state: displayState)
+        viewModel.update(
+            state: displayState,
+            now: now,
+            cameraSafeAreaInset: max(0, screen.safeAreaInsets.top),
+            compactWidth: layout.compactFrame.width,
+            surfaceSize: targetFrame.size,
+            isResetScheduleExpanded: false
         )
         windowController.settleFrame(layout: layout, state: displayState)
     }

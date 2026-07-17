@@ -111,6 +111,35 @@ final class NotchGeometryTests: XCTestCase {
         )
     }
 
+    func testResetScheduleExpansionOnlyExtendsBelowTheNotchAnchor() {
+        let metrics = NotchScreenMetrics(
+            frame: NSRect(x: 0, y: 0, width: 1512, height: 982),
+            visibleFrame: NSRect(x: 0, y: 0, width: 1512, height: 949),
+            safeAreaInsets: NSEdgeInsets(top: 32, left: 0, bottom: 0, right: 0),
+            auxiliaryTopLeftArea: NSRect(x: 0, y: 950, width: 663, height: 32),
+            auxiliaryTopRightArea: NSRect(x: 848, y: 950, width: 664, height: 32)
+        )
+        let collapsed = NotchGeometry.layout(metrics: metrics)
+        let expanded = NotchGeometry.layout(
+            metrics: metrics,
+            quotaExpandedSize: NotchExpandedLayout.quotaContentSize(
+                isResetScheduleExpanded: true,
+                resetWindowCount: 2
+            ),
+            expandedSize: NotchExpandedLayout.taskContentSize(
+                conversationCount: 2,
+                isResetScheduleExpanded: true,
+                resetWindowCount: 2
+            )
+        )
+
+        XCTAssertEqual(collapsed.quotaExpandedFrame.maxY, expanded.quotaExpandedFrame.maxY, accuracy: 0.1)
+        XCTAssertGreaterThan(expanded.quotaExpandedFrame.height, collapsed.quotaExpandedFrame.height)
+        XCTAssertLessThan(expanded.quotaExpandedFrame.minY, collapsed.quotaExpandedFrame.minY)
+        XCTAssertEqual(collapsed.expandedFrame.maxY, expanded.expandedFrame.maxY, accuracy: 0.1)
+        XCTAssertGreaterThan(expanded.expandedFrame.height, collapsed.expandedFrame.height)
+    }
+
     func testFrameInterpolationStartsWithCompactIslandAndKeepsTopEdgeFixed() {
         let compactFrame = NSRect(x: 612, y: 950, width: 289, height: 32)
         let expandedFrame = NSRect(x: 546.5, y: 774, width: 420, height: 208)

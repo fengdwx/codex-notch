@@ -7,10 +7,12 @@ final class NotchViewModel: ObservableObject {
     @Published private(set) var cameraSafeAreaInset: CGFloat
     @Published private(set) var compactWidth: CGFloat
     @Published private(set) var surfaceSize: CGSize
+    @Published private(set) var isResetScheduleExpanded = false
 
     var onOpenThread: (String) -> Void
     var onActivateChatGPT: () -> Void
     var onHoverChanged: (Bool) -> Void
+    var onResetScheduleExpandedChanged: (Bool) -> Void
 
     init(
         state: NotchPresentationState = .hidden,
@@ -23,7 +25,8 @@ final class NotchViewModel: ObservableObject {
         ),
         onOpenThread: @escaping (String) -> Void = { _ in },
         onActivateChatGPT: @escaping () -> Void = {},
-        onHoverChanged: @escaping (Bool) -> Void = { _ in }
+        onHoverChanged: @escaping (Bool) -> Void = { _ in },
+        onResetScheduleExpandedChanged: @escaping (Bool) -> Void = { _ in }
     ) {
         self.state = state
         self.now = now
@@ -33,6 +36,7 @@ final class NotchViewModel: ObservableObject {
         self.onOpenThread = onOpenThread
         self.onActivateChatGPT = onActivateChatGPT
         self.onHoverChanged = onHoverChanged
+        self.onResetScheduleExpandedChanged = onResetScheduleExpandedChanged
     }
 
     func update(
@@ -43,13 +47,15 @@ final class NotchViewModel: ObservableObject {
         surfaceSize: CGSize = CGSize(
             width: NotchCompactLayout.minimumWidth,
             height: NotchCompactLayout.height
-        )
+        ),
+        isResetScheduleExpanded: Bool = false
     ) {
         let wasExpanded = Self.isExpanded(self.state)
         let willBeExpanded = Self.isExpanded(state)
         let changesSurface = wasExpanded != willBeExpanded
             || self.surfaceSize != surfaceSize
             || self.compactWidth != compactWidth
+            || self.isResetScheduleExpanded != isResetScheduleExpanded
 
         let applyUpdate = {
             self.state = state
@@ -57,11 +63,13 @@ final class NotchViewModel: ObservableObject {
             self.cameraSafeAreaInset = cameraSafeAreaInset
             self.compactWidth = compactWidth
             self.surfaceSize = surfaceSize
+            self.isResetScheduleExpanded = isResetScheduleExpanded
         }
 
         if changesSurface {
             let expands = surfaceSize.height > self.surfaceSize.height + 0.5
                 || surfaceSize.width > self.surfaceSize.width + 0.5
+                || (isResetScheduleExpanded && !self.isResetScheduleExpanded)
             withAnimation(NotchPresentationMotion.animation(forExpanding: expands)) {
                 applyUpdate()
             }
@@ -179,8 +187,10 @@ struct NotchView: View {
                     compactWidth: model.compactWidth,
                     quotaDisplayStyle: quotaDisplayStyle,
                     isHovered: isPointerInside,
+                    isResetScheduleExpanded: model.isResetScheduleExpanded,
                     onActivateChatGPT: model.onActivateChatGPT,
-                    onOpenThread: model.onOpenThread
+                    onOpenThread: model.onOpenThread,
+                    onResetScheduleExpandedChanged: model.onResetScheduleExpandedChanged
                 )
                 .transition(.opacity)
             }
@@ -933,8 +943,10 @@ private struct ExpandedNotchView: View {
     let compactWidth: CGFloat
     let quotaDisplayStyle: QuotaDisplayStyle
     let isHovered: Bool
+    let isResetScheduleExpanded: Bool
     let onActivateChatGPT: () -> Void
     let onOpenThread: (String) -> Void
+    let onResetScheduleExpandedChanged: (Bool) -> Void
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -961,7 +973,12 @@ private struct ExpandedNotchView: View {
 
     private var detailContent: some View {
         VStack(alignment: .leading, spacing: 0) {
-            WeeklyQuotaProgressView(usage: content.usage, now: now)
+            WeeklyQuotaProgressView(
+                usage: content.usage,
+                now: now,
+                isResetScheduleExpanded: isResetScheduleExpanded,
+                onResetScheduleExpandedChanged: onResetScheduleExpandedChanged
+            )
 
             if !content.conversations.isEmpty {
                 Spacer(minLength: 7)
@@ -1143,6 +1160,8 @@ private struct RunningStatusDot: View {
 private struct WeeklyQuotaProgressView: View {
     let usage: UsageSnapshot?
     let now: Date
+    let isResetScheduleExpanded: Bool
+    let onResetScheduleExpandedChanged: (Bool) -> Void
 
     private var window: UsageWindow? {
         usage?.weeklyWindow
@@ -1151,6 +1170,10 @@ private struct WeeklyQuotaProgressView: View {
     private var progressColor: Color {
         guard window != nil else { return NotchPalette.secondaryText }
         return QuotaColorScale.color(for: window?.remainingPercent ?? 0)
+    }
+
+    private var resetWindows: [UsageWindow] {
+        usage?.resetScheduledWindows ?? []
     }
 
     var body: some View {
@@ -1183,37 +1206,108 @@ private struct WeeklyQuotaProgressView: View {
             }
             .frame(height: 5)
 
-            HStack(spacing: 8) {
-                Text(resetTimestampText)
-                    .font(.system(size: 8.5, weight: .medium, design: .rounded))
-                    .foregroundStyle(NotchPalette.secondaryText)
-                    .lineLimit(1)
-
-                Spacer(minLength: 4)
-
-                Text("还剩 \(resetCountdownText)")
-                    .font(.system(size: 8.5, weight: .semibold, design: .rounded))
-                    .foregroundStyle(NotchPalette.secondaryText)
-                    .monospacedDigit()
-                    .lineLimit(1)
-            }
+            ResetScheduleDisclosure(
+                windows: resetWindows,
+                now: now,
+                isExpanded: isResetScheduleExpanded,
+                onExpandedChanged: onResetScheduleExpandedChanged
+            )
         }
-        .frame(maxWidth: .infinity, minHeight: 42, maxHeight: 42)
+        .frame(maxWidth: .infinity, minHeight: 42, alignment: .top)
         .animation(.easeInOut(duration: 0.28), value: window?.remainingPercent ?? 0)
     }
+}
 
-    private var resetTimestampText: String {
-        guard let resetAt = window?.resetAt else {
-            return "重置时间暂不可用"
+private struct ResetScheduleDisclosure: View {
+    let windows: [UsageWindow]
+    let now: Date
+    let isExpanded: Bool
+    let onExpandedChanged: (Bool) -> Void
+
+    var body: some View {
+        VStack(spacing: NotchExpandedLayout.resetScheduleDetailSpacing) {
+            Button {
+                guard !windows.isEmpty else { return }
+                onExpandedChanged(!isExpanded)
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 8.5, weight: .semibold))
+
+                    Text(NotchText.resetScheduleDisclosureTitle(windows: windows))
+                        .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                        .lineLimit(1)
+
+                    Spacer(minLength: 4)
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 8, weight: .bold))
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                }
+                .foregroundStyle(
+                    windows.isEmpty
+                        ? NotchPalette.secondaryText
+                        : NotchPalette.primaryText.opacity(0.82)
+                )
+                .frame(maxWidth: .infinity, minHeight: 13, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(NotchButtonStyle())
+            .accessibilityLabel(NotchText.resetScheduleDisclosureTitle(windows: windows))
+            .accessibilityHint(windows.isEmpty ? "接口暂未返回重置时间" : "点击展开或收起全部额度的重置时间")
+
+            if isExpanded, !windows.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(Array(windows.enumerated()), id: \.element.id) { index, window in
+                        ResetScheduleRow(window: window, now: now)
+
+                        if index < windows.count - 1 {
+                            Rectangle()
+                                .fill(NotchPalette.border)
+                                .frame(height: NotchExpandedLayout.conversationSeparatorHeight)
+                        }
+                    }
+                }
+                .padding(.vertical, NotchExpandedLayout.resetScheduleDetailVerticalPadding)
+                .background(NotchPalette.row.opacity(0.62))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(NotchPalette.border, lineWidth: 0.5)
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
-        return "重置于 \(NotchText.resetTimestamp(resetAt))"
+        .animation(.easeInOut(duration: 0.22), value: isExpanded)
     }
+}
 
-    private var resetCountdownText: String {
-        guard let resetAt = window?.resetAt else {
-            return "--:--:--"
+private struct ResetScheduleRow: View {
+    let window: UsageWindow
+    let now: Date
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(NotchText.windowLabel(window.kind))
+                .frame(width: 44, alignment: .leading)
+
+            Text(window.resetAt.map { NotchText.resetTimestamp($0) } ?? "—")
+                .monospacedDigit()
+
+            Spacer(minLength: 4)
+
+            Text(
+                window.resetAt.map {
+                    "还剩 \(NotchText.resetCountdown(resetAt: $0, now: now))"
+                } ?? "—"
+            )
+            .monospacedDigit()
         }
-        return NotchText.resetCountdown(resetAt: resetAt, now: now)
+        .font(.system(size: 8.2, weight: .medium, design: .rounded))
+        .foregroundStyle(NotchPalette.secondaryText)
+        .lineLimit(1)
+        .padding(.horizontal, 7)
+        .frame(maxWidth: .infinity, minHeight: NotchExpandedLayout.resetScheduleRowHeight)
     }
 }
 
@@ -1315,6 +1409,11 @@ enum NotchText {
             return "重置 —"
         }
         return "可重置 \(credits) 次"
+    }
+
+    static func resetScheduleDisclosureTitle(windows: [UsageWindow]) -> String {
+        guard !windows.isEmpty else { return "重置时间暂不可用" }
+        return "查看 \(windows.count) 个额度的重置时间"
     }
 
     static func sessionSubtitle(_ session: SessionActivity, now: Date) -> String {
