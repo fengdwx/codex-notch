@@ -42,15 +42,15 @@ final class QuotaDisplayStyleTests: XCTestCase {
         )
     }
 
-    func testWaveMotionRunsOnlyWhileATaskIsRunning() {
+    func testQuotaIndicatorMotionRunsOnlyWhileATaskIsRunning() {
         XCTAssertTrue(
-            QuotaWaveMotion.shouldAnimate(isTaskRunning: true, reduceMotion: false)
+            QuotaIndicatorMotion.shouldAnimate(isTaskRunning: true, reduceMotion: false)
         )
         XCTAssertFalse(
-            QuotaWaveMotion.shouldAnimate(isTaskRunning: false, reduceMotion: false)
+            QuotaIndicatorMotion.shouldAnimate(isTaskRunning: false, reduceMotion: false)
         )
         XCTAssertFalse(
-            QuotaWaveMotion.shouldAnimate(isTaskRunning: true, reduceMotion: true)
+            QuotaIndicatorMotion.shouldAnimate(isTaskRunning: true, reduceMotion: true)
         )
     }
 

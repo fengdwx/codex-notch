@@ -651,7 +651,7 @@ private struct QuotaWaveBall: View {
 
     @ViewBuilder
     private var waveFill: some View {
-        if QuotaWaveMotion.shouldAnimate(
+        if QuotaIndicatorMotion.shouldAnimate(
             isTaskRunning: activity == .running,
             reduceMotion: reduceMotion
         ) {
@@ -759,7 +759,6 @@ private struct WeeklyQuotaRing: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var displayedProgress: CGFloat = 0
-    @State private var highlightActive = false
     @State private var completionPulse = false
 
     private var window: UsageWindow? {
@@ -790,48 +789,13 @@ private struct WeeklyQuotaRing: View {
         }
     }
 
-    private var highlightTrim: (from: CGFloat, to: CGFloat) {
-        switch style {
-        case .clockwiseRing:
-            return (0.84, 1)
-        case .waveBall:
-            return (0, 0)
-        }
-    }
-
     var body: some View {
         ZStack {
             Circle()
                 .stroke(NotchPalette.track, lineWidth: lineWidth)
 
             if window != nil {
-                Circle()
-                    .trim(from: progressTrim.from, to: progressTrim.to)
-                    .stroke(
-                        progressColor,
-                        style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(QuotaRingMath.clockwiseStartAngleDegrees))
-
-                if activity == .running, !reduceMotion {
-                    Circle()
-                        .trim(from: highlightTrim.from, to: highlightTrim.to)
-                        .stroke(
-                            progressColor.opacity(0.96),
-                            style: StrokeStyle(lineWidth: lineWidth + 0.8, lineCap: .round)
-                        )
-                        .rotationEffect(
-                            .degrees(
-                                (highlightActive ? 360 : 0)
-                                    + QuotaRingMath.clockwiseStartAngleDegrees
-                            )
-                        )
-                        .shadow(color: progressColor.opacity(0.6), radius: 2)
-                        .animation(
-                            .linear(duration: 1.45).repeatForever(autoreverses: false),
-                            value: highlightActive
-                        )
-                }
+                gradientQuotaStroke
 
                 if activity == .completed, !reduceMotion {
                     Circle()
@@ -866,6 +830,33 @@ private struct WeeklyQuotaRing: View {
         }
     }
 
+    @ViewBuilder
+    private var gradientQuotaStroke: some View {
+        if QuotaIndicatorMotion.shouldAnimate(
+            isTaskRunning: activity == .running,
+            reduceMotion: reduceMotion
+        ) {
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+                quotaStroke(gradientAngle: QuotaRingGradient.angle(at: context.date))
+            }
+        } else {
+            quotaStroke(gradientAngle: QuotaRingGradient.restingAngle)
+        }
+    }
+
+    private func quotaStroke(gradientAngle: Double) -> some View {
+        Circle()
+            .trim(from: progressTrim.from, to: progressTrim.to)
+            .stroke(
+                QuotaRingGradient.gradient(
+                    progressColor: progressColor,
+                    angle: gradientAngle
+                ),
+                style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+            )
+            .rotationEffect(.degrees(QuotaRingMath.clockwiseStartAngleDegrees))
+    }
+
     private func updateProgress(forAppearance: Bool = false) {
         guard window != nil else {
             displayedProgress = 0
@@ -889,7 +880,6 @@ private struct WeeklyQuotaRing: View {
 
     private func updateActivityAnimation() {
         guard !reduceMotion else {
-            highlightActive = false
             completionPulse = false
             displayedProgress = targetProgress
             return
@@ -897,7 +887,6 @@ private struct WeeklyQuotaRing: View {
 
         switch activity {
         case .idle:
-            highlightActive = false
             completionPulse = false
             updateProgress()
         case .running:
@@ -906,15 +895,39 @@ private struct WeeklyQuotaRing: View {
             withAnimation(.easeOut(duration: 0.9)) {
                 displayedProgress = targetProgress
             }
-            highlightActive = true
         case .completed:
-            highlightActive = false
             displayedProgress = targetProgress
             completionPulse = false
             withAnimation(.easeOut(duration: 0.5)) {
                 completionPulse = true
             }
         }
+    }
+}
+
+private enum QuotaRingGradient {
+    static let restingAngle = -90.0
+    private static let degreesPerSecond = 42.0
+
+    static func angle(at date: Date) -> Double {
+        restingAngle + date.timeIntervalSinceReferenceDate * degreesPerSecond
+    }
+
+    static func gradient(progressColor: Color, angle: Double) -> AngularGradient {
+        AngularGradient(
+            gradient: Gradient(stops: [
+                .init(color: progressColor.opacity(0.26), location: 0),
+                .init(color: progressColor.opacity(0.62), location: 0.30),
+                .init(color: progressColor, location: 0.45),
+                .init(color: .white.opacity(0.94), location: 0.50),
+                .init(color: progressColor, location: 0.56),
+                .init(color: progressColor.opacity(0.62), location: 0.72),
+                .init(color: progressColor.opacity(0.26), location: 1)
+            ]),
+            center: .center,
+            startAngle: .degrees(angle),
+            endAngle: .degrees(angle + 360)
+        )
     }
 }
 

@@ -21,7 +21,7 @@ enum QuotaDisplayStyle: String, CaseIterable, Identifiable, Sendable {
     var subtitle: String {
         switch self {
         case .clockwiseRing:
-            return "缺口从12点顺时针展开"
+            return "缺口从12点顺时针展开；运行时渐变流动"
         case .waveBall:
             return "任务运行时液面轻微起伏"
         }
@@ -41,7 +41,7 @@ enum QuotaDisplayStyle: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-enum QuotaWaveMotion {
+enum QuotaIndicatorMotion {
     static func shouldAnimate(isTaskRunning: Bool, reduceMotion: Bool) -> Bool {
         isTaskRunning && !reduceMotion
     }
