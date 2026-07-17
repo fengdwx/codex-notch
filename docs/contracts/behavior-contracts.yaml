@@ -44,7 +44,7 @@ contracts:
 
   - id: EXPANDED-APPEARANCE-009
     title: 展开卡片外观可在系统玻璃与纯黑之间实时切换
-    status: active
+    status: superseded
     statement: 设置页必须提供“玻璃”和“黑色”两种展开卡片外观并立即应用，默认使用玻璃。macOS 26 及以上使用系统原生 Liquid Glass，仍受支持的旧系统使用原生半透明 Material 降级；黑色模式保持既有纯黑表面。该设置只改变展开卡片材质，不得改变紧凑刘海的纯黑表面、固定透明画布、展开方向或窗口几何。
     rationale: 原生系统材质能跟随桌面内容和指针产生一致的最新 macOS 观感，纯黑选项则保留高对比偏好；将材质选择与窗口几何隔离可避免重新引入展开跳动和鼠标拦截回归。
     source: user-confirmed
@@ -61,8 +61,30 @@ contracts:
       - docs/decisions/002-native-liquid-glass-with-fallback.md
       - "manual: switch both appearances and inspect expansion on physical-notch hardware"
     supersedes: []
-    superseded_by: null
+    superseded_by: EXPANDED-APPEARANCE-011
     last_verified_commit: 916f72b
+
+  - id: EXPANDED-APPEARANCE-011
+    title: 展开卡片固定使用稳定纯黑表面
+    status: active
+    statement: 紧凑与展开状态的可见刘海表面必须始终使用纯黑背景，设置页不得提供无法在日常显示中成立的玻璃外观选项；隐藏态画布仍保持完全透明。该选择不得改变固定透明画布、只向下展开、收起后回收画布或窗口几何。
+    rationale: 物理刘海机器确认跨窗口玻璃在日常显示中仍是黑色，仅在触发系统截图时出现白色透视效果，不能作为稳定可交付的用户体验；固定纯黑能保持真实显示与设置承诺一致。
+    source: user-confirmed
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [expanded-state, settings, notch-screens]
+      exclude: [menu-bar-fallback]
+    examples:
+      positive: 日常悬停展开时卡片稳定为纯黑，设置页只保留实际可用的展开内容设置，收起后透明画布照常回收。
+      negative: 设置页仍显示玻璃选项，或把只在截图合成路径中出现的透明效果当成真实日常显示通过。
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - docs/decisions/003-abandon-cross-window-liquid-glass.md
+      - "manual: inspect the expanded black surface during normal use on physical-notch hardware"
+    supersedes: [EXPANDED-APPEARANCE-009]
+    superseded_by: null
+    last_verified_commit: 53beec8
 
   - id: DISPLAY-TRANSITION-010
     title: 投屏与屏幕变化不得触发菜单栏 fallback 递归

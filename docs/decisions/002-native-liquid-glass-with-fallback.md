@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [EXPANDED-APPEARANCE-009, NOTCH-MOTION-002]
 supersedes: []
-superseded_by: null
+superseded_by: 003-abandon-cross-window-liquid-glass
 owner: project-maintainer
 created_at: 2026-07-17
 last_verified_commit: 916f72b
