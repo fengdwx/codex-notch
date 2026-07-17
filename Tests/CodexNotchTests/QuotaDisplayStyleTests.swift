@@ -54,6 +54,16 @@ final class QuotaDisplayStyleTests: XCTestCase {
         )
     }
 
+    func testRunningRingGradientCompletesOneFullOrbit() {
+        XCTAssertEqual(QuotaRingGradientMotion.restingAngle, -90)
+        XCTAssertEqual(QuotaRingGradientMotion.flowingAngle, 270)
+        XCTAssertEqual(
+            QuotaRingGradientMotion.flowingAngle - QuotaRingGradientMotion.restingAngle,
+            360
+        )
+        XCTAssertGreaterThan(QuotaRingGradientMotion.duration, 0)
+    }
+
     func testRecentConversationLimitOffersOneThroughFiveAndFallsBackToTwo() {
         XCTAssertEqual(
             RecentConversationLimit.allCases.map(\.rawValue),

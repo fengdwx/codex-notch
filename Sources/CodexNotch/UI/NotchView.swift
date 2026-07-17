@@ -760,6 +760,8 @@ private struct WeeklyQuotaRing: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var displayedProgress: CGFloat = 0
     @State private var completionPulse = false
+    @State private var gradientAngle = QuotaRingGradientMotion.restingAngle
+    @State private var isGradientAnimationActive = false
 
     private var window: UsageWindow? {
         usage?.weeklyWindow
@@ -832,16 +834,7 @@ private struct WeeklyQuotaRing: View {
 
     @ViewBuilder
     private var gradientQuotaStroke: some View {
-        if QuotaIndicatorMotion.shouldAnimate(
-            isTaskRunning: activity == .running,
-            reduceMotion: reduceMotion
-        ) {
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
-                quotaStroke(gradientAngle: QuotaRingGradient.angle(at: context.date))
-            }
-        } else {
-            quotaStroke(gradientAngle: QuotaRingGradient.restingAngle)
-        }
+        quotaStroke(gradientAngle: gradientAngle)
     }
 
     private func quotaStroke(gradientAngle: Double) -> some View {
@@ -882,6 +875,7 @@ private struct WeeklyQuotaRing: View {
         guard !reduceMotion else {
             completionPulse = false
             displayedProgress = targetProgress
+            stopGradientAnimation()
             return
         }
 
@@ -889,40 +883,55 @@ private struct WeeklyQuotaRing: View {
         case .idle:
             completionPulse = false
             updateProgress()
+            stopGradientAnimation()
         case .running:
             completionPulse = false
             displayedProgress = 1
             withAnimation(.easeOut(duration: 0.9)) {
                 displayedProgress = targetProgress
             }
+            startGradientAnimation()
         case .completed:
             displayedProgress = targetProgress
             completionPulse = false
+            stopGradientAnimation()
             withAnimation(.easeOut(duration: 0.5)) {
                 completionPulse = true
             }
         }
     }
+
+    private func startGradientAnimation() {
+        guard !isGradientAnimationActive else { return }
+        isGradientAnimationActive = true
+        gradientAngle = QuotaRingGradientMotion.restingAngle
+        withAnimation(
+            .linear(duration: QuotaRingGradientMotion.duration)
+                .repeatForever(autoreverses: false)
+        ) {
+            gradientAngle = QuotaRingGradientMotion.flowingAngle
+        }
+    }
+
+    private func stopGradientAnimation() {
+        isGradientAnimationActive = false
+        withAnimation(nil) {
+            gradientAngle = QuotaRingGradientMotion.restingAngle
+        }
+    }
 }
 
 private enum QuotaRingGradient {
-    static let restingAngle = -90.0
-    private static let degreesPerSecond = 42.0
-
-    static func angle(at date: Date) -> Double {
-        restingAngle + date.timeIntervalSinceReferenceDate * degreesPerSecond
-    }
-
     static func gradient(progressColor: Color, angle: Double) -> AngularGradient {
         AngularGradient(
             gradient: Gradient(stops: [
-                .init(color: progressColor.opacity(0.26), location: 0),
-                .init(color: progressColor.opacity(0.62), location: 0.30),
-                .init(color: progressColor, location: 0.45),
-                .init(color: .white.opacity(0.94), location: 0.50),
-                .init(color: progressColor, location: 0.56),
-                .init(color: progressColor.opacity(0.62), location: 0.72),
-                .init(color: progressColor.opacity(0.26), location: 1)
+                .init(color: progressColor.opacity(0.12), location: 0),
+                .init(color: progressColor.opacity(0.30), location: 0.18),
+                .init(color: progressColor.opacity(0.80), location: 0.34),
+                .init(color: .white.opacity(0.98), location: 0.48),
+                .init(color: progressColor, location: 0.62),
+                .init(color: progressColor.opacity(0.36), location: 0.80),
+                .init(color: progressColor.opacity(0.12), location: 1)
             ]),
             center: .center,
             startAngle: .degrees(angle),

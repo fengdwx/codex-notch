@@ -47,6 +47,12 @@ enum QuotaIndicatorMotion {
     }
 }
 
+enum QuotaRingGradientMotion {
+    static let restingAngle = -90.0
+    static let flowingAngle = restingAngle + 360.0
+    static let duration = 1.8
+}
+
 enum QuotaRingMath {
     static let clockwiseStartAngleDegrees = -90.0
 
