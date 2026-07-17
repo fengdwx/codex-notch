@@ -981,19 +981,19 @@ private struct ExpandedNotchView: View {
             )
 
             if !content.conversations.isEmpty {
-                Spacer(minLength: 7)
+                Spacer(minLength: 8)
 
                 Rectangle()
                     .fill(NotchPalette.border)
                     .frame(height: 0.5)
 
-                Spacer(minLength: 6)
+                Spacer(minLength: 8)
 
                 Text("最近对话")
-                    .font(.system(size: 9, weight: .semibold, design: .rounded))
+                    .font(.system(size: 11.5, weight: .semibold, design: .rounded))
                     .foregroundStyle(NotchPalette.secondaryText)
 
-                Spacer(minLength: 4)
+                Spacer(minLength: 6)
 
                 VStack(spacing: 0) {
                     ForEach(
@@ -1079,17 +1079,17 @@ private struct ConversationRowView: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 ConversationStatusView(activity: conversation.activity)
-                    .frame(width: 14)
+                    .frame(width: 16)
 
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(conversation.title ?? NotchText.projectName(cwd: conversation.cwd))
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                         .foregroundStyle(NotchPalette.primaryText)
                         .lineLimit(1)
                     Text(metadataText)
-                        .font(.system(size: 8, weight: .medium, design: .rounded))
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
                         .foregroundStyle(NotchPalette.secondaryText)
                         .lineLimit(1)
                         .monospacedDigit()
@@ -1098,11 +1098,11 @@ private struct ConversationRowView: View {
                 Spacer(minLength: 4)
 
                 Image(systemName: "arrow.up.right")
-                    .font(.system(size: 8, weight: .semibold))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(NotchPalette.secondaryText)
             }
-            .padding(.horizontal, 9)
-            .frame(maxWidth: .infinity, minHeight: 30, maxHeight: 30)
+            .padding(.horizontal, 11)
+            .frame(maxWidth: .infinity, minHeight: 40, maxHeight: 40)
             .contentShape(Rectangle())
         }
         .buttonStyle(NotchButtonStyle())
@@ -1128,7 +1128,7 @@ private struct ConversationStatusView: View {
             RunningStatusDot()
         case .completed:
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(NotchPalette.success)
         }
     }
@@ -1141,7 +1141,7 @@ private struct RunningStatusDot: View {
     var body: some View {
         Circle()
             .fill(NotchPalette.success)
-            .frame(width: 6, height: 6)
+            .frame(width: 7, height: 7)
             .scaleEffect(isPulsing ? 1.15 : 0.82)
             .opacity(isPulsing ? 0.62 : 1)
             .onAppear {
@@ -1177,16 +1177,16 @@ private struct WeeklyQuotaProgressView: View {
     }
 
     var body: some View {
-        VStack(spacing: 5) {
+        VStack(spacing: 7) {
             HStack {
                 Text("本周剩余")
-                    .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                    .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                     .foregroundStyle(NotchPalette.primaryText)
 
                 Spacer()
 
                 Text(window.map { NotchText.percent($0.remainingPercent) } ?? "—")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(progressColor)
                     .monospacedDigit()
             }
@@ -1202,18 +1202,18 @@ private struct WeeklyQuotaProgressView: View {
                             )
                     }
             }
-            .frame(height: 5)
+            .frame(height: 6)
 
             HStack(spacing: 8) {
                 Text(resetTimestampText)
-                    .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundStyle(NotchPalette.secondaryText)
                     .lineLimit(1)
 
                 Spacer(minLength: 4)
 
                 Text("还剩 \(resetCountdownText)")
-                    .font(.system(size: 8.5, weight: .semibold, design: .rounded))
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
                     .foregroundStyle(NotchPalette.secondaryText)
                     .monospacedDigit()
                     .lineLimit(1)
@@ -1227,7 +1227,7 @@ private struct WeeklyQuotaProgressView: View {
                 onExpandedChanged: onResetScheduleExpandedChanged
             )
         }
-        .frame(maxWidth: .infinity, minHeight: 42, alignment: .top)
+        .frame(maxWidth: .infinity, minHeight: 52, alignment: .top)
         .animation(.easeInOut(duration: 0.28), value: window?.remainingPercent ?? 0)
     }
 
@@ -1261,17 +1261,17 @@ private struct ResetScheduleDisclosure: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.counterclockwise.circle.fill")
-                        .font(.system(size: 8.5, weight: .semibold))
+                        .font(.system(size: 10.5, weight: .semibold))
 
                     Text(title)
-                        .font(.system(size: 8.5, weight: .semibold, design: .rounded))
+                        .font(.system(size: 11.5, weight: .semibold, design: .rounded))
                         .monospacedDigit()
                         .lineLimit(1)
 
                     Spacer(minLength: 4)
 
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 8, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
                 }
                 .foregroundStyle(
@@ -1279,8 +1279,8 @@ private struct ResetScheduleDisclosure: View {
                         ? NotchPalette.secondaryText
                         : NotchPalette.primaryText.opacity(0.82)
                 )
-                .padding(.horizontal, 8)
-                .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
+                .padding(.horizontal, 10)
+                .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
                 .background(
                     credits.isEmpty
                         ? NotchPalette.row.opacity(0.35)
@@ -1330,12 +1330,11 @@ private struct ResetScheduleRow: View {
     let now: Date
 
     var body: some View {
-        HStack(spacing: 6) {
-            Text(NotchText.resetCreditTitle(credit))
-                .frame(width: 58, alignment: .leading)
-
+        HStack(spacing: 10) {
             Text(NotchText.resetCreditExpiry(credit))
                 .monospacedDigit()
+                .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                .foregroundStyle(NotchPalette.primaryText)
 
             Spacer(minLength: 4)
 
@@ -1345,11 +1344,11 @@ private struct ResetScheduleRow: View {
                 } ?? "—"
             )
             .monospacedDigit()
+            .font(.system(size: 10.5, weight: .medium, design: .rounded))
+            .foregroundStyle(NotchPalette.secondaryText)
         }
-        .font(.system(size: 8.2, weight: .medium, design: .rounded))
-        .foregroundStyle(NotchPalette.secondaryText)
         .lineLimit(1)
-        .padding(.horizontal, 7)
+        .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, minHeight: NotchExpandedLayout.resetScheduleRowHeight)
     }
 }

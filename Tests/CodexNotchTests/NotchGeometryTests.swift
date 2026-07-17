@@ -46,7 +46,7 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertEqual(layout.expandedFrame.height, 220, accuracy: 0.1)
     }
 
-    func testDefaultCompactFrameStaysCloseToNotchGap() {
+    func testReadableExpandedContentKeepsCompactFrameAtTheNotchGap() {
         let metrics = NotchScreenMetrics(
             frame: NSRect(x: 0, y: 0, width: 1512, height: 982),
             visibleFrame: NSRect(x: 0, y: 0, width: 1512, height: 949),
@@ -67,10 +67,10 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertEqual(layout.compactFrame.midX, 755.5, accuracy: 0.1)
         XCTAssertEqual(layout.compactFrame.maxY, 982, accuracy: 0.1)
         XCTAssertEqual(layout.quotaExpandedFrame.width, 420, accuracy: 0.1)
-        XCTAssertEqual(layout.quotaExpandedFrame.height, 155, accuracy: 0.1)
+        XCTAssertEqual(layout.quotaExpandedFrame.height, 172, accuracy: 0.1)
         XCTAssertEqual(layout.quotaExpandedFrame.maxY, 982, accuracy: 0.1)
         XCTAssertEqual(layout.expandedFrame.width, 420, accuracy: 0.1)
-        XCTAssertEqual(layout.expandedFrame.height, 237, accuracy: 0.1)
+        XCTAssertEqual(layout.expandedFrame.height, 292, accuracy: 0.1)
         XCTAssertEqual(layout.expandedFrame.maxY, 982, accuracy: 0.1)
     }
 
