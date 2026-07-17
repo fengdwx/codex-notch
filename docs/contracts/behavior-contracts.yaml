@@ -64,6 +64,28 @@ contracts:
     superseded_by: null
     last_verified_commit: 916f72b
 
+  - id: DISPLAY-TRANSITION-010
+    title: 投屏与屏幕变化不得触发菜单栏 fallback 递归
+    status: active
+    statement: 投屏、断开投屏或其他屏幕参数变化在刘海窗口与菜单栏 fallback 之间切换时，必须保持应用存活。NSStatusItem 写入的可见性和 autosave 偏好不得被当作应用设置再次触发运行态渲染；运行协调器只响应确实影响其状态或布局的应用偏好。
+    rationale: macOS 在创建、显示或隐藏 NSStatusItem 时会同步写入 UserDefaults；如果宽泛监听所有偏好并立即重建 fallback，会发生重入递归和主线程栈溢出。
+    source: incident
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [screen-parameter-changes, notch-screens, menu-bar-fallback, settings]
+      exclude: [quota-fetching, rollout-parsing]
+    examples:
+      positive: 开始或停止投屏后应用继续运行，菜单栏 fallback 可以正常出现或隐藏，最近聊天条数变化仍实时更新布局。
+      negative: 投屏触发屏幕变化后反复创建 NSStatusItem，或系统菜单栏可见性偏好导致 render 递归直至应用退出。
+    guards:
+      - Tests/CodexNotchTests/NotchRuntimePreferencesTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: connect and disconnect screen projection while a task is running"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: 14271f5
+
   - id: ACTIVITY-STATE-003
     title: 活动任务优先，完成状态可见
     status: active
@@ -134,7 +156,7 @@ contracts:
       - "manual: ring and wave-ball inspection"
     supersedes: [QUOTA-SEMANTICS-004]
     superseded_by: null
-    last_verified_commit: caa54d2
+    last_verified_commit: 2358997
 
   - id: PRIVACY-BOUNDARY-005
     title: 本机认证与对话内容不得被持久化或公开
