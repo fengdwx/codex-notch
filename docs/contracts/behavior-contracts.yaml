@@ -2,8 +2,8 @@ contracts:
   - id: NOTCH-LAYOUT-001
     title: 紧凑岛体必须贴合物理刘海安全区
     status: active
-    statement: 紧凑刘海的左右内容始终位于各自安全区中央，不被摄像头切口遮挡，也不下沉到刘海下方；左侧 ChatGPT 标记与右侧额度指标共用固定视觉尺寸，右侧切换圆环或波浪球、或展开卡片时均不得改变该尺寸。
-    rationale: 用户首先感知的是物理刘海几何与两翼的视觉平衡；错误位置或两侧尺度不一致会直接破坏观感。
+    statement: 紧凑刘海的左右内容始终位于各自安全区中央，不被摄像头切口遮挡，也不下沉到刘海下方；左右指标共用 24pt 对齐容器，左侧 ChatGPT 标记可以做 22pt 的光学校正，右侧切换圆环或波浪球、或展开卡片时均不得改变容器尺寸或破坏两翼的视觉平衡。
+    rationale: 用户首先感知的是物理刘海几何与两翼的视觉平衡；错误位置、机械地等尺寸或右侧样式改变外轮廓都会直接破坏观感。
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -11,14 +11,14 @@ contracts:
       include: [notch-screens, compact-state]
       exclude: [menu-bar-fallback]
     examples:
-      positive: 左图标和右额度指示器位于刘海两翼、使用同一固定尺寸，且紧凑面板顶边贴合屏幕顶部。
+      positive: 左图标和右额度指示器位于刘海两翼、共用 24pt 对齐容器，左标以较小本体达到视觉平衡，且紧凑面板顶边贴合屏幕顶部。
       negative: 内容整体挂在刘海下方，额度指示器被摄像头切口覆盖，或波浪球/圆环/悬停状态改变两翼指标尺寸。
     guards:
       - Tests/CodexNotchTests/NotchGeometryTests.swift
       - "manual: physical-notch compact-state inspection"
     supersedes: []
     superseded_by: null
-    last_verified_commit: 8e4766b
+    last_verified_commit: 74cd749
 
   - id: NOTCH-MOTION-002
     title: 展开从紧凑岛体向下发生
@@ -67,8 +67,8 @@ contracts:
   - id: QUOTA-SEMANTICS-004
     title: 周额度以剩余百分比清晰表达
     status: active
-    statement: 右侧优先显示周额度的剩余百分比；数字在圆环或波浪球内部；圆环缺口从 12 点方向按顺时针表达，额度高为绿色、低于 20% 为红色。展开面板的额度、重置和最近对话正文均使用易读的字号和对应行高；额度条下方先保留当前周额度的精确重置时刻和秒级倒计时；其下整行“可重置 N 次”都是点击区，卡片只向下展开，逐条列出 `rate-limit-reset-credits` 中状态为 `available` 的重置券精确到期时刻和秒级倒计时，不重复显示重置券名称。
-    rationale: 这是应用的主要信息目标，不能因动画、布局或过小字号而模糊、重复或误用滚动窗口；当前周额度的 reset_at 与重置券的 expires_at 是两类不同信息，必须分别展示。所有行的名称在当前界面都相同，重复显示会挤占时间的可读空间。重置券明细只读，不在刘海中触发“使用重置”。
+    statement: 右侧优先显示周额度的剩余百分比；数字在圆环或波浪球内部；圆环缺口从 12 点方向按顺时针表达，额度高为绿色、低于 20% 为红色。波浪球只在存在运行任务且未启用 Reduce Motion 时起伏，空闲和完成态保持静止液面。展开面板的额度、重置和最近对话正文均使用易读的字号和对应行高；额度条下方先保留当前周额度的精确重置时刻和秒级倒计时；其下整行“可重置 N 次”都是点击区，卡片只向下展开，逐条列出 `rate-limit-reset-credits` 中状态为 `available` 的重置券精确到期时刻和秒级倒计时，不重复显示重置券名称。设置窗口的实际刘海就是实时预览，不重复保留静态预览卡；展开面板右下角必须提供打开设置的入口。
+    rationale: 这是应用的主要信息目标，不能因动画、布局或过小字号而模糊、重复或误用滚动窗口；当前周额度的 reset_at 与重置券的 expires_at 是两类不同信息，必须分别展示。所有行的名称在当前界面都相同，重复显示会挤占时间的可读空间。重置券明细只读，不在刘海中触发“使用重置”。实时刘海比设置窗口的伪造静态预览更可信，空闲时持续波动也会错误暗示任务仍在运行。
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -76,8 +76,8 @@ contracts:
       include: [compact-state, quota-expanded-state, settings]
       exclude: [cost-estimation]
     examples:
-      positive: weekly window 存在时显示剩余数字；展开正文的额度、重置和最近对话均清晰可读；额度条下方保留当前周额度的重置时刻与倒计时；整行“可重置 N 次”任一点均可点击，点击后以大字号列出所有 status=available 的 expires_at 和倒计时，且不重复显示 Full reset；波浪球文字不遮挡液面；20% 临界值仍是绿色。
-      negative: 只返回滚动窗口却伪造周额度，用额度窗口 reset_at 代替重置券 expires_at，展示已兑换的重置券，触发重置操作，或重置明细向上展开。
+      positive: weekly window 存在时显示剩余数字；展开正文的额度、重置和最近对话均清晰可读；额度条下方保留当前周额度的重置时刻与倒计时；整行“可重置 N 次”任一点均可点击，点击后以大字号列出所有 status=available 的 expires_at 和倒计时，且不重复显示 Full reset；波浪球文字不遮挡液面，并且只在任务运行时起伏；设置页不重复展示预览卡，展开面板右下角能打开设置；20% 临界值仍是绿色。
+      negative: 只返回滚动窗口却伪造周额度，用额度窗口 reset_at 代替重置券 expires_at，展示已兑换的重置券，触发重置操作，或重置明细向上展开；空闲时波浪持续起伏，或设置页仍保留与实际刘海不同步的静态预览。
     guards:
       - Tests/CodexNotchTests/CodexUsageClientTests.swift
       - Tests/CodexNotchTests/NotchTextTests.swift
@@ -87,7 +87,7 @@ contracts:
       - "manual: ring and wave-ball inspection"
     supersedes: []
     superseded_by: null
-    last_verified_commit: d7394d9
+    last_verified_commit: 74cd749
 
   - id: PRIVACY-BOUNDARY-005
     title: 本机认证与对话内容不得被持久化或公开
