@@ -67,7 +67,7 @@ contracts:
   - id: QUOTA-SEMANTICS-004
     title: 周额度以剩余百分比清晰表达
     status: active
-    statement: 右侧优先显示周额度的剩余百分比；数字在圆环或波浪球内部；圆环缺口从 12 点方向按顺时针表达，额度高为绿色、低于 20% 为红色。展开面板还必须显示接口返回的可重置次数；点击额度条下方的重置时间入口后，卡片只向下展开，按时间列出每个实际返回 reset_at 的额度窗口和秒级倒计时。
+    statement: 右侧优先显示周额度的剩余百分比；数字在圆环或波浪球内部；圆环缺口从 12 点方向按顺时针表达，额度高为绿色、低于 20% 为红色。展开面板的额度条下方先保留当前周额度的精确重置时刻和秒级倒计时；其下的“可重置 N 次”入口可点击，卡片只向下展开，按时间列出每个实际返回 reset_at 的额度窗口和秒级倒计时。
     rationale: 这是应用的主要信息目标，不能因动画或布局而模糊、重复或误用滚动窗口；可重置次数和各额度窗口的时间让用户无需打开 ChatGPT 也能判断额度恢复路径。接口未为每个重置次数单独提供时间时，不得虚构该时间。
     source: user-confirmed
     owner: project-maintainer
@@ -76,7 +76,7 @@ contracts:
       include: [compact-state, quota-expanded-state, settings]
       exclude: [cost-estimation]
     examples:
-      positive: weekly window 存在时显示剩余数字；点击展开面板中的重置时间后，按时间列出所有带 reset_at 的额度窗口和倒计时；波浪球文字不遮挡液面；20% 临界值仍是绿色。
+      positive: weekly window 存在时显示剩余数字；额度条下方保留当前周额度的重置时刻与倒计时；点击“可重置 N 次”后，按时间列出所有带 reset_at 的额度窗口和倒计时；波浪球文字不遮挡液面；20% 临界值仍是绿色。
       negative: 只返回滚动窗口却伪造周额度，为 available_count 虚构独立重置时间，或重置明细向上展开。
     guards:
       - Tests/CodexNotchTests/CodexUsageClientTests.swift
@@ -87,7 +87,7 @@ contracts:
       - "manual: ring and wave-ball inspection"
     supersedes: []
     superseded_by: null
-    last_verified_commit: 5490aac
+    last_verified_commit: e1e5ace
 
   - id: PRIVACY-BOUNDARY-005
     title: 本机认证与对话内容不得被持久化或公开
