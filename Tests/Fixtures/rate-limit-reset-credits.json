@@ -1,0 +1,41 @@
+{
+  "available_count": 5,
+  "credits": [
+    {
+      "id": "credit-july-27",
+      "title": "Full reset",
+      "status": "available",
+      "expires_at": "2026-07-27T00:00:00Z"
+    },
+    {
+      "id": "credit-july-18",
+      "title": "Full reset",
+      "status": "available",
+      "expires_at": "2026-07-18T00:00:00Z"
+    },
+    {
+      "id": "credit-consumed",
+      "title": "Full reset",
+      "status": "redeemed",
+      "expires_at": "2026-07-17T00:00:00Z"
+    },
+    {
+      "id": "credit-august-1",
+      "title": "Full reset",
+      "status": "available",
+      "expires_at": "2026-08-01T00:00:00Z"
+    },
+    {
+      "id": "credit-august-12",
+      "title": "Full reset",
+      "status": "available",
+      "expires_at": "2026-08-12T00:00:00Z"
+    },
+    {
+      "id": "credit-august-13",
+      "title": "Full reset",
+      "status": "available",
+      "expires_at": "2026-08-13T00:00:00Z"
+    }
+  ]
+}

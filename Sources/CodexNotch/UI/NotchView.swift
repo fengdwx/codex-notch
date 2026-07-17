@@ -1172,8 +1172,8 @@ private struct WeeklyQuotaProgressView: View {
         return QuotaColorScale.color(for: window?.remainingPercent ?? 0)
     }
 
-    private var resetWindows: [UsageWindow] {
-        usage?.resetScheduledWindows ?? []
+    private var resetCredits: [ResetCredit] {
+        usage?.resetCredits ?? []
     }
 
     var body: some View {
@@ -1220,7 +1220,7 @@ private struct WeeklyQuotaProgressView: View {
             }
 
             ResetScheduleDisclosure(
-                windows: resetWindows,
+                credits: resetCredits,
                 now: now,
                 isExpanded: isResetScheduleExpanded,
                 title: NotchText.resetCredits(usage: usage),
@@ -1247,7 +1247,7 @@ private struct WeeklyQuotaProgressView: View {
 }
 
 private struct ResetScheduleDisclosure: View {
-    let windows: [UsageWindow]
+    let credits: [ResetCredit]
     let now: Date
     let isExpanded: Bool
     let title: String
@@ -1256,7 +1256,7 @@ private struct ResetScheduleDisclosure: View {
     var body: some View {
         VStack(spacing: NotchExpandedLayout.resetScheduleDetailSpacing) {
             Button {
-                guard !windows.isEmpty else { return }
+                guard !credits.isEmpty else { return }
                 onExpandedChanged(!isExpanded)
             } label: {
                 HStack(spacing: 4) {
@@ -1275,14 +1275,14 @@ private struct ResetScheduleDisclosure: View {
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
                 }
                 .foregroundStyle(
-                    windows.isEmpty
+                    credits.isEmpty
                         ? NotchPalette.secondaryText
                         : NotchPalette.primaryText.opacity(0.82)
                 )
                 .padding(.horizontal, 8)
                 .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
                 .background(
-                    windows.isEmpty
+                    credits.isEmpty
                         ? NotchPalette.row.opacity(0.35)
                         : NotchPalette.row.opacity(0.78),
                     in: RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -1297,14 +1297,14 @@ private struct ResetScheduleDisclosure: View {
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
             .accessibilityLabel("重置次数：\(title)")
-            .accessibilityHint(windows.isEmpty ? "接口暂未返回重置时间" : "点击展开或收起对应额度的重置时间")
+            .accessibilityHint(credits.isEmpty ? "接口暂未返回重置券明细" : "点击展开或收起对应重置次数的到期时间")
 
-            if isExpanded, !windows.isEmpty {
+            if isExpanded, !credits.isEmpty {
                 VStack(spacing: 0) {
-                    ForEach(Array(windows.enumerated()), id: \.element.id) { index, window in
-                        ResetScheduleRow(index: index + 1, window: window, now: now)
+                    ForEach(Array(credits.enumerated()), id: \.element.id) { index, credit in
+                        ResetScheduleRow(credit: credit, now: now)
 
-                        if index < windows.count - 1 {
+                        if index < credits.count - 1 {
                             Rectangle()
                                 .fill(NotchPalette.border)
                                 .frame(height: NotchExpandedLayout.conversationSeparatorHeight)
@@ -1326,25 +1326,21 @@ private struct ResetScheduleDisclosure: View {
 }
 
 private struct ResetScheduleRow: View {
-    let index: Int
-    let window: UsageWindow
+    let credit: ResetCredit
     let now: Date
 
     var body: some View {
         HStack(spacing: 6) {
-            Text("重置项 \(index)")
-                .frame(width: 35, alignment: .leading)
+            Text(NotchText.resetCreditTitle(credit))
+                .frame(width: 58, alignment: .leading)
 
-            Text(NotchText.windowLabel(window.kind))
-                .frame(width: 44, alignment: .leading)
-
-            Text(window.resetAt.map { NotchText.resetTimestamp($0) } ?? "—")
+            Text(NotchText.resetCreditExpiry(credit))
                 .monospacedDigit()
 
             Spacer(minLength: 4)
 
             Text(
-                window.resetAt.map {
+                credit.expiresAt.map {
                     "还剩 \(NotchText.resetCountdown(resetAt: $0, now: now))"
                 } ?? "—"
             )
@@ -1434,6 +1430,21 @@ enum NotchText {
             return "重置 —"
         }
         return "可重置 \(credits) 次"
+    }
+
+    static func resetCreditTitle(_ credit: ResetCredit) -> String {
+        let title = credit.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return title.isEmpty ? "使用限额重置" : title
+    }
+
+    static func resetCreditExpiry(
+        _ credit: ResetCredit,
+        timeZone: TimeZone = .current
+    ) -> String {
+        guard let expiresAt = credit.expiresAt else {
+            return "到期时间暂不可用"
+        }
+        return "到期 \(resetTimestamp(expiresAt, timeZone: timeZone))"
     }
 
     static func sessionSubtitle(_ session: SessionActivity, now: Date) -> String {

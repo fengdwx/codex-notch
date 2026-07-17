@@ -25,6 +25,7 @@ struct UsageResponseDTO: Decodable {
         return UsageSnapshot(
             windows: windows,
             resetCreditsAvailable: rateLimitResetCredits?.availableCount,
+            resetCredits: rateLimitResetCredits?.availableCredits ?? [],
             fetchedAt: fetchedAt
         )
     }
@@ -84,8 +85,63 @@ struct WindowDTO: Decodable {
 
 struct ResetCreditsDTO: Decodable {
     let availableCount: Int?
+    let credits: [ResetCreditDTO]?
 
     enum CodingKeys: String, CodingKey {
         case availableCount = "available_count"
+        case credits
+    }
+
+    var availableCredits: [ResetCredit] {
+        (credits ?? [])
+            .filter { $0.status == "available" }
+            .enumerated()
+            .map { index, credit in
+                ResetCredit(
+                    id: credit.id ?? "reset-credit-\(index)-\(credit.expiresAt?.timeIntervalSince1970 ?? 0)",
+                    title: credit.title,
+                    expiresAt: credit.expiresAt
+                )
+            }
+    }
+}
+
+struct ResetCreditDTO: Decodable {
+    let id: String?
+    let title: String?
+    let status: String?
+    let expiresAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case status
+        case expiresAt = "expires_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(String.self, forKey: .id)
+        title = try container.decodeIfPresent(String.self, forKey: .title)
+        status = try container.decodeIfPresent(String.self, forKey: .status)
+        expiresAt = FlexibleDate.decode(from: container, forKey: .expiresAt)
+    }
+}
+
+private enum FlexibleDate {
+    static func decode<Key: CodingKey>(
+        from container: KeyedDecodingContainer<Key>,
+        forKey key: Key
+    ) -> Date? {
+        if let epoch = try? container.decode(Double.self, forKey: key) {
+            let seconds = epoch > 1_000_000_000_000 ? epoch / 1_000 : epoch
+            return Date(timeIntervalSince1970: seconds)
+        }
+        if let text = try? container.decode(String.self, forKey: key) {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions.insert(.withFractionalSeconds)
+            return formatter.date(from: text) ?? ISO8601DateFormatter().date(from: text)
+        }
+        return nil
     }
 }

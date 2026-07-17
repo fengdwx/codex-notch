@@ -193,12 +193,13 @@ final class NotchWindowController: NSWindowController {
         case let .expanded(content):
             menu.addItem(disabledItem(title: content.conversations.isEmpty ? "Codex 额度" : "Codex 最近对话"))
             if let usage = content.usage,
-               !usage.resetScheduledWindows.isEmpty {
+               !usage.resetCredits.isEmpty {
                 menu.addItem(NSMenuItem.separator())
-                menu.addItem(disabledItem(title: "额度重置时间"))
-                for window in usage.resetScheduledWindows {
-                    guard let resetAt = window.resetAt else { continue }
-                    menu.addItem(disabledItem(title: "\(NotchText.windowLabel(window.kind)) · \(NotchText.resetTimestamp(resetAt))"))
+                menu.addItem(disabledItem(title: "使用限额重置"))
+                for credit in usage.resetCredits {
+                    menu.addItem(disabledItem(
+                        title: "\(NotchText.resetCreditTitle(credit)) · \(NotchText.resetCreditExpiry(credit))"
+                    ))
                 }
             }
             if content.conversations.isEmpty {

@@ -346,13 +346,13 @@ final class NotchRuntimeCoordinator {
             return NotchExpandedLayout.taskContentSize(
                 conversationCount: 2,
                 isResetScheduleExpanded: isResetScheduleExpanded,
-                resetWindowCount: resetWindowCount(in: state)
+                resetCreditCount: resetCreditCount(in: state)
             )
         }
         return NotchExpandedLayout.taskContentSize(
             conversationCount: content.conversations.count,
             isResetScheduleExpanded: isResetScheduleExpanded,
-            resetWindowCount: content.usage?.resetScheduledWindows.count ?? 0
+            resetCreditCount: content.usage?.resetCredits.count ?? 0
         )
     }
 
@@ -362,13 +362,13 @@ final class NotchRuntimeCoordinator {
     ) -> NSSize {
         NotchExpandedLayout.quotaContentSize(
             isResetScheduleExpanded: isResetScheduleExpanded,
-            resetWindowCount: resetWindowCount(in: state)
+            resetCreditCount: resetCreditCount(in: state)
         )
     }
 
-    private func resetWindowCount(in state: NotchPresentationState) -> Int {
+    private func resetCreditCount(in state: NotchPresentationState) -> Int {
         guard case let .expanded(content) = state else { return 0 }
-        return content.usage?.resetScheduledWindows.count ?? 0
+        return content.usage?.resetCredits.count ?? 0
     }
 
     private func render(now: Date? = nil) {
@@ -411,7 +411,7 @@ final class NotchRuntimeCoordinator {
             isResetScheduleExpanded = false
             return renderCompactState(displayState, now: renderDate, screen: screen, metrics: metrics)
         }
-        if resetWindowCount(in: displayState) == 0 {
+        if resetCreditCount(in: displayState) == 0 {
             isResetScheduleExpanded = false
         }
         let layout = NotchGeometry.layout(

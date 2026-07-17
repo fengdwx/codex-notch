@@ -73,19 +73,19 @@ enum NotchExpandedLayout {
     static let twoConversationContentHeight: CGFloat = 176 + resetScheduleControlHeight
     static let conversationRowHeight: CGFloat = 30
     static let conversationSeparatorHeight: CGFloat = 0.5
-    static let resetScheduleRowHeight: CGFloat = 18
+    static let resetScheduleRowHeight: CGFloat = 20
     static let resetScheduleDetailSpacing: CGFloat = 4
     static let resetScheduleDetailVerticalPadding: CGFloat = 4
 
     static func quotaContentSize(
         isResetScheduleExpanded: Bool = false,
-        resetWindowCount: Int = 0
+        resetCreditCount: Int = 0
     ) -> NSSize {
         NSSize(
             width: width,
             height: quotaContentHeight + resetScheduleExpansionHeight(
                 isExpanded: isResetScheduleExpanded,
-                resetWindowCount: resetWindowCount
+                resetCreditCount: resetCreditCount
             )
         )
     }
@@ -93,7 +93,7 @@ enum NotchExpandedLayout {
     static func taskContentHeight(
         conversationCount: Int,
         isResetScheduleExpanded: Bool = false,
-        resetWindowCount: Int = 0
+        resetCreditCount: Int = 0
     ) -> CGFloat {
         let count = max(1, conversationCount)
         return twoConversationContentHeight
@@ -101,31 +101,31 @@ enum NotchExpandedLayout {
             * (conversationRowHeight + conversationSeparatorHeight)
             + resetScheduleExpansionHeight(
                 isExpanded: isResetScheduleExpanded,
-                resetWindowCount: resetWindowCount
+                resetCreditCount: resetCreditCount
             )
     }
 
     static func taskContentSize(
         conversationCount: Int,
         isResetScheduleExpanded: Bool = false,
-        resetWindowCount: Int = 0
+        resetCreditCount: Int = 0
     ) -> NSSize {
         NSSize(
             width: width,
             height: taskContentHeight(
                 conversationCount: conversationCount,
                 isResetScheduleExpanded: isResetScheduleExpanded,
-                resetWindowCount: resetWindowCount
+                resetCreditCount: resetCreditCount
             )
         )
     }
 
     private static func resetScheduleExpansionHeight(
         isExpanded: Bool,
-        resetWindowCount: Int
+        resetCreditCount: Int
     ) -> CGFloat {
-        guard isExpanded, resetWindowCount > 0 else { return 0 }
-        let count = resetWindowCount
+        guard isExpanded, resetCreditCount > 0 else { return 0 }
+        let count = resetCreditCount
         return resetScheduleDetailSpacing
             + resetScheduleDetailVerticalPadding * 2
             + CGFloat(count) * resetScheduleRowHeight

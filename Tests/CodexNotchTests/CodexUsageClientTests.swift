@@ -52,6 +52,34 @@ final class CodexUsageClientTests: XCTestCase {
         XCTAssertEqual(snapshot.resetCreditsAvailable, 2)
     }
 
+    func testResetCreditDetailsUseTheDedicatedEndpointAndKeepAvailableCredits() async throws {
+        let usageData = try Data(contentsOf: fixtureURL("usage-weekly-only.json"))
+        let resetCreditData = try Data(contentsOf: fixtureURL("rate-limit-reset-credits.json"))
+        MockURLProtocol.requestHandler = { request in
+            switch request.url?.path {
+            case "/backend-api/wham/usage":
+                return (self.response(status: 200), usageData)
+            case "/backend-api/wham/rate-limit-reset-credits":
+                return (self.response(status: 200), resetCreditData)
+            default:
+                XCTFail("Unexpected endpoint: \(request.url?.absoluteString ?? "nil")")
+                return (self.response(status: 404), Data())
+            }
+        }
+
+        let snapshot = try await makeClient().fetch()
+
+        XCTAssertEqual(snapshot.resetCreditsAvailable, 5)
+        XCTAssertEqual(snapshot.resetCredits.map(\.id), [
+            "credit-july-18",
+            "credit-july-27",
+            "credit-august-1",
+            "credit-august-12",
+            "credit-august-13"
+        ])
+        XCTAssertEqual(snapshot.resetCredits.map(\.title), Array(repeating: "Full reset", count: 5))
+    }
+
     func testUnauthorizedResponseRequiresReauthentication() async throws {
         MockURLProtocol.requestHandler = { _ in
             (self.response(status: 401), Data())

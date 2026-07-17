@@ -124,12 +124,12 @@ final class NotchGeometryTests: XCTestCase {
             metrics: metrics,
             quotaExpandedSize: NotchExpandedLayout.quotaContentSize(
                 isResetScheduleExpanded: true,
-                resetWindowCount: 2
+                resetCreditCount: 2
             ),
             expandedSize: NotchExpandedLayout.taskContentSize(
                 conversationCount: 2,
                 isResetScheduleExpanded: true,
-                resetWindowCount: 2
+                resetCreditCount: 2
             )
         )
 
@@ -138,6 +138,23 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertLessThan(expanded.quotaExpandedFrame.minY, collapsed.quotaExpandedFrame.minY)
         XCTAssertEqual(collapsed.expandedFrame.maxY, expanded.expandedFrame.maxY, accuracy: 0.1)
         XCTAssertGreaterThan(expanded.expandedFrame.height, collapsed.expandedFrame.height)
+    }
+
+    func testFiveResetCreditsReserveFiveRowsInsideThePreparedCanvas() {
+        let twoCredits = NotchExpandedLayout.quotaContentSize(
+            isResetScheduleExpanded: true,
+            resetCreditCount: 2
+        )
+        let fiveCredits = NotchExpandedLayout.quotaContentSize(
+            isResetScheduleExpanded: true,
+            resetCreditCount: 5
+        )
+
+        XCTAssertEqual(
+            fiveCredits.height - twoCredits.height,
+            3 * (NotchExpandedLayout.resetScheduleRowHeight + NotchExpandedLayout.conversationSeparatorHeight),
+            accuracy: 0.1
+        )
     }
 
     func testFrameInterpolationStartsWithCompactIslandAndKeepsTopEdgeFixed() {

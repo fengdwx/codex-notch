@@ -46,17 +46,35 @@ final class NotchTextTests: XCTestCase {
         XCTAssertEqual(NotchText.resetCredits(usage: nil), "重置 —")
     }
 
-    func testResetScheduleKeepsEveryKnownWindowAndSortsByTime() {
+    func testResetCreditsKeepEveryAvailableCreditAndSortByExpiry() {
         let first = Date(timeIntervalSince1970: 2_000)
         let second = Date(timeIntervalSince1970: 3_000)
-        let usage = UsageSnapshot(windows: [
-            UsageWindow(id: "weekly", kind: .weekly, usedPercent: 20, resetAt: second),
-            UsageWindow(id: "unknown", kind: .daily, usedPercent: 10),
-            UsageWindow(id: "rolling", kind: .rolling(hours: 5), usedPercent: 30, resetAt: first)
-        ])
+        let usage = UsageSnapshot(
+            windows: [UsageWindow(id: "weekly", kind: .weekly, usedPercent: 20)],
+            resetCredits: [
+                ResetCredit(id: "second", title: "Full reset", expiresAt: second),
+                ResetCredit(id: "unknown", title: nil),
+                ResetCredit(id: "first", title: "Full reset", expiresAt: first)
+            ]
+        )
 
-        XCTAssertEqual(usage.resetScheduledWindows.map(\.id), ["rolling", "weekly"])
-        XCTAssertEqual(usage.resetScheduledWindows.count, 2)
+        XCTAssertEqual(usage.resetCredits.map(\.id), ["first", "second", "unknown"])
+        XCTAssertEqual(usage.resetCredits.count, 3)
+        XCTAssertEqual(NotchText.resetCreditTitle(usage.resetCredits[2]), "使用限额重置")
+    }
+
+    func testResetCreditExpiryIncludesTheActualExpiryTime() {
+        let timeZone = TimeZone(secondsFromGMT: 8 * 3_600)!
+        let credit = ResetCredit(
+            id: "credit",
+            title: "Full reset",
+            expiresAt: Date(timeIntervalSince1970: 1_768_377_845)
+        )
+
+        XCTAssertEqual(
+            NotchText.resetCreditExpiry(credit, timeZone: timeZone),
+            "到期 2026-01-14 16:04:05"
+        )
     }
 
     func testWeeklyWindowIsSelectedWithoutFallingBackToRollingQuota() {
