@@ -87,7 +87,7 @@ contracts:
       - "manual: ring and wave-ball inspection"
     supersedes: []
     superseded_by: null
-    last_verified_commit: 23ed0b8
+    last_verified_commit: 2796cfe
 
   - id: PRIVACY-BOUNDARY-005
     title: 本机认证与对话内容不得被持久化或公开
