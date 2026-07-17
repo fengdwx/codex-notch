@@ -42,6 +42,28 @@ contracts:
     superseded_by: null
     last_verified_commit: 0d37196
 
+  - id: EXPANDED-APPEARANCE-009
+    title: 展开卡片外观可在系统玻璃与纯黑之间实时切换
+    status: active
+    statement: 设置页必须提供“玻璃”和“黑色”两种展开卡片外观并立即应用，默认使用玻璃。macOS 26 及以上使用系统原生 Liquid Glass，仍受支持的旧系统使用原生半透明 Material 降级；黑色模式保持既有纯黑表面。该设置只改变展开卡片材质，不得改变紧凑刘海的纯黑表面、固定透明画布、展开方向或窗口几何。
+    rationale: 原生系统材质能跟随桌面内容和指针产生一致的最新 macOS 观感，纯黑选项则保留高对比偏好；将材质选择与窗口几何隔离可避免重新引入展开跳动和鼠标拦截回归。
+    source: user-confirmed
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [expanded-state, settings, notch-screens]
+      exclude: [compact-state, menu-bar-fallback]
+    examples:
+      positive: 设置为玻璃后真实展开卡片立即显示系统玻璃表面，设置为黑色后立即恢复纯黑；收起后的紧凑刘海始终为纯黑。
+      negative: 玻璃设置也让紧凑刘海透明、切换后必须重启、旧系统无法展开，或为材质动画重新逐帧改变 NSPanel 尺寸。
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - docs/decisions/002-native-liquid-glass-with-fallback.md
+      - "manual: switch both appearances and inspect expansion on physical-notch hardware"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: 916f72b
+
   - id: ACTIVITY-STATE-003
     title: 活动任务优先，完成状态可见
     status: active
