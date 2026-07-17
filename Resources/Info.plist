@@ -8,6 +8,8 @@
     <string>CodexNotch</string>
     <key>CFBundleIdentifier</key>
     <string>com.david.codexnotch</string>
+    <key>CFBundleIconFile</key>
+    <string>CodexNotch</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>

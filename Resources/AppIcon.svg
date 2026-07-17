@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="background" x1="104" y1="76" x2="930" y2="970" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#16245d"/>
+      <stop offset="0.5" stop-color="#0b173e"/>
+      <stop offset="1" stop-color="#070b20"/>
+    </linearGradient>
+    <radialGradient id="aurora" cx="0" cy="0" r="1" gradientTransform="translate(756 284) rotate(137) scale(590)">
+      <stop stop-color="#3b7cff" stop-opacity=".47"/>
+      <stop offset=".58" stop-color="#2460d8" stop-opacity=".10"/>
+      <stop offset="1" stop-color="#2460d8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="orbit" x1="286" y1="780" x2="726" y2="338" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#42e8bd"/>
+      <stop offset=".45" stop-color="#59b6ff"/>
+      <stop offset="1" stop-color="#c5e9ff"/>
+    </linearGradient>
+    <linearGradient id="prompt" x1="414" y1="460" x2="654" y2="664" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#b8d8ff"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" rx="230" fill="url(#background)"/>
+  <rect width="1024" height="1024" rx="230" fill="url(#aurora)"/>
+  <rect x="24" y="24" width="976" height="976" rx="210" fill="none" stroke="#b8d7ff" stroke-opacity=".15" stroke-width="4"/>
+
+  <!-- A physical-notch silhouette anchors the mark to the product's home. -->
+  <path d="M322 24h380c40 0 72 32 72 72v96c0 30-24 54-54 54H304c-30 0-54-24-54-54V96c0-40 32-72 72-72Z" fill="#03050e"/>
+  <path d="M346 26h332c37 0 68 30 68 68v84c0 20-16 36-36 36H314c-20 0-36-16-36-36V94c0-38 31-68 68-68Z" fill="#080c1c" stroke="#2b3b71" stroke-opacity=".64" stroke-width="4"/>
+  <circle cx="512" cy="120" r="15" fill="#111a35"/>
+  <circle cx="512" cy="120" r="7" fill="#07101f"/>
+
+  <g>
+    <circle cx="512" cy="572" r="268" fill="#07112b" fill-opacity=".8" stroke="#8ecbff" stroke-opacity=".14" stroke-width="5"/>
+    <path d="M355 727a246 246 0 1 1 309 54" fill="none" stroke="url(#orbit)" stroke-linecap="round" stroke-width="29"/>
+    <path d="M355 727a246 246 0 0 1-39-232" fill="none" stroke="#42e8bd" stroke-linecap="round" stroke-width="29"/>
+    <circle cx="673" cy="776" r="23" fill="#42e8bd"/>
+    <circle cx="673" cy="776" r="10" fill="#e9fff8"/>
+  </g>
+
+  <g fill="none" stroke="url(#prompt)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m408 484 108 90-108 90" stroke-width="40"/>
+    <path d="M556 666h122" stroke-width="40"/>
+  </g>
+  <circle cx="344" cy="405" r="8" fill="#9ccaff" fill-opacity=".85"/>
+  <circle cx="709" cy="375" r="6" fill="#57e4bc" fill-opacity=".9"/>
+</svg>

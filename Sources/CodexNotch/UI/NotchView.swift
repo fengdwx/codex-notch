@@ -1162,6 +1162,8 @@ private struct WeeklyQuotaProgressView: View {
 
                 Spacer()
 
+                ResetCreditsBadge(usage: usage)
+
                 Text(window.map { NotchText.percent($0.remainingPercent) } ?? "—")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(progressColor)
@@ -1212,6 +1214,27 @@ private struct WeeklyQuotaProgressView: View {
             return "--:--:--"
         }
         return NotchText.resetCountdown(resetAt: resetAt, now: now)
+    }
+}
+
+private struct ResetCreditsBadge: View {
+    let usage: UsageSnapshot?
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "arrow.counterclockwise.circle.fill")
+                .font(.system(size: 8, weight: .semibold))
+
+            Text(NotchText.resetCredits(usage: usage))
+                .font(.system(size: 8.5, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .lineLimit(1)
+        }
+        .foregroundStyle(NotchPalette.secondaryText)
+        .padding(.horizontal, 5)
+        .padding(.vertical, 3)
+        .background(NotchPalette.chip, in: Capsule())
+        .accessibilityLabel("重置次数：\(NotchText.resetCredits(usage: usage))")
     }
 }
 
@@ -1285,6 +1308,13 @@ enum NotchText {
             return "额度暂不可用"
         }
         return "\(windowLabel(window.kind))剩余 \(percent(window.remainingPercent)) · 已用 \(percent(window.usedPercent))"
+    }
+
+    static func resetCredits(usage: UsageSnapshot?) -> String {
+        guard let credits = usage?.resetCreditsAvailable else {
+            return "重置 —"
+        }
+        return "可重置 \(credits) 次"
     }
 
     static func sessionSubtitle(_ session: SessionActivity, now: Date) -> String {

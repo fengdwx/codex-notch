@@ -36,6 +36,16 @@ final class NotchTextTests: XCTestCase {
         XCTAssertEqual(NotchText.quotaSubtitle(usage: usage), "每周剩余 80% · 已用 20%")
     }
 
+    func testResetCreditsTextKeepsTheAvailableCountVisible() {
+        let usage = UsageSnapshot(
+            windows: [UsageWindow(id: "primary", kind: .weekly, usedPercent: 20)],
+            resetCreditsAvailable: 2
+        )
+
+        XCTAssertEqual(NotchText.resetCredits(usage: usage), "可重置 2 次")
+        XCTAssertEqual(NotchText.resetCredits(usage: nil), "重置 —")
+    }
+
     func testWeeklyWindowIsSelectedWithoutFallingBackToRollingQuota() {
         let rolling = UsageWindow(id: "primary", kind: .rolling(hours: 5), usedPercent: 10)
         let weekly = UsageWindow(id: "secondary", kind: .weekly, usedPercent: 25)
