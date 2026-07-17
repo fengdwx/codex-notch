@@ -157,7 +157,7 @@ contracts:
 
   - id: QUOTA-SEMANTICS-008
     title: 周额度以剩余百分比清晰表达
-    status: active
+    status: superseded
     statement: 右侧优先显示周额度的剩余百分比；数字在圆环或波浪球内部；圆环缺口从 12 点方向按顺时针表达，额度高为绿色、低于 20% 为红色。存在运行任务时圆环使用渐变色，未启用 Reduce Motion 时渐变沿剩余额度弧柔和流动；空闲和完成态必须立即改用当前额度对应的单一纯色，不能保留静态渐变或独立旋转的高光小弧。波浪球只在存在运行任务且未启用 Reduce Motion 时起伏，空闲和完成态保持静止液面。展开面板的额度、重置和最近对话正文均使用易读的字号和对应行高；额度条下方先保留当前周额度的精确重置时刻和秒级倒计时；其下整行“可重置 N 次”都是点击区，卡片只向下展开，逐条列出 `rate-limit-reset-credits` 中状态为 `available` 的重置券精确到期时刻和秒级倒计时，不重复显示重置券名称。设置窗口的实际刘海就是实时预览，不重复保留静态预览卡；展开面板右下角必须提供打开设置的入口。
     rationale: 这是应用的主要信息目标，不能因动画、布局或过小字号而模糊、重复或误用滚动窗口；当前周额度的 reset_at 与重置券的 expires_at 是两类不同信息，必须分别展示。所有行的名称在当前界面都相同，重复显示会挤占时间的可读空间。重置券明细只读，不在刘海中触发“使用重置”。实时刘海比设置窗口的伪造静态预览更可信；运行时的渐变表达活动，停止后的单一纯色则提供明确的状态边界，避免静态渐变继续暗示任务仍在运行。
     source: user-confirmed
@@ -177,8 +177,32 @@ contracts:
       - "manual: expanded quota panel inspection"
       - "manual: ring and wave-ball inspection"
     supersedes: [QUOTA-SEMANTICS-004]
-    superseded_by: null
+    superseded_by: QUOTA-SEMANTICS-012
     last_verified_commit: 2358997
+
+  - id: QUOTA-SEMANTICS-012
+    title: 周额度使用绿色、黄色、深红三档告警色
+    status: active
+    statement: 右侧优先显示周额度的剩余百分比；数字在圆环或波浪球内部；圆环缺口从 12 点方向按顺时针表达。剩余额度高于 20% 时使用绿色，高于 10% 且不高于 20% 时使用黄色，10% 及以下使用深红色，不再随百分比连续改变色相。存在运行任务时圆环使用当前档位颜色的单色明暗渐变，不混入白色高光；未启用 Reduce Motion 时渐变沿剩余额度弧柔和流动。空闲和完成态必须立即改用当前档位的单一纯色，不能保留静态渐变或独立旋转的高光小弧。波浪球使用相同三档颜色，只在存在运行任务且未启用 Reduce Motion 时起伏，空闲和完成态保持静止液面。展开面板的额度、重置和最近对话正文均使用易读的字号和对应行高；额度条下方先保留当前周额度的精确重置时刻和秒级倒计时；其下整行“可重置 N 次”都是点击区，卡片只向下展开，逐条列出 `rate-limit-reset-credits` 中状态为 `available` 的重置券精确到期时刻和秒级倒计时，不重复显示重置券名称。设置窗口的实际刘海就是实时预览，不重复保留静态预览卡；展开面板右下角必须提供打开设置的入口。
+    rationale: 大部分可用额度保持稳定绿色能降低视觉噪声；20% 开始用黄色提醒，10% 才进入深红强警报，三档边界比连续彩虹色相更清晰。运行时只改变同一档位颜色的明暗，既保留任务活动感，也避免白色高光和跨色相渐变显得花哨。
+    source: user-confirmed
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [compact-state, quota-expanded-state, settings]
+      exclude: [cost-estimation]
+    examples:
+      positive: 35% 显示绿色，20% 显示黄色，10% 显示深红；圆环运行时只让当前档位的单色明暗渐变沿弧移动，停止后立即变为对应纯色；圆环、波浪球、展开百分比和额度条保持同色。
+      negative: 额度从红到绿连续改变色相，20% 仍显示绿色，10% 仍显示黄色，运行渐变混入突兀白色高光，或空闲与完成态继续显示渐变。
+    guards:
+      - Tests/CodexNotchTests/NotchTextTests.swift
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: inspect green, yellow and deep-red quota states on physical-notch hardware"
+      - "manual: inspect the running monochrome gradient and stopped solid ring"
+    supersedes: [QUOTA-SEMANTICS-008]
+    superseded_by: null
+    last_verified_commit: 778fdc9
 
   - id: PRIVACY-BOUNDARY-005
     title: 本机认证与对话内容不得被持久化或公开
