@@ -1,70 +1,146 @@
+<div align="center">
+
 # CodexNotch
 
-简体中文 · [English](README.md)
+### Codex 在跑，你不必守着。
 
-CodexNotch 是一个独立的 macOS 原生小程序：Codex 任务运行时出现在刘海两侧，同时显示活动状态和周额度；空闲时也保留紧凑额度指示器，悬停实体刘海可展开详情。它不依赖 Atoll、CodexIsland、CC Switch 或其他宿主程序。
+**把任务状态、周额度和精确重置时间，放到 MacBook 刘海旁。**<br>
+切到浏览器、IDE 或任何其他应用，仍然一眼可见。
 
-## 产品演示
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-111111?logo=apple)](https://github.com/fengdwx/codex-notch/releases/latest)
+[![Swift 5.9](https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white)](Package.swift)
+[![Latest release](https://img.shields.io/github/v/release/fengdwx/codex-notch?label=下载最新版&color=2ea44f)](https://github.com/fengdwx/codex-notch/releases/latest)
+[![MIT License](https://img.shields.io/badge/License-MIT-4c8bf5)](LICENSE)
 
-[![17 秒 CodexNotch 产品演示](docs/assets/codex-notch-demo.gif)](docs/assets/codex-notch-demo.mp4)
+[**下载最新版**](https://github.com/fengdwx/codex-notch/releases/latest) · [**观看 26 秒中文演示**](docs/assets/codex-notch-demo-zh.mp4) · [English](README.md)
 
-*来自真实 App 的 17 秒实时录制：展示紧凑运行态与周额度指示器，录屏不含任务标题或用户消息内容。[打开 MP4 视频](docs/assets/codex-notch-demo.mp4)。*
+</div>
 
-## 功能
+[![CodexNotch 中文产品演示](docs/assets/codex-notch-demo-zh.gif)](docs/assets/codex-notch-demo-zh.mp4)
 
-- Codex 任务运行时，即使切换到其他应用，也在刘海旁保持工作状态；空闲时保留紧凑周额度指示器。
-- 鼠标移入实体刘海后，卡片只从刘海位置向下展开，显示周额度、重置时刻、倒计时和最近对话。
-- 左右紧凑指标都放在相同的 24pt 容器中：左侧 ChatGPT 标记按视觉重量校正为 22pt，运行任务时仅保留克制的静态蓝色图形回声，完成后显示一次绿色图形回声和对号；右侧可显示“12 点起点顺时针圆环”或“波浪球”。
-- 应用包带有原创的深绿终端图标：顶部小刘海槽、终端标题栏和高对比绿色 `>_` 提示符，在 Finder、启动台和安装包中可辨识；不使用账号或对话数据生成图标。
-- 展开卡片右下角的“设置”、右键刘海或应用菜单中的“设置…”都可切换额度指示器和展开时显示的最近聊天条数；设置窗口会自动置顶。实际刘海就是实时预览，因此设置窗口不再重复显示静态预览。数字始终显示在指标内部，波浪球只为字形加细描边，不遮挡液面；只有任务运行时液面才会起伏。修改会立即生效并保存在本机。
-- 周额度剩余不低于 20% 时圆环为绿色，低于 20% 时为红色；运行任务时，渐变色沿对应剩余额度的圆环柔和流动；空闲、完成或启用 Reduce Motion 时保持静止。未返回周额度时显示灰色。
-- 悬停展开当前活动任务、本周横向额度进度条和当前的精确重置时刻/秒级倒计时；展开正文的额度、重置和最近对话均使用更易读的字号。其下整行“可重置 N 次”均可点击，展开后逐条列出实际可用重置券的精确到期时刻和倒计时，不重复显示券名称。圆环只用于收起状态，点击任务直接打开 codex://threads/<thread-id>。
-- 按接口返回的 limit_window_seconds 动态识别额度窗口，不写死 5 小时。
-- 无刘海屏幕使用菜单栏 fallback，不读取或展示用户消息正文。
+<p align="center"><sub>真实 App 演示：输入任务、刘海运行状态、周额度、悬停展开、精确重置时间、全部重置额度到期时间，以及切换到其他应用后持续可见。</sub></p>
 
-## 普通用户安装
+## 为什么做 CodexNotch
 
-普通用户只需要下载 Release 中的 CodexNotch-...zip，解压后将 CodexNotch.app 拖到“应用程序”文件夹。无需安装 Swift、Swift Package Manager 或 Xcode。
+等待 Codex 时，最让人分心的不是任务本身，而是不断切回窗口确认：
 
-首次运行的本地 release 默认使用 ad-hoc 签名，macOS 可能提示无法验证开发者。可以在“系统设置 → 隐私与安全性”中选择仍要打开，或右键应用并选择“打开”。正式公开分发时建议使用 Developer ID 签名和公证。
+- **还在运行吗？**
+- **周额度还剩多少？**
+- **到底几点几分几秒重置？**
 
-运行前请先在 ChatGPT 中登录并使用 Codex。应用会读取默认目录 ~/.codex；如果你的 Codex 使用了其他目录，可以通过 CODEX_HOME 环境变量指定。
+CodexNotch 把这三个答案固定在 MacBook 刘海旁。任务继续跑，你可以继续写代码、查资料或处理其他工作。
 
-## 从源码构建
+> **少切一次窗口，少刷新一次额度页，也少一点额度焦虑。**
 
-源码贡献者需要 macOS 14 或更高版本，以及 Xcode 15 / Swift 5.9 或更新版本：
+## 一眼看懂
 
-~~~sh
-swift test
-./scripts/build_app.sh
-open dist/CodexNotch.app
-~~~
+| 你关心的 | CodexNotch 怎么展示 |
+| --- | --- |
+| **任务有没有在跑** | 运行时显示蓝色状态回声；完成后切换为绿色对号。 |
+| **额度还剩多少** | 刘海右侧用圆环或波浪球持续显示周额度，数字始终在指标内部。 |
+| **什么时候重置** | 展开卡片直接显示精确重置时刻和秒级倒计时。 |
+| **多次重置分别何时到期** | 点击“可重置 N 次”，一次展开全部重置额度的到期时间与剩余倒计时。 |
+| **切到其他应用会不会消失** | 不会。浏览器、IDE 或其他应用在前台时，运行状态和额度仍在刘海旁。 |
 
-生成可发布压缩包：
+## 核心体验
 
-~~~sh
-./scripts/release.sh
-~~~
+### 状态跟着你，而不是把你留在 Codex 窗口
 
-脚本会先运行测试、构建 release .app、做代码签名校验，并生成 zip 与 SHA-256 文件。默认签名是本机可用的 ad-hoc 签名；只想跳过签名时可使用：
+Codex 任务运行时，紧凑状态固定在实体刘海两侧。没有运行任务时，周额度指标仍然保留；最近任务完成后，会显示清晰的绿色完成状态。
 
-~~~sh
-SIGN_IDENTITY=none ./scripts/build_app.sh
-~~~
+### 额度不是一个模糊百分比
+
+悬停刘海即可展开卡片，查看：
+
+- 本周剩余额度与横向进度条
+- 当前重置时刻与秒级倒计时
+- 所有可用重置额度的精确到期时间
+- 当前活动任务与最近对话
+
+额度窗口根据接口返回的 `limit_window_seconds` 动态识别，不写死为 5 小时。
+
+### 切换应用，信息还在
+
+CodexNotch 是独立的原生 macOS 应用，不依赖 Atoll、CodexIsland、CC Switch 或其他宿主程序。你可以离开 Codex 窗口，状态、额度和重置时间仍然可见。
+
+### 点击就能回到对应任务
+
+展开卡片中的任务可以直接打开 `codex://threads/<thread-id>`，不用重新寻找刚才的对话。
+
+## 立即安装
+
+前往 [**GitHub Releases**](https://github.com/fengdwx/codex-notch/releases/latest)，下载 `CodexNotch-...zip`：
+
+1. 解压 ZIP。
+2. 将 `CodexNotch.app` 拖入“应用程序”。
+3. 登录 ChatGPT 并使用一次 Codex，然后启动 CodexNotch。
+
+无需安装 Swift、Swift Package Manager 或 Xcode。
+
+> 当前公开包默认使用 ad-hoc 签名。macOS 首次运行时可能提示无法验证开发者；请在“系统设置 → 隐私与安全性”中选择“仍要打开”，或右键应用后选择“打开”。
+
+CodexNotch 默认读取 `~/.codex`。如果你的 Codex 使用其他目录，可通过 `CODEX_HOME` 指定。
+
+## 自定义你看到的信息
+
+鼠标移入实体刘海并点击右下角“设置”，或通过刘海右键菜单、应用菜单打开设置：
+
+- 在顺时针额度圆环与波浪球之间切换
+- 设置展开卡片显示的最近对话数量（1–5）
+- 修改后立即生效，并保存在本机
+- 开启 Reduce Motion 后保留静态状态，减少动态效果
+
+无刘海屏幕会自动使用菜单栏 fallback。
+
+<details>
+<summary><strong>视觉与交互细节</strong></summary>
+
+- 左右紧凑指标使用相同的 24pt 对齐容器，避免图标下沉或被摄像头区域遮挡。
+- 额度环从 12 点方向开始，按顺时针表达进度；额度不低于 20% 时为绿色，低于 20% 时为红色，数据缺失时为灰色。
+- 只有任务运行时，额度渐变或波浪才会运动；空闲、完成或启用 Reduce Motion 时保持静止。
+- 展开卡片只从紧凑岛体向下展开；收起后回收透明画布，避免拦截刘海外的鼠标操作。
+- 数字始终显示在额度指标内部，不在旁边重复显示。
+
+</details>
 
 ## 数据与隐私
 
-- 认证令牌只从 CODEX_HOME/auth.json 读取并保存在进程内存，不写入 CodexNotch 的缓存或日志。
-- 额度与可用重置券明细分别请求 ChatGPT 的只读 usage 和重置券接口。
-- 任务状态只解析本地 CODEX_HOME/sessions rollout JSONL 文件。
+- 认证令牌只从 `CODEX_HOME/auth.json` 读取并保存在进程内存，不写入 CodexNotch 缓存或日志。
+- 额度与可用重置额度明细分别请求 ChatGPT 的只读 usage 和重置额度接口。
+- 任务状态只解析本地 `CODEX_HOME/sessions` 中的 rollout JSONL 文件。
 - 不记录 Authorization header、完整 usage 响应或用户消息正文。
 
-usage 接口属于 ChatGPT 的内部接口，未来字段可能变化；接口异常时会保留最后一次成功的额度，任务监听仍然继续工作。
+usage 接口属于 ChatGPT 内部接口，字段未来可能变化。接口异常时会保留最后一次成功额度，任务监听仍会继续工作。
+
+<details>
+<summary><strong>从源码构建</strong></summary>
+
+需要 macOS 14 或更高版本、Xcode 15 / Swift 5.9 或更新版本：
+
+```sh
+swift test
+./scripts/build_app.sh
+open dist/CodexNotch.app
+```
+
+生成可发布压缩包：
+
+```sh
+./scripts/release.sh
+```
+
+脚本会运行测试、构建 release `.app`、校验代码签名，并生成 ZIP 与 SHA-256 文件。只想跳过签名时可使用：
+
+```sh
+SIGN_IDENTITY=none ./scripts/build_app.sh
+```
+
+</details>
 
 ## 当前边界
 
-这是 v1 preview。当前版本不提供终止 Codex 任务、成本统计、云同步、远程通知、宠物动画或 Mac App Store 分发。ChatGPT Classic 不属于监听目标。
+CodexNotch 目前是 v1 preview，不提供终止 Codex 任务、成本统计、云同步、远程通知、宠物动画或 Mac App Store 分发。ChatGPT Classic 不属于监听目标。
 
-## 许可证
+## 开源许可
 
-本项目使用 MIT License，详见 [LICENSE](LICENSE)。
+CodexNotch 使用 [MIT License](LICENSE)。如果它缓解了你的额度焦虑，欢迎点一个 Star。
