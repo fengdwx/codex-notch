@@ -1,70 +1,146 @@
+<div align="center">
+
 # CodexNotch
 
-English · [简体中文](README.zh-CN.md)
+### Your Codex status and quota—visible in every app.
 
-CodexNotch is a standalone native macOS app. While a Codex task is running, it lives around the MacBook notch and shows activity plus weekly quota. When idle, it keeps a compact quota indicator; hovering the physical notch opens the details. It has no dependency on Atoll, CodexIsland, CC Switch, or another host app.
+**Live task activity, weekly quota, and exact reset times stay beside your MacBook notch.**<br>
+Your browser, IDE, or any other app can be frontmost—the signal remains in sight.
 
-## Product demo
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-111111?logo=apple)](https://github.com/fengdwx/codex-notch/releases/latest)
+[![Swift 5.9](https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white)](Package.swift)
+[![Latest release](https://img.shields.io/github/v/release/fengdwx/codex-notch?label=download&color=2ea44f)](https://github.com/fengdwx/codex-notch/releases/latest)
+[![MIT License](https://img.shields.io/badge/License-MIT-4c8bf5)](LICENSE)
 
-[![17-second CodexNotch product demo](docs/assets/codex-notch-demo.gif)](docs/assets/codex-notch-demo.mp4)
+[**Download the latest release**](https://github.com/fengdwx/codex-notch/releases/latest) · [**Watch the 26-second demo**](docs/assets/codex-notch-demo-en.mp4) · [简体中文](README.zh-CN.md)
 
-*A 17-second live capture from the real app. It shows the compact running state and its weekly-quota indicator; the capture contains no task title or user-message content. [Open the MP4](docs/assets/codex-notch-demo.mp4).*
+</div>
 
-## Features
+[![CodexNotch English product demo](docs/assets/codex-notch-demo-en.gif)](docs/assets/codex-notch-demo-en.mp4)
 
-- Keeps the running Codex state visible beside the notch even when another app is frontmost; a compact weekly-quota indicator remains when idle.
-- Hover the physical notch to reveal a card that expands only downward, with weekly quota, reset time, countdown, and recent conversations.
-- Both compact indicators use matching 24pt alignment containers. The left ChatGPT mark is optically corrected to 22pt; a running task uses a restrained static blue echo, while a completed task has one green echo and a checkmark. The right side can show a clockwise ring or a wave ball.
-- The app bundle carries an original deep-green terminal icon: a small top notch slot, terminal title bar, and high-contrast green `>_` prompt. It is recognizable in Finder, Launchpad, and the installer, and never uses account or conversation data.
-- The **Settings** control at the lower-right corner of the expanded card, the notch context menu, and the app menu can all change the quota indicator style and recent-conversation limit. Settings come to the front automatically. The physical notch is the live preview, so Settings does not duplicate it with a static preview card. The number always stays inside the indicator. The wave ball outlines only the glyphs and never masks the liquid; the liquid moves only while a task runs. Changes apply immediately and are saved locally.
-- A weekly quota at or above 20% is green; below 20% it is red. While a task runs, a soft gradient flows along the remaining-quota arc. The ring is still when idle, completed, or when Reduce Motion is enabled. Missing weekly quota is gray.
-- The expanded card shows active tasks, a horizontal weekly-quota bar, exact current reset time, and a second-by-second countdown. Its readable quota, reset, and conversation text scales up appropriately. The entire **N reset credits available** row is clickable; it expands downward to list the precise expiry time and countdown for each available reset credit without repeating its name. The ring is only used in the compact state. Clicking a task opens `codex://threads/<thread-id>`.
-- Quota windows are identified from the returned `limit_window_seconds`; no five-hour assumption is hard-coded.
-- Macs without a notch use a menu-bar fallback and never read or reveal user-message bodies.
+<p align="center"><sub>Real app capture with English product callouts: task input, live notch status, weekly quota, hover expansion, exact reset time, every reset-credit expiry, and visibility after switching apps.</sub></p>
 
-## Installation for regular users
+## Why CodexNotch exists
 
-Download `CodexNotch-...zip` from Releases, unzip it, and drag `CodexNotch.app` into Applications. Swift, Swift Package Manager, and Xcode are not required.
+Codex can keep running in the background, but its task state and quota are easy to lose behind other windows. CodexNotch keeps three answers visible wherever you work on your Mac:
 
-The local release is ad-hoc signed by default, so macOS may warn that the developer cannot be verified. Choose **Open Anyway** in **System Settings → Privacy & Security**, or Control-click the app and choose **Open**. Public distribution should use a Developer ID signature and notarization.
+- **Is the task still running?**
+- **How much weekly quota is left?**
+- **Exactly when does it reset?**
 
-Before running the app, sign in to ChatGPT and use Codex. The app reads the default `~/.codex` directory. If Codex uses a different directory, set `CODEX_HOME`.
+They remain beside the physical notch while you code, browse, write, or work in another app.
 
-## Build from source
+> **One glance at the notch: status, quota, and reset time—without changing apps.**
 
-Contributors need macOS 14 or later and Xcode 15 / Swift 5.9 or newer:
+## At a glance
 
-~~~sh
-swift test
-./scripts/build_app.sh
-open dist/CodexNotch.app
-~~~
+| What you want to know | What CodexNotch shows |
+| --- | --- |
+| **Is the task running?** | A blue activity echo while Codex works, then a clear green check when it finishes. |
+| **How much quota remains?** | A persistent weekly-quota ring or wave ball beside the notch, with the number inside the indicator. |
+| **When will quota reset?** | The exact reset timestamp plus a second-by-second countdown in the expanded card. |
+| **When does each reset credit expire?** | Click **N reset credits available** to reveal every precise expiry time and countdown. |
+| **What happens when I switch apps?** | Nothing disappears. Status and quota stay visible while another app is frontmost. |
 
-Create a distributable archive:
+## The experience
 
-~~~sh
-./scripts/release.sh
-~~~
+### Always visible, no matter which app is frontmost
 
-The script runs tests, builds the release `.app`, validates its code signature, and produces a zip plus SHA-256 file. The default signature is an ad-hoc local signature. To skip signing entirely:
+The compact state lives around the physical notch while a task runs, even when you switch to another app. When no task is active, the weekly-quota indicator remains; after a recent task completes, CodexNotch keeps a visible green completion state.
 
-~~~sh
-SIGN_IDENTITY=none ./scripts/build_app.sh
-~~~
+### Quota without the guesswork
+
+Hover over the notch to reveal:
+
+- Weekly quota and a horizontal progress bar
+- The exact reset timestamp and live countdown
+- The precise expiry time of every available reset credit
+- Active tasks and recent conversations
+
+Quota windows are identified from the returned `limit_window_seconds`; CodexNotch does not hard-code a five-hour assumption.
+
+### Switch apps without losing the signal
+
+CodexNotch is a standalone native macOS app. It does not depend on Atoll, CodexIsland, CC Switch, or another host. Your browser, IDE, or any other app can stay in front while Codex status and quota remain visible.
+
+### Jump straight back to the task
+
+Click a task in the expanded card to open `codex://threads/<thread-id>` instead of searching for the conversation again.
+
+## Install
+
+Download `CodexNotch-...zip` from [**GitHub Releases**](https://github.com/fengdwx/codex-notch/releases/latest):
+
+1. Unzip the archive.
+2. Drag `CodexNotch.app` into Applications.
+3. Sign in to ChatGPT, use Codex once, then launch CodexNotch.
+
+Swift, Swift Package Manager, and Xcode are not required.
+
+> The current public build uses an ad-hoc signature. On first launch, macOS may say the developer cannot be verified. Choose **Open Anyway** in **System Settings → Privacy & Security**, or Control-click the app and choose **Open**.
+
+CodexNotch reads the default `~/.codex` directory. If Codex uses another directory, set `CODEX_HOME` before launching the app.
+
+## Make it yours
+
+Hover over the physical notch and use **Settings** at the lower-right of the expanded card. You can also open Settings from the notch context menu or app menu.
+
+- Switch between the clockwise quota ring and wave ball
+- Show 1–5 recent conversations in the expanded card
+- Apply changes immediately and save them locally
+- Respect Reduce Motion while preserving static status cues
+
+Macs without a notch automatically use a menu-bar fallback.
+
+<details>
+<summary><strong>Visual and interaction details</strong></summary>
+
+- Both compact indicators use matching 24pt alignment containers, keeping icons clear of the camera cutout.
+- The quota ring starts at 12 o'clock and progresses clockwise. It is green at 20% or above, red below 20%, and gray when data is unavailable.
+- The gradient or wave moves only while a task is running. It remains still while idle, completed, or when Reduce Motion is enabled.
+- The card expands downward from the compact island. Its transparent canvas is reclaimed after collapse so it does not intercept clicks outside the notch.
+- The quota number stays inside the indicator and is never repeated beside it.
+
+</details>
 
 ## Data and privacy
 
-- The authentication token is read only from `CODEX_HOME/auth.json` and remains in process memory; CodexNotch never writes it to a cache or log.
-- Quota and available reset-credit details are read separately from ChatGPT's usage and reset-credit endpoints.
-- Task state is parsed only from local rollout JSONL files in `CODEX_HOME/sessions`.
-- The app never records Authorization headers, complete usage responses, or user-message bodies.
+- The authentication token is read only from `CODEX_HOME/auth.json` and remains in process memory. CodexNotch never writes it to a cache or log.
+- Quota and reset-credit details come from ChatGPT's read-only usage and reset-credit endpoints.
+- Task state is parsed only from rollout JSONL files in `CODEX_HOME/sessions`.
+- CodexNotch never records Authorization headers, complete usage responses, or user-message bodies.
 
-The usage endpoint is an internal ChatGPT endpoint and its fields may change. If it fails, the last successful quota is retained while task monitoring continues.
+The usage endpoint is an internal ChatGPT endpoint and its fields may change. If it fails, CodexNotch keeps the last successful quota while task monitoring continues.
+
+<details>
+<summary><strong>Build from source</strong></summary>
+
+Contributors need macOS 14 or later and Xcode 15 / Swift 5.9 or newer:
+
+```sh
+swift test
+./scripts/build_app.sh
+open dist/CodexNotch.app
+```
+
+Create a distributable archive:
+
+```sh
+./scripts/release.sh
+```
+
+The release script runs tests, builds the release app, validates its code signature, and produces a ZIP plus SHA-256 file. To skip signing entirely:
+
+```sh
+SIGN_IDENTITY=none ./scripts/build_app.sh
+```
+
+</details>
 
 ## Current boundaries
 
-This is a v1 preview. It does not terminate Codex tasks, estimate cost, sync to the cloud, send remote notifications, animate a pet, or support Mac App Store distribution. ChatGPT Classic is not a monitored target.
+CodexNotch is currently a v1 preview. It does not terminate Codex tasks, estimate cost, sync to the cloud, send remote notifications, animate a pet, or support Mac App Store distribution. ChatGPT Classic is not a monitored target.
 
 ## License
 
-CodexNotch is released under the MIT License. See [LICENSE](LICENSE).
+CodexNotch is released under the [MIT License](LICENSE). If it helps you stay focused—and a little less anxious about quota—consider giving the project a Star.
