@@ -2,10 +2,10 @@
 
 # CodexNotch
 
-### Your Codex status and quota—visible in every app.
+### Your Codex quota—always in sight.
 
-**Live task activity, weekly quota, and exact reset times stay beside your MacBook notch.**<br>
-Your browser, IDE, or any other app can be frontmost—the signal remains in sight.
+**Weekly quota, exact reset times, and task status stay beside your MacBook notch.**<br>
+Your browser, IDE, or any other app can be frontmost—your quota remains visible.
 
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-111111?logo=apple)](https://github.com/fengdwx/codex-notch/releases/latest)
 [![Swift 5.9](https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white)](Package.swift)
@@ -18,37 +18,37 @@ Your browser, IDE, or any other app can be frontmost—the signal remains in sig
 
 [![CodexNotch English product demo](docs/assets/codex-notch-demo-en.gif)](docs/assets/codex-notch-demo-en.mp4)
 
-<p align="center"><sub>Real app capture with English product callouts: task input, live notch status, weekly quota, hover expansion, exact reset time, every reset-credit expiry, and visibility after switching apps.</sub></p>
+<p align="center"><sub>Real app capture with English product callouts: weekly quota, exact reset time, every reset-credit expiry, cross-app visibility, and live task status.</sub></p>
 
 ## Why CodexNotch exists
 
-Codex can keep running in the background, but its task state and quota are easy to lose behind other windows. CodexNotch keeps three answers visible wherever you work on your Mac:
+Codex quota is easy to lose behind other windows. CodexNotch keeps the answers that matter beside your MacBook notch, wherever you work:
 
-- **Is the task still running?**
 - **How much weekly quota is left?**
 - **Exactly when does it reset?**
+- **Is the task still running?**
 
 They remain beside the physical notch while you code, browse, write, or work in another app.
 
-> **One glance at the notch: status, quota, and reset time—without changing apps.**
+> **One glance at the notch: quota, reset time, and task status—without changing apps.**
 
 ## At a glance
 
 | What you want to know | What CodexNotch shows |
 | --- | --- |
-| **Is the task running?** | A blue activity echo while Codex works, then a clear green check when it finishes. |
 | **How much quota remains?** | A persistent weekly-quota ring or wave ball beside the notch, with the number inside the indicator. |
 | **When will quota reset?** | The exact reset timestamp plus a second-by-second countdown in the expanded card. |
 | **When does each reset credit expire?** | Click **N reset credits available** to reveal every precise expiry time and countdown. |
-| **What happens when I switch apps?** | Nothing disappears. Status and quota stay visible while another app is frontmost. |
+| **What happens when I switch apps?** | Nothing disappears. Quota and status stay visible while another app is frontmost. |
+| **Is the task running?** | A blue activity echo while Codex works, then a clear green check when it finishes. |
 
 ## The experience
 
-### Always visible, no matter which app is frontmost
+### Quota at a glance, in every app
 
-The compact state lives around the physical notch while a task runs, even when you switch to another app. When no task is active, the weekly-quota indicator remains; after a recent task completes, CodexNotch keeps a visible green completion state.
+The weekly-quota indicator stays beside the physical notch even when no task is active. Switch to your browser, IDE, or another app and the remaining percentage stays visible.
 
-### Quota without the guesswork
+### Exact reset timing, not just a percentage
 
 Hover over the notch to reveal:
 
@@ -59,13 +59,13 @@ Hover over the notch to reveal:
 
 Quota windows are identified from the returned `limit_window_seconds`; CodexNotch does not hard-code a five-hour assumption.
 
-### Switch apps without losing the signal
+### Your quota follows you across apps
 
-CodexNotch is a standalone native macOS app. It does not depend on Atoll, CodexIsland, CC Switch, or another host. Your browser, IDE, or any other app can stay in front while Codex status and quota remain visible.
+CodexNotch is a standalone native macOS app. It does not depend on Atoll, CodexIsland, CC Switch, or another host. Your browser, IDE, or any other app can stay in front while quota, reset time, and task status remain visible.
 
-### Jump straight back to the task
+### Task status in the same place
 
-Click a task in the expanded card to open `codex://threads/<thread-id>` instead of searching for the conversation again.
+While Codex works, a blue activity echo shows that the task is still running; completion switches to a clear green check. Click a task in the expanded card to open `codex://threads/<thread-id>` instead of searching for the conversation again.
 
 ## Install
 
