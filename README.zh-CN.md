@@ -16,7 +16,7 @@
 
 </div>
 
-[![CodexNotch 中文产品演示](docs/assets/codex-notch-demo-zh.gif)](docs/assets/codex-notch-demo-zh.mp4)
+[![CodexNotch 中文产品演示](docs/assets/codex-notch-demo-zh-animated.gif)](docs/assets/codex-notch-demo-zh.mp4)
 
 <p align="center"><sub>真实 App 演示：周额度、精确重置时间、全部重置额度到期时间、跨应用持续可见，以及任务运行状态。</sub></p>
 
