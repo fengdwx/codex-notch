@@ -62,6 +62,29 @@ contracts:
     superseded_by: null
     last_verified_commit: ff03e1c
 
+  - id: NOTCH-COMPATIBILITY-015
+    title: 已适配刘海的应用不得回退到摄像头安全区兼容模式
+    status: active
+    statement: CodexNotch.app 的 Info.plist 必须将 `NSPrefersDisplaySafeAreaCompatibilityMode` 设为 false，使已使用 NSScreen 安全区和辅助区域计算的紧凑岛体始终与物理摄像头开孔处于同一屏幕坐标系；不得让 Finder 的“缩放到摄像头下方”兼容策略改变刘海宽度或垂直锚点。
+    rationale: 14 英寸机型的屏幕对角线、原生分辨率或芯片代际不足以确定刘海坐标；缺少明确 opt-out 时，Finder 可以按用户级兼容设置缩放应用内容，导致同规格机器显示出不一致的刘海几何。
+    source: incident
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, bundle, finder, safe-area-coordinates]
+      exclude: [menu-bar-fallback, quota-semantics, session-monitoring]
+    examples:
+      positive: 已构建 app 明确声明禁用安全区兼容模式，紧凑岛仍按 NSScreen 的 auxiliaryTopLeftArea 和 auxiliaryTopRightArea 居中并贴合摄像头开孔。
+      negative: Info.plist 缺少该声明而允许 Finder 以“缩放到摄像头下方”运行，造成 14 英寸机器之间的紧凑刘海宽度或顶部锚点不一致。
+    guards:
+      - Resources/Info.plist
+      - scripts/verify_app.sh
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: inspect compact island alignment on a physical-notch Mac after a fresh launch"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: 3ae33b4
+
   - id: NOTCH-MOTION-002
     title: 展开从紧凑岛体向下发生
     status: active

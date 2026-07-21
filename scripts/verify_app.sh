@@ -24,6 +24,16 @@ ICON_PATH="$APP_PATH/Contents/Resources/${ICON_NAME}.icns"
 }
 [[ -f "$ICON_PATH" ]] || { echo "error: app icon missing: $ICON_PATH" >&2; exit 1; }
 
+SAFE_AREA_COMPATIBILITY_MODE="$(
+    /usr/libexec/PlistBuddy \
+        -c 'Print :NSPrefersDisplaySafeAreaCompatibilityMode' \
+        "$INFO_PLIST" 2>/dev/null || true
+)"
+[[ "$SAFE_AREA_COMPATIBILITY_MODE" == "false" ]] || {
+    echo "error: NSPrefersDisplaySafeAreaCompatibilityMode must be false" >&2
+    exit 1
+}
+
 ICONSET_DIR="$(mktemp -d "${TMPDIR:-/tmp}/codex-notch-icon-verify.XXXXXX")"
 trap 'rm -rf "$ICONSET_DIR"' EXIT
 iconutil -c iconset "$ICON_PATH" -o "$ICONSET_DIR/CodexNotch.iconset"
