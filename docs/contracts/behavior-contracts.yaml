@@ -173,6 +173,30 @@ contracts:
     superseded_by: null
     last_verified_commit: 14271f5
 
+  - id: SETTINGS-PREFERENCES-017
+    title: Language and recent-conversation visibility settings apply immediately
+    status: active
+    statement: Settings must offer Chinese and English app languages and apply the selected language immediately to the settings window, notch content, and menu-bar fallback. Settings must offer 0 through 5 recent conversations; selecting 0 hides the recent-conversations section while preserving quota, active-task, and completion state.
+    rationale: Users need a readable interface choice without restarting the app, and setting recent conversations to 0 should control only that optional list rather than suppressing the primary quota or activity signal.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [settings, compact-state, expanded-state, menu-bar-fallback]
+      exclude: [quota-semantics, privacy-data, window-geometry]
+    examples:
+      positive: Choosing English immediately changes settings, expanded labels, and fallback-menu labels; choosing 0 removes the recent-conversations heading and rows while the quota and active/completed compact state remain available; missing stored values keep the English and two-conversation defaults.
+      negative: Language changes require a restart, only the settings page changes, 0 is rejected or treated as a missing value, or 0 hides the quota/activity state along with the optional conversation list.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePreferencesTests.swift
+      - Tests/CodexNotchTests/NotchPresentationReducerTests.swift
+      - Tests/CodexNotchTests/NotchTextTests.swift
+      - "manual: switch language and set recent-conversation count to 0 on a running app"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null
+
   - id: ACTIVITY-STATE-003
     title: Active tasks take priority and completion remains visible
     status: active

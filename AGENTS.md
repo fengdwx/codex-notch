@@ -51,7 +51,7 @@ open dist/CodexNotch.app
 - Expansion intentionally follows Atoll's layered approach: `NotchWindowController` prepares the final transparent canvas once, and SwiftUI expands the visible island inside that canvas. Do not restore the old frame-per-frame `NSPanel` resizing approach; it was not smooth and once caused crashes during SwiftUI text layout.
 - Reclaim the transparent canvas after collapse so it does not intercept mouse events outside the compact notch.
 - The running state uses a blue ChatGPT visual echo on the left; the completed state uses one green echo and a clear green checkmark. Preserve static state cues when motion is reduced.
-- The expanded card shows weekly quota, the exact reset time, and recent conversations. Settings control the number of recent conversations (1–5), and the Settings window must be able to come to the front automatically.
+- The expanded card shows weekly quota, the exact reset time, and recent conversations. Settings control the language (English by default) and the number of recent conversations (0–5); 0 hides that section, and the Settings window must be able to come to the front automatically.
 
 ## User Collaboration Preferences
 

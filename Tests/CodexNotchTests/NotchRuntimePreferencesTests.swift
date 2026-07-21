@@ -47,4 +47,38 @@ final class NotchRuntimePreferencesTests: XCTestCase {
             initial
         )
     }
+
+    func testLanguageChangesRuntimePreferences() {
+        let suiteName = "NotchRuntimePreferencesTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let initial = NotchRuntimePreferences.read(from: defaults)
+        XCTAssertEqual(initial.language, .english)
+
+        defaults.set(
+            AppLanguage.english.rawValue,
+            forKey: AppLanguage.storageKey
+        )
+
+        XCTAssertEqual(
+            NotchRuntimePreferences.read(from: defaults).language,
+            .english
+        )
+    }
+
+    func testMissingRecentConversationLimitUsesTheTwoItemDefault() {
+        let suiteName = "NotchRuntimePreferencesTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        XCTAssertEqual(
+            NotchRuntimePreferences.read(from: defaults).recentConversationLimit,
+            .two
+        )
+    }
 }

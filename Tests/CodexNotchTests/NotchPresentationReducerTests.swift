@@ -202,6 +202,56 @@ final class NotchPresentationReducerTests: XCTestCase {
         ])
     }
 
+    func testZeroRecentConversationLimitHidesAllConversations() {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let task = makeSession(id: "thread-active", at: now)
+        let state = NotchPresentationReducer.reduce(
+            NotchPresentationInput(
+                now: now,
+                isChatGPTFrontmost: false,
+                activeSessions: [task],
+                recentCompletions: [],
+                usage: nil,
+                isHovered: true
+            )
+        )
+
+        guard case let .expanded(content) = state.limitingRecentConversations(to: .none) else {
+            return XCTFail("Expected expanded state")
+        }
+        XCTAssertTrue(content.conversations.isEmpty)
+        XCTAssertEqual(content.sessions.map(\.threadID), ["thread-active"])
+        XCTAssertEqual(content.headerConversation?.threadID, "thread-active")
+    }
+
+    func testZeroRecentConversationLimitKeepsCompletedHeaderState() {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let session = makeSession(id: "thread-completed", at: now.addingTimeInterval(-30))
+        let state = NotchPresentationReducer.reduce(
+            NotchPresentationInput(
+                now: now,
+                isChatGPTFrontmost: false,
+                activeSessions: [],
+                recentCompletions: [
+                    CompletedSession(session: session, completedAt: now.addingTimeInterval(-1))
+                ],
+                usage: nil,
+                isHovered: true
+            )
+        )
+
+        guard case let .expanded(content) = state.limitingRecentConversations(to: .none) else {
+            return XCTFail("Expected expanded state")
+        }
+        XCTAssertTrue(content.conversations.isEmpty)
+        XCTAssertEqual(content.headerConversation?.threadID, "thread-completed")
+        if let headerConversation = content.headerConversation,
+           case .completed = headerConversation.activity {
+            return
+        }
+        XCTFail("Expected completed header state")
+    }
+
     private func makeSession(
         id: String,
         title: String? = nil,

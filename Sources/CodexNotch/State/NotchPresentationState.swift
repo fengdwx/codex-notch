@@ -36,6 +36,7 @@ struct ConversationSummary: Equatable, Identifiable, Sendable {
 struct ExpandedContent: Equatable, Sendable {
     let sessions: [SessionActivity]
     let conversations: [ConversationSummary]
+    let headerConversation: ConversationSummary?
     let usage: UsageSnapshot?
 
     func limitingRecentConversations(
@@ -44,6 +45,7 @@ struct ExpandedContent: Equatable, Sendable {
         ExpandedContent(
             sessions: sessions,
             conversations: Array(conversations.prefix(limit.rawValue)),
+            headerConversation: headerConversation,
             usage: usage
         )
     }

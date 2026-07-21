@@ -1,6 +1,7 @@
 import Foundation
 
 enum RecentConversationLimit: Int, CaseIterable, Identifiable, Sendable {
+    case none = 0
     case one = 1
     case two = 2
     case three = 3
@@ -13,7 +14,14 @@ enum RecentConversationLimit: Int, CaseIterable, Identifiable, Sendable {
     var id: Int { rawValue }
 
     var title: String {
-        "\(rawValue) 条"
+        title(for: .chinese)
+    }
+
+    func title(for language: AppLanguage) -> String {
+        language.localized(
+            chinese: "\(rawValue) 条",
+            english: rawValue == 1 ? "1 conversation" : "\(rawValue) conversations"
+        )
     }
 
     static func fromStoredValue(_ rawValue: Int) -> RecentConversationLimit {
@@ -23,11 +31,17 @@ enum RecentConversationLimit: Int, CaseIterable, Identifiable, Sendable {
 
 struct NotchRuntimePreferences: Equatable, Sendable {
     let recentConversationLimit: RecentConversationLimit
+    let language: AppLanguage
 
     static func read(from userDefaults: UserDefaults) -> NotchRuntimePreferences {
-        NotchRuntimePreferences(
-            recentConversationLimit: RecentConversationLimit.fromStoredValue(
-                userDefaults.integer(forKey: RecentConversationLimit.storageKey)
+        let recentConversationLimit = (userDefaults.object(
+            forKey: RecentConversationLimit.storageKey
+        ) as? NSNumber).map { $0.intValue } ?? RecentConversationLimit.defaultLimit.rawValue
+
+        return NotchRuntimePreferences(
+            recentConversationLimit: RecentConversationLimit.fromStoredValue(recentConversationLimit),
+            language: AppLanguage.fromStoredValue(
+                userDefaults.string(forKey: AppLanguage.storageKey)
             )
         )
     }

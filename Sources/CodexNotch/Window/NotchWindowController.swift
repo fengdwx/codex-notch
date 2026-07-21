@@ -13,6 +13,12 @@ final class NotchWindowController: NSWindowController {
     private var deferredFrameWorkItem: DispatchWorkItem?
     private var deferredFrameIdentifier: UUID?
 
+    private var appLanguage: AppLanguage {
+        AppLanguage.fromStoredValue(
+            UserDefaults.standard.string(forKey: AppLanguage.storageKey)
+        )
+    }
+
     init() {
         let panel = NotchPanel(contentRect: NSRect(x: 0, y: 0, width: 1, height: 1))
         super.init(window: panel)
@@ -166,60 +172,136 @@ final class NotchWindowController: NSWindowController {
             menu.addItem(disabledItem(title: "CodexNotch"))
 
         case let .quotaCompact(usage):
-            menu.addItem(disabledItem(title: "Codex · \(NotchText.quotaSubtitle(usage: usage))"))
+            menu.addItem(disabledItem(title: "Codex · \(NotchText.quotaSubtitle(usage: usage, language: appLanguage))"))
             menu.addItem(NSMenuItem.separator())
-            menu.addItem(actionItem(title: "打开 ChatGPT", representedObject: "__activate__"))
+            menu.addItem(actionItem(
+                title: appLanguage.localized(chinese: "打开 ChatGPT", english: "Open ChatGPT"),
+                representedObject: "__activate__"
+            ))
 
         case let .workingCompact(primary, count, usage):
-            let title = count > 1 ? "Codex 正在运行 · \(count) 个任务" : "Codex 正在运行"
+            let title = count > 1
+                ? appLanguage.localized(
+                    chinese: "Codex 正在运行 · \(count) 个任务",
+                    english: "Codex running · \(count) tasks"
+                )
+                : appLanguage.localized(chinese: "Codex 正在运行", english: "Codex running")
             menu.addItem(disabledItem(title: title))
-            menu.addItem(disabledItem(title: NotchText.sessionSubtitle(primary, now: .now)))
+            menu.addItem(disabledItem(
+                title: NotchText.sessionSubtitle(primary, now: .now, language: appLanguage)
+            ))
             if let usage, !usage.windows.isEmpty {
-                menu.addItem(disabledItem(title: NotchText.quotaSubtitle(usage: usage)))
+                menu.addItem(disabledItem(
+                    title: NotchText.quotaSubtitle(usage: usage, language: appLanguage)
+                ))
             }
             menu.addItem(NSMenuItem.separator())
-            menu.addItem(actionItem(title: "打开当前任务", representedObject: primary.threadID))
+            menu.addItem(actionItem(
+                title: appLanguage.localized(chinese: "打开当前任务", english: "Open current task"),
+                representedObject: primary.threadID
+            ))
 
         case let .completedCompact(session, usage):
-            menu.addItem(disabledItem(title: "Codex 已完成"))
+            menu.addItem(disabledItem(
+                title: appLanguage.localized(chinese: "Codex 已完成", english: "Codex completed")
+            ))
             if let usage, !usage.windows.isEmpty {
-                menu.addItem(disabledItem(title: NotchText.quotaSubtitle(usage: usage)))
+                menu.addItem(disabledItem(
+                    title: NotchText.quotaSubtitle(usage: usage, language: appLanguage)
+                ))
             }
             menu.addItem(actionItem(
-                title: "打开 \(NotchText.projectName(cwd: session.cwd))",
+                title: appLanguage.localized(
+                    chinese: "打开 \(NotchText.projectName(cwd: session.cwd, language: appLanguage))",
+                    english: "Open \(NotchText.projectName(cwd: session.cwd, language: appLanguage))"
+                ),
                 representedObject: session.threadID
             ))
 
         case let .expanded(content):
-            menu.addItem(disabledItem(title: content.conversations.isEmpty ? "Codex 额度" : "Codex 最近对话"))
+            let headerTitle: String
+            if !content.conversations.isEmpty {
+                headerTitle = appLanguage.localized(
+                    chinese: "Codex 最近对话",
+                    english: "Codex recent conversations"
+                )
+            } else if !content.sessions.isEmpty || content.headerConversation != nil {
+                headerTitle = appLanguage.localized(
+                    chinese: "Codex 活动",
+                    english: "Codex activity"
+                )
+            } else {
+                headerTitle = appLanguage.localized(chinese: "Codex 额度", english: "Codex quota")
+            }
+            menu.addItem(disabledItem(title: headerTitle))
             if let usage = content.usage,
                !usage.resetCredits.isEmpty {
                 menu.addItem(NSMenuItem.separator())
-                menu.addItem(disabledItem(title: "使用限额重置"))
+                menu.addItem(disabledItem(title: appLanguage.localized(
+                    chinese: "使用限额重置",
+                    english: "Usage reset"
+                )))
                 for credit in usage.resetCredits {
                     menu.addItem(disabledItem(
-                        title: "\(NotchText.resetCreditTitle(credit)) · \(NotchText.resetCreditExpiry(credit))"
+                        title: "\(NotchText.resetCreditTitle(credit, language: appLanguage)) · \(NotchText.resetCreditExpiry(credit, language: appLanguage))"
                     ))
                 }
             }
-            if content.conversations.isEmpty {
-                if let usage = content.usage, !usage.windows.isEmpty {
-                    for window in usage.windows {
-                        menu.addItem(disabledItem(title: NotchText.compactWindow(window)))
-                    }
-                } else {
-                    menu.addItem(disabledItem(title: "额度暂不可用"))
-                }
-                menu.addItem(NSMenuItem.separator())
-                menu.addItem(actionItem(title: "打开 ChatGPT", representedObject: "__activate__"))
-            } else {
+            if !content.conversations.isEmpty {
                 menu.addItem(NSMenuItem.separator())
                 for conversation in content.conversations {
                     menu.addItem(actionItem(
-                        title: conversation.title ?? NotchText.projectName(cwd: conversation.cwd),
+                        title: conversation.title
+                            ?? NotchText.projectName(cwd: conversation.cwd, language: appLanguage),
                         representedObject: conversation.threadID
                     ))
                 }
+            } else if !content.sessions.isEmpty {
+                menu.addItem(disabledItem(title: appLanguage.localized(
+                    chinese: "Codex 正在运行",
+                    english: "Codex running"
+                )))
+                menu.addItem(NSMenuItem.separator())
+                for session in content.sessions {
+                    menu.addItem(actionItem(
+                        title: appLanguage.localized(
+                            chinese: "打开 \(NotchText.projectName(cwd: session.cwd, language: appLanguage))",
+                            english: "Open \(NotchText.projectName(cwd: session.cwd, language: appLanguage))"
+                        ),
+                        representedObject: session.threadID
+                    ))
+                }
+            } else if let conversation = content.headerConversation {
+                menu.addItem(disabledItem(title: appLanguage.localized(
+                    chinese: "Codex 已完成",
+                    english: "Codex completed"
+                )))
+                menu.addItem(NSMenuItem.separator())
+                menu.addItem(actionItem(
+                    title: appLanguage.localized(
+                        chinese: "打开 \(NotchText.projectName(cwd: conversation.cwd, language: appLanguage))",
+                        english: "Open \(NotchText.projectName(cwd: conversation.cwd, language: appLanguage))"
+                    ),
+                    representedObject: conversation.threadID
+                ))
+            } else {
+                if let usage = content.usage, !usage.windows.isEmpty {
+                    for window in usage.windows {
+                        menu.addItem(disabledItem(
+                            title: NotchText.compactWindow(window, language: appLanguage)
+                        ))
+                    }
+                } else {
+                    menu.addItem(disabledItem(title: appLanguage.localized(
+                        chinese: "额度暂不可用",
+                        english: "Quota unavailable"
+                    )))
+                }
+                menu.addItem(NSMenuItem.separator())
+                menu.addItem(actionItem(
+                    title: appLanguage.localized(chinese: "打开 ChatGPT", english: "Open ChatGPT"),
+                    representedObject: "__activate__"
+                ))
             }
         }
         statusItem.menu = menu

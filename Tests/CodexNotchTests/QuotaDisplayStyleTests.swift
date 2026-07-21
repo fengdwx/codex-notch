@@ -117,14 +117,36 @@ final class QuotaDisplayStyleTests: XCTestCase {
         XCTAssertEqual(QuotaRingAppearance.colorMode(for: .completed), .solid)
     }
 
-    func testRecentConversationLimitOffersOneThroughFiveAndFallsBackToTwo() {
+    func testRecentConversationLimitOffersZeroThroughFiveAndFallsBackToTwo() {
         XCTAssertEqual(
             RecentConversationLimit.allCases.map(\.rawValue),
-            [1, 2, 3, 4, 5]
+            [0, 1, 2, 3, 4, 5]
         )
         XCTAssertEqual(
             RecentConversationLimit.fromStoredValue(99),
             .two
+        )
+    }
+
+    func testRecentConversationLimitZeroHasLocalizedTitles() {
+        XCTAssertEqual(
+            RecentConversationLimit.none.title(for: .chinese),
+            "0 条"
+        )
+        XCTAssertEqual(
+            RecentConversationLimit.none.title(for: .english),
+            "0 conversations"
+        )
+    }
+
+    func testAppLanguageOffersChineseAndEnglishAndFallsBackToEnglish() {
+        XCTAssertEqual(AppLanguage.allCases, [.chinese, .english])
+        XCTAssertEqual(AppLanguage.fromStoredValue("en"), .english)
+        XCTAssertEqual(AppLanguage.fromStoredValue("unknown"), .english)
+        XCTAssertEqual(AppLanguage.fromStoredValue(nil), .english)
+        XCTAssertEqual(
+            AppLanguage.english.localized(chinese: "中文", english: "English"),
+            "English"
         )
     }
 

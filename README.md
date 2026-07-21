@@ -88,7 +88,8 @@ CodexNotch reads the default `~/.codex` directory. If Codex uses another directo
 Hover over the physical notch and use **Settings** at the lower-right of the expanded card. You can also open Settings from the notch context menu or app menu.
 
 - Switch between the clockwise quota ring and wave ball
-- Show 1–5 recent conversations in the expanded card
+- Choose Chinese or English for the app interface (English by default)
+- Show 0–5 recent conversations in the expanded card
 - Apply changes immediately and save them locally
 - Respect Reduce Motion while preserving static status cues
 

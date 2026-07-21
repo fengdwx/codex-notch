@@ -36,6 +36,22 @@ final class NotchTextTests: XCTestCase {
         XCTAssertEqual(NotchText.quotaSubtitle(usage: usage), "每周剩余 80% · 已用 20%")
     }
 
+    func testEnglishQuotaTextUsesEnglishLabels() {
+        let usage = UsageSnapshot(
+            windows: [UsageWindow(id: "primary", kind: .weekly, usedPercent: 20)],
+            resetCreditsAvailable: 2
+        )
+
+        XCTAssertEqual(
+            NotchText.quotaSubtitle(usage: usage, language: .english),
+            "Weekly 80% remaining · 20% used"
+        )
+        XCTAssertEqual(
+            NotchText.resetCredits(usage: usage, language: .english),
+            "2 resets available"
+        )
+    }
+
     func testResetCreditsTextKeepsTheAvailableCountVisible() {
         let usage = UsageSnapshot(
             windows: [UsageWindow(id: "primary", kind: .weekly, usedPercent: 20)],

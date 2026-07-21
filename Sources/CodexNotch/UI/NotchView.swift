@@ -88,10 +88,16 @@ struct NotchView: View {
     @ObservedObject private var model: NotchViewModel
     @AppStorage(QuotaDisplayStyle.storageKey)
     private var quotaDisplayStyleRaw = QuotaDisplayStyle.defaultStyle.rawValue
+    @AppStorage(AppLanguage.storageKey)
+    private var appLanguageRaw = AppLanguage.defaultLanguage.rawValue
     @State private var isPointerInside = false
 
     private var quotaDisplayStyle: QuotaDisplayStyle {
         QuotaDisplayStyle.fromStoredValue(quotaDisplayStyleRaw)
+    }
+
+    private var appLanguage: AppLanguage {
+        AppLanguage.fromStoredValue(appLanguageRaw)
     }
 
     private var isExpanded: Bool {
@@ -164,7 +170,7 @@ struct NotchView: View {
                 CompactNotchView(
                     icon: .quota,
                     title: "Codex",
-                    subtitle: NotchText.quotaSubtitle(usage: usage),
+                    subtitle: NotchText.quotaSubtitle(usage: usage, language: appLanguage),
                     usage: usage,
                     quotaDisplayStyle: quotaDisplayStyle,
                     action: model.onActivateChatGPT
@@ -172,10 +178,19 @@ struct NotchView: View {
             case let .workingCompact(primary, count, usage):
                 CompactNotchView(
                     icon: .working,
-                    title: "Codex 运行中",
+                    title: appLanguage.localized(
+                        chinese: "Codex 运行中",
+                        english: "Codex running"
+                    ),
                     subtitle: count > 1
-                        ? "\(count) 个任务"
-                        : "已运行 \(NotchText.formatDuration(seconds: max(0, model.now.timeIntervalSince(primary.startedAt))))",
+                        ? appLanguage.localized(
+                            chinese: "\(count) 个任务",
+                            english: "\(count) tasks"
+                        )
+                        : appLanguage.localized(
+                            chinese: "已运行 \(NotchText.formatDuration(seconds: max(0, model.now.timeIntervalSince(primary.startedAt))))",
+                            english: "Running for \(NotchText.formatDuration(seconds: max(0, model.now.timeIntervalSince(primary.startedAt))))"
+                        ),
                     usage: usage,
                     quotaDisplayStyle: quotaDisplayStyle,
                     action: { model.onOpenThread(primary.threadID) }
@@ -183,8 +198,11 @@ struct NotchView: View {
             case let .completedCompact(session, usage):
                 CompactNotchView(
                     icon: .completed,
-                    title: "Codex 已完成",
-                    subtitle: NotchText.projectName(cwd: session.cwd),
+                    title: appLanguage.localized(
+                        chinese: "Codex 已完成",
+                        english: "Codex completed"
+                    ),
+                    subtitle: NotchText.projectName(cwd: session.cwd, language: appLanguage),
                     usage: usage,
                     quotaDisplayStyle: quotaDisplayStyle,
                     action: { model.onOpenThread(session.threadID) }
@@ -196,6 +214,7 @@ struct NotchView: View {
                     cameraSafeAreaInset: model.cameraSafeAreaInset,
                     compactWidth: model.compactWidth,
                     quotaDisplayStyle: quotaDisplayStyle,
+                    language: appLanguage,
                     isResetScheduleExpanded: model.isResetScheduleExpanded,
                     onActivateChatGPT: model.onActivateChatGPT,
                     onOpenThread: model.onOpenThread,
@@ -234,10 +253,25 @@ struct NotchView: View {
         }
         .contextMenu {
             SettingsLink {
-                Label("设置…", systemImage: "gearshape")
+                Label(
+                    appLanguage.localized(chinese: "设置…", english: "Settings…"),
+                    systemImage: "gearshape"
+                )
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .environment(\.notchAppLanguage, appLanguage)
+    }
+}
+
+private struct NotchAppLanguageKey: EnvironmentKey {
+    static let defaultValue = AppLanguage.defaultLanguage
+}
+
+private extension EnvironmentValues {
+    var notchAppLanguage: AppLanguage {
+        get { self[NotchAppLanguageKey.self] }
+        set { self[NotchAppLanguageKey.self] = newValue }
     }
 }
 
@@ -337,6 +371,7 @@ private struct CompactNotchView: View {
     let usage: UsageSnapshot?
     let quotaDisplayStyle: QuotaDisplayStyle
     let action: () -> Void
+    @Environment(\.notchAppLanguage) private var language
 
     var body: some View {
         Button(action: action) {
@@ -367,9 +402,9 @@ private struct CompactNotchView: View {
     private var accessibilityText: String {
         var parts = [title, subtitle]
         if let usage, !usage.windows.isEmpty {
-            parts.append(NotchText.quotaSubtitle(usage: usage))
+            parts.append(NotchText.quotaSubtitle(usage: usage, language: language))
         }
-        return parts.joined(separator: "，")
+        return parts.joined(separator: language == .english ? ", " : "，")
     }
 
 }
@@ -972,6 +1007,7 @@ private struct ExpandedNotchView: View {
     let cameraSafeAreaInset: CGFloat
     let compactWidth: CGFloat
     let quotaDisplayStyle: QuotaDisplayStyle
+    let language: AppLanguage
     let isResetScheduleExpanded: Bool
     let onActivateChatGPT: () -> Void
     let onOpenThread: (String) -> Void
@@ -1017,7 +1053,7 @@ private struct ExpandedNotchView: View {
 
                 Spacer(minLength: 8)
 
-                Text("最近对话")
+                Text(language.localized(chinese: "最近对话", english: "Recent conversations"))
                     .font(.system(size: 11.5, weight: .semibold, design: .rounded))
                     .foregroundStyle(NotchPalette.secondaryText)
 
@@ -1031,6 +1067,7 @@ private struct ExpandedNotchView: View {
                         ConversationRowView(
                             conversation: conversation,
                             now: now,
+                            language: language,
                             action: { onOpenThread(conversation.threadID) }
                         )
 
@@ -1056,7 +1093,10 @@ private struct ExpandedNotchView: View {
                 Spacer(minLength: 0)
 
                 SettingsLink {
-                    Label("设置", systemImage: "gearshape")
+                    Label(
+                        language.localized(chinese: "设置", english: "Settings"),
+                        systemImage: "gearshape"
+                    )
                         .font(.system(size: 10.5, weight: .semibold, design: .rounded))
                         .foregroundStyle(NotchPalette.secondaryText)
                         .padding(.horizontal, 9)
@@ -1068,7 +1108,9 @@ private struct ExpandedNotchView: View {
                         }
                 }
                 .buttonStyle(NotchButtonStyle())
-                .accessibilityLabel("打开设置")
+                .accessibilityLabel(
+                    language.localized(chinese: "打开设置", english: "Open settings")
+                )
             }
         }
         .padding(.horizontal, 14)
@@ -1083,7 +1125,7 @@ private struct ExpandedNotchView: View {
         if !content.sessions.isEmpty {
             return .working
         }
-        if !content.conversations.isEmpty {
+        if content.headerConversation != nil {
             return .completed
         }
         return .quota
@@ -1092,9 +1134,9 @@ private struct ExpandedNotchView: View {
     private var headerTitle: String {
         switch headerIcon {
         case .working:
-            return "Codex 运行中"
+            return language.localized(chinese: "Codex 运行中", english: "Codex running")
         case .completed:
-            return "Codex 已完成"
+            return language.localized(chinese: "Codex 已完成", english: "Codex completed")
         case .quota:
             return "Codex"
         }
@@ -1102,19 +1144,19 @@ private struct ExpandedNotchView: View {
 
     private var headerSubtitle: String {
         if let session = content.sessions.first {
-            return NotchText.sessionSubtitle(session, now: now)
+            return NotchText.sessionSubtitle(session, now: now, language: language)
         }
-        if let conversation = content.conversations.first {
-            return NotchText.projectName(cwd: conversation.cwd)
+        if let conversation = content.headerConversation {
+            return NotchText.projectName(cwd: conversation.cwd, language: language)
         }
-        return NotchText.quotaSubtitle(usage: content.usage)
+        return NotchText.quotaSubtitle(usage: content.usage, language: language)
     }
 
     private var headerAction: () -> Void {
         if let session = content.sessions.first {
             return { onOpenThread(session.threadID) }
         }
-        if let conversation = content.conversations.first {
+        if let conversation = content.headerConversation {
             return { onOpenThread(conversation.threadID) }
         }
         return onActivateChatGPT
@@ -1124,6 +1166,7 @@ private struct ExpandedNotchView: View {
 private struct ConversationRowView: View {
     let conversation: ConversationSummary
     let now: Date
+    let language: AppLanguage
     let action: () -> Void
 
     var body: some View {
@@ -1133,7 +1176,10 @@ private struct ConversationRowView: View {
                     .frame(width: 16)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(conversation.title ?? NotchText.projectName(cwd: conversation.cwd))
+                    Text(
+                        conversation.title
+                            ?? NotchText.projectName(cwd: conversation.cwd, language: language)
+                    )
                         .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                         .foregroundStyle(NotchPalette.primaryText)
                         .lineLimit(1)
@@ -1158,12 +1204,18 @@ private struct ConversationRowView: View {
     }
 
     private var metadataText: String {
-        let project = NotchText.projectName(cwd: conversation.cwd)
+        let project = NotchText.projectName(cwd: conversation.cwd, language: language)
         switch conversation.activity {
         case let .running(startedAt):
-            return "运行 \(NotchText.formatDuration(seconds: max(0, now.timeIntervalSince(startedAt)))) · \(project)"
+            return language.localized(
+                chinese: "运行 \(NotchText.formatDuration(seconds: max(0, now.timeIntervalSince(startedAt)))) · \(project)",
+                english: "Running \(NotchText.formatDuration(seconds: max(0, now.timeIntervalSince(startedAt)))) · \(project)"
+            )
         case let .completed(completedAt):
-            return "已完成 · \(NotchText.relativeTime(from: completedAt, now: now)) · \(project)"
+            return language.localized(
+                chinese: "已完成 · \(NotchText.relativeTime(from: completedAt, now: now, language: language)) · \(project)",
+                english: "Completed · \(NotchText.relativeTime(from: completedAt, now: now, language: language)) · \(project)"
+            )
         }
     }
 }
@@ -1211,6 +1263,7 @@ private struct WeeklyQuotaProgressView: View {
     let now: Date
     let isResetScheduleExpanded: Bool
     let onResetScheduleExpandedChanged: (Bool) -> Void
+    @Environment(\.notchAppLanguage) private var language
 
     private var window: UsageWindow? {
         usage?.weeklyWindow
@@ -1228,7 +1281,7 @@ private struct WeeklyQuotaProgressView: View {
     var body: some View {
         VStack(spacing: 7) {
             HStack {
-                Text("本周剩余")
+                Text(language.localized(chinese: "本周剩余", english: "Weekly remaining"))
                     .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                     .foregroundStyle(NotchPalette.primaryText)
 
@@ -1261,7 +1314,12 @@ private struct WeeklyQuotaProgressView: View {
 
                 Spacer(minLength: 4)
 
-                Text("还剩 \(resetCountdownText)")
+                Text(
+                    language.localized(
+                        chinese: "还剩 \(resetCountdownText)",
+                        english: "\(resetCountdownText) remaining"
+                    )
+                )
                     .font(.system(size: 10, weight: .semibold, design: .rounded))
                     .foregroundStyle(NotchPalette.secondaryText)
                     .monospacedDigit()
@@ -1272,7 +1330,7 @@ private struct WeeklyQuotaProgressView: View {
                 credits: resetCredits,
                 now: now,
                 isExpanded: isResetScheduleExpanded,
-                title: NotchText.resetCredits(usage: usage),
+                title: NotchText.resetCredits(usage: usage, language: language),
                 onExpandedChanged: onResetScheduleExpandedChanged
             )
         }
@@ -1282,16 +1340,26 @@ private struct WeeklyQuotaProgressView: View {
 
     private var resetTimestampText: String {
         guard let resetAt = window?.resetAt else {
-            return "重置时间暂不可用"
+            return language.localized(
+                chinese: "重置时间暂不可用",
+                english: "Reset time unavailable"
+            )
         }
-        return "重置于 \(NotchText.resetTimestamp(resetAt))"
+        return language.localized(
+            chinese: "重置于 \(NotchText.resetTimestamp(resetAt))",
+            english: "Resets at \(NotchText.resetTimestamp(resetAt))"
+        )
     }
 
     private var resetCountdownText: String {
         guard let resetAt = window?.resetAt else {
             return "--:--:--"
         }
-        return NotchText.resetCountdown(resetAt: resetAt, now: now)
+        return NotchText.resetCountdown(
+            resetAt: resetAt,
+            now: now,
+            language: language
+        )
     }
 }
 
@@ -1301,6 +1369,7 @@ private struct ResetScheduleDisclosure: View {
     let isExpanded: Bool
     let title: String
     let onExpandedChanged: (Bool) -> Void
+    @Environment(\.notchAppLanguage) private var language
 
     var body: some View {
         VStack(spacing: NotchExpandedLayout.resetScheduleDetailSpacing) {
@@ -1345,13 +1414,28 @@ private struct ResetScheduleDisclosure: View {
             .buttonStyle(NotchButtonStyle())
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
-            .accessibilityLabel("重置次数：\(title)")
-            .accessibilityHint(credits.isEmpty ? "接口暂未返回重置券明细" : "点击展开或收起对应重置次数的到期时间")
+            .accessibilityLabel(
+                language.localized(
+                    chinese: "重置次数：\(title)",
+                    english: "Reset credits: \(title)"
+                )
+            )
+            .accessibilityHint(
+                credits.isEmpty
+                    ? language.localized(
+                        chinese: "接口暂未返回重置券明细",
+                        english: "The service has not returned reset-credit details"
+                    )
+                    : language.localized(
+                        chinese: "点击展开或收起对应重置次数的到期时间",
+                        english: "Click to show or hide reset-credit expiry times"
+                    )
+            )
 
             if isExpanded, !credits.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(Array(credits.enumerated()), id: \.element.id) { index, credit in
-                        ResetScheduleRow(credit: credit, now: now)
+                        ResetScheduleRow(credit: credit, now: now, language: language)
 
                         if index < credits.count - 1 {
                             Rectangle()
@@ -1377,10 +1461,11 @@ private struct ResetScheduleDisclosure: View {
 private struct ResetScheduleRow: View {
     let credit: ResetCredit
     let now: Date
+    let language: AppLanguage
 
     var body: some View {
         HStack(spacing: 10) {
-            Text(NotchText.resetCreditExpiry(credit))
+            Text(NotchText.resetCreditExpiry(credit, language: language))
                 .monospacedDigit()
                 .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                 .foregroundStyle(NotchPalette.primaryText)
@@ -1389,7 +1474,10 @@ private struct ResetScheduleRow: View {
 
             Text(
                 credit.expiresAt.map {
-                    "还剩 \(NotchText.resetCountdown(resetAt: $0, now: now))"
+                    language.localized(
+                        chinese: "还剩 \(NotchText.resetCountdown(resetAt: $0, now: now, language: language))",
+                        english: "\(NotchText.resetCountdown(resetAt: $0, now: now, language: language)) remaining"
+                    )
                 } ?? "—"
             )
             .monospacedDigit()
@@ -1459,21 +1547,33 @@ private struct NotchButtonStyle: ButtonStyle {
 }
 
 enum NotchText {
-    static func windowLabel(_ kind: UsageWindowKind) -> String {
+    static func windowLabel(
+        _ kind: UsageWindowKind,
+        language: AppLanguage = .chinese
+    ) -> String {
         switch kind {
         case let .rolling(hours):
-            return "滚动 \(hours)h"
+            return language.localized(
+                chinese: "滚动 \(hours)h",
+                english: "Rolling \(hours)h"
+            )
         case .daily:
-            return "每日"
+            return language.localized(chinese: "每日", english: "Daily")
         case .weekly:
-            return "每周"
+            return language.localized(chinese: "每周", english: "Weekly")
         case let .custom(seconds):
             return formatDuration(seconds: seconds)
         }
     }
 
-    static func compactWindow(_ window: UsageWindow) -> String {
-        "\(windowLabel(window.kind))余\(percent(window.remainingPercent))"
+    static func compactWindow(
+        _ window: UsageWindow,
+        language: AppLanguage = .chinese
+    ) -> String {
+        language.localized(
+            chinese: "\(windowLabel(window.kind, language: language))余\(percent(window.remainingPercent))",
+            english: "\(windowLabel(window.kind, language: language)) \(percent(window.remainingPercent)) left"
+        )
     }
 
     static func percent(_ value: Double) -> String {
@@ -1484,51 +1584,109 @@ enum NotchText {
         "\(Int(value.rounded()))"
     }
 
-    static func quotaSubtitle(usage: UsageSnapshot?) -> String {
+    static func quotaSubtitle(
+        usage: UsageSnapshot?,
+        language: AppLanguage = .chinese
+    ) -> String {
         guard let usage, let window = usage.windows.first else {
-            return "额度暂不可用"
+            return language.localized(
+                chinese: "额度暂不可用",
+                english: "Quota unavailable"
+            )
         }
-        return "\(windowLabel(window.kind))剩余 \(percent(window.remainingPercent)) · 已用 \(percent(window.usedPercent))"
+        return language.localized(
+            chinese: "\(windowLabel(window.kind, language: language))剩余 \(percent(window.remainingPercent)) · 已用 \(percent(window.usedPercent))",
+            english: "\(windowLabel(window.kind, language: language)) \(percent(window.remainingPercent)) remaining · \(percent(window.usedPercent)) used"
+        )
     }
 
-    static func resetCredits(usage: UsageSnapshot?) -> String {
+    static func resetCredits(
+        usage: UsageSnapshot?,
+        language: AppLanguage = .chinese
+    ) -> String {
         guard let credits = usage?.resetCreditsAvailable else {
-            return "重置 —"
+            return language.localized(chinese: "重置 —", english: "Resets —")
         }
-        return "可重置 \(credits) 次"
+        return language.localized(
+            chinese: "可重置 \(credits) 次",
+            english: "\(credits) resets available"
+        )
     }
 
-    static func resetCreditTitle(_ credit: ResetCredit) -> String {
+    static func resetCreditTitle(
+        _ credit: ResetCredit,
+        language: AppLanguage = .chinese
+    ) -> String {
         let title = credit.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return title.isEmpty ? "使用限额重置" : title
+        return title.isEmpty
+            ? language.localized(chinese: "使用限额重置", english: "Usage reset")
+            : title
     }
 
     static func resetCreditExpiry(
         _ credit: ResetCredit,
-        timeZone: TimeZone = .current
+        timeZone: TimeZone = .current,
+        language: AppLanguage = .chinese
     ) -> String {
         guard let expiresAt = credit.expiresAt else {
-            return "到期时间暂不可用"
+            return language.localized(
+                chinese: "到期时间暂不可用",
+                english: "Expiry unavailable"
+            )
         }
-        return "到期 \(resetTimestamp(expiresAt, timeZone: timeZone))"
+        return language.localized(
+            chinese: "到期 \(resetTimestamp(expiresAt, timeZone: timeZone))",
+            english: "Expires \(resetTimestamp(expiresAt, timeZone: timeZone))"
+        )
     }
 
-    static func sessionSubtitle(_ session: SessionActivity, now: Date) -> String {
-        "\(projectName(cwd: session.cwd)) · 已运行 \(formatDuration(seconds: max(0, now.timeIntervalSince(session.startedAt))))"
+    static func sessionSubtitle(
+        _ session: SessionActivity,
+        now: Date,
+        language: AppLanguage = .chinese
+    ) -> String {
+        language.localized(
+            chinese: "\(projectName(cwd: session.cwd, language: language)) · 已运行 \(formatDuration(seconds: max(0, now.timeIntervalSince(session.startedAt))))",
+            english: "\(projectName(cwd: session.cwd, language: language)) · Running for \(formatDuration(seconds: max(0, now.timeIntervalSince(session.startedAt))))"
+        )
     }
 
-    static func projectName(cwd: String?) -> String {
-        guard let cwd, !cwd.isEmpty else { return "未命名任务" }
+    static func projectName(
+        cwd: String?,
+        language: AppLanguage = .chinese
+    ) -> String {
+        guard let cwd, !cwd.isEmpty else {
+            return language.localized(chinese: "未命名任务", english: "Unnamed task")
+        }
         let name = URL(fileURLWithPath: cwd).lastPathComponent
         return name.isEmpty ? cwd : name
     }
 
-    static func relativeTime(from date: Date, now: Date) -> String {
+    static func relativeTime(
+        from date: Date,
+        now: Date,
+        language: AppLanguage = .chinese
+    ) -> String {
         let seconds = max(0, Int(now.timeIntervalSince(date).rounded(.down)))
-        if seconds < 60 { return "刚刚" }
-        if seconds < 3_600 { return "\(seconds / 60)分钟前" }
-        if seconds < 86_400 { return "\(seconds / 3_600)小时前" }
-        return "\(seconds / 86_400)天前"
+        if seconds < 60 {
+            return language.localized(chinese: "刚刚", english: "just now")
+        }
+        if seconds < 3_600 {
+            return language.localized(
+                chinese: "\(seconds / 60)分钟前",
+                english: "\(seconds / 60)m ago"
+            )
+        }
+        if seconds < 86_400 {
+            return language.localized(
+                chinese: "\(seconds / 3_600)小时前",
+                english: "\(seconds / 3_600)h ago"
+            )
+        }
+        return language.localized(
+            chinese: "\(seconds / 86_400)天前",
+            english: "\(seconds / 86_400)d ago"
+        )
     }
 
     static func formatDuration(seconds: TimeInterval) -> String {
@@ -1555,7 +1713,11 @@ enum NotchText {
         return formatter.string(from: date)
     }
 
-    static func resetCountdown(resetAt: Date, now: Date) -> String {
+    static func resetCountdown(
+        resetAt: Date,
+        now: Date,
+        language: AppLanguage = .chinese
+    ) -> String {
         let total = max(0, Int(resetAt.timeIntervalSince(now).rounded(.down)))
         let days = total / 86_400
         let hours = (total % 86_400) / 3_600
@@ -1563,7 +1725,10 @@ enum NotchText {
         let seconds = total % 60
 
         if days > 0 {
-            return String(format: "%d天 %02d:%02d:%02d", days, hours, minutes, seconds)
+            return language.localized(
+                chinese: String(format: "%d天 %02d:%02d:%02d", days, hours, minutes, seconds),
+                english: String(format: "%dd %02d:%02d:%02d", days, hours, minutes, seconds)
+            )
         }
         return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }

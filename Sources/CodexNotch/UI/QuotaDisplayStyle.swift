@@ -10,20 +10,34 @@ enum QuotaDisplayStyle: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 
     var title: String {
+        title(for: .chinese)
+    }
+
+    func title(for language: AppLanguage) -> String {
         switch self {
         case .clockwiseRing:
-            return "顺时针圆环"
+            return language.localized(chinese: "顺时针圆环", english: "Clockwise ring")
         case .waveBall:
-            return "波浪球"
+            return language.localized(chinese: "波浪球", english: "Wave ball")
         }
     }
 
     var subtitle: String {
+        subtitle(for: .chinese)
+    }
+
+    func subtitle(for language: AppLanguage) -> String {
         switch self {
         case .clockwiseRing:
-            return "缺口从12点顺时针展开；运行时渐变流动"
+            return language.localized(
+                chinese: "缺口从12点顺时针展开；运行时渐变流动",
+                english: "The gap starts at 12 o'clock; the gradient flows while running"
+            )
         case .waveBall:
-            return "任务运行时液面轻微起伏"
+            return language.localized(
+                chinese: "任务运行时液面轻微起伏",
+                english: "The liquid level gently moves while running"
+            )
         }
     }
 
