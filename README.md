@@ -74,7 +74,7 @@ While Codex works, a blue activity echo shows that the task is still running; co
 From [**GitHub Releases**](https://github.com/fengdwx/codex-notch/releases/latest), prefer `CodexNotch-...dmg` when the release provides one. Otherwise, use the ZIP archive:
 
 1. For a DMG, open the disk image; for a ZIP, unzip the archive.
-2. Drag `CodexNotch.app` into Applications.
+2. In the DMG window, drag `CodexNotch.app` onto the `Applications` shortcut. (The ZIP requires dragging the app into Applications manually.)
 3. Sign in to ChatGPT, use Codex once, then launch CodexNotch.
 
 Swift, Swift Package Manager, and Xcode are not required.

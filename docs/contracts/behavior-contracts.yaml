@@ -363,7 +363,7 @@ contracts:
   - id: PACKAGE-DMG-018
     title: Local releases include a verified disk image
     status: active
-    statement: The release script must retain the ZIP archive and also create a matching read-only DMG that contains CodexNotch.app; it must verify the image, mount it into a temporary directory, and verify the mounted app bundle before reporting success.
+    statement: The release script must retain the ZIP archive and also create a matching read-only DMG that contains CodexNotch.app beside an Applications shortcut targeting /Applications; it must verify the image, mount it into a temporary directory, verify the shortcut target, and verify the mounted app bundle before reporting success.
     rationale: A DMG gives ordinary macOS users a familiar drag-to-Applications installation flow, but a file ending in .dmg is not evidence that its payload is complete or runnable.
     source: user-request
     owner: project-maintainer
@@ -372,8 +372,8 @@ contracts:
       include: [local-release, disk-image, build, bundle]
       exclude: [remote-release-upload, developer-id-signing, notarization]
     examples:
-      positive: Running './scripts/release.sh' creates matching ZIP and DMG artifacts plus SHA-256 files, and the mounted DMG contains an app that passes the bundle verification script.
-      negative: Replacing the ZIP with an unverified DMG, publishing a DMG that omits the app bundle, or claiming that a DMG alone removes the macOS trust warning.
+      positive: Running './scripts/release.sh' creates matching ZIP and DMG artifacts plus SHA-256 files, and the mounted DMG contains an app that passes the bundle verification script beside an Applications shortcut pointing to /Applications.
+      negative: Replacing the ZIP with an unverified DMG, publishing a DMG that omits the app bundle or Applications shortcut, pointing the shortcut somewhere other than /Applications, or claiming that a DMG alone removes the macOS trust warning.
     guards:
       - scripts/release.sh
       - scripts/verify_app.sh

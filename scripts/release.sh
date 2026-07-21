@@ -9,11 +9,15 @@ APP_PATH="$DIST_DIR/CodexNotch.app"
 ARCHIVE_PATH="$DIST_DIR/CodexNotch-$VERSION-macOS-$ARCH.zip"
 DMG_PATH="$DIST_DIR/CodexNotch-$VERSION-macOS-$ARCH.dmg"
 DMG_MOUNT_DIR=""
+DMG_STAGING_DIR=""
 
 cleanup_dmg_mount() {
     if [[ -n "$DMG_MOUNT_DIR" ]]; then
         hdiutil detach -quiet "$DMG_MOUNT_DIR" >/dev/null 2>&1 || true
         rmdir "$DMG_MOUNT_DIR" >/dev/null 2>&1 || true
+    fi
+    if [[ -n "$DMG_STAGING_DIR" ]]; then
+        rm -rf "$DMG_STAGING_DIR"
     fi
 }
 
@@ -27,9 +31,13 @@ rm -f "$ARCHIVE_PATH" "$ARCHIVE_PATH.sha256" "$DMG_PATH" "$DMG_PATH.sha256"
 ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ARCHIVE_PATH"
 shasum -a 256 "$ARCHIVE_PATH" | tee "$ARCHIVE_PATH.sha256"
 
+DMG_STAGING_DIR="$(mktemp -d "${TMPDIR:-/tmp}/codex-notch-dmg-stage.XXXXXX")"
+ditto "$APP_PATH" "$DMG_STAGING_DIR/CodexNotch.app"
+ln -s /Applications "$DMG_STAGING_DIR/Applications"
+
 hdiutil create \
     -volname "CodexNotch" \
-    -srcfolder "$APP_PATH" \
+    -srcfolder "$DMG_STAGING_DIR" \
     -format UDZO \
     -ov \
     "$DMG_PATH" >/dev/null
@@ -37,6 +45,14 @@ hdiutil verify "$DMG_PATH" >/dev/null
 
 DMG_MOUNT_DIR="$(mktemp -d "${TMPDIR:-/tmp}/codex-notch-dmg.XXXXXX")"
 hdiutil attach -readonly -nobrowse -mountpoint "$DMG_MOUNT_DIR" "$DMG_PATH" >/dev/null
+[[ -L "$DMG_MOUNT_DIR/Applications" ]] || {
+    echo "error: DMG is missing the Applications shortcut" >&2
+    exit 1
+}
+[[ "$(readlink "$DMG_MOUNT_DIR/Applications")" == "/Applications" ]] || {
+    echo "error: DMG Applications shortcut does not target /Applications" >&2
+    exit 1
+}
 "$ROOT_DIR/scripts/verify_app.sh" "$DMG_MOUNT_DIR/CodexNotch.app"
 hdiutil detach -quiet "$DMG_MOUNT_DIR"
 rmdir "$DMG_MOUNT_DIR"
