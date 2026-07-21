@@ -2,30 +2,30 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** 构建一个独立的 macOS 刘海应用，在 ChatGPT（原 Codex）前台时显示真实 Codex 额度，在任意应用前台时持续显示运行中的 Codex 任务，并可精确跳回对应任务。
+**Goal:** Build an independent macOS notch app that shows real Codex quota while ChatGPT (formerly Codex) is frontmost, keeps running Codex tasks visible while any app is frontmost, and can navigate precisely back to the corresponding task.
 
-**Architecture:** 使用 AppKit `NSPanel` 负责刘海窗口和屏幕定位，SwiftUI 负责紧凑态与展开态 UI。额度由本地 Codex 登录态请求 usage 接口，任务状态由 FSEvents 加增量 JSONL 解析获得，纯状态 reducer 决定最终展示。
+**Architecture:** Use AppKit `NSPanel` for the notch window and screen positioning, and SwiftUI for compact and expanded UI. Request quota from the local Codex login state through the usage endpoint, parse task state from FSEvents plus incremental JSONL reads, and let a pure state reducer determine the final presentation.
 
-**Tech Stack:** Swift 5.9+ 语言模式、macOS 14+、AppKit、SwiftUI、Foundation、CoreServices/FSEvents、ServiceManagement、Swift Package Manager、XCTest。
+**Tech Stack:** Swift 5.9+ language mode, macOS 14+, AppKit, SwiftUI, Foundation, CoreServices/FSEvents, ServiceManagement, Swift Package Manager, and XCTest.
 
 ---
 
-## 实施原则
+## Implementation Principles
 
-- 项目根目录：`/Users/david/projects/tmp/codex-notch`。
-- 独立应用，不依赖 Atoll、CodexIsland、CodexBar、CC Switch、hooks 或 app-server。
-- 每个任务按“失败测试 → 最小实现 → 测试通过 → 提交”推进。
-- 不提交 token、auth 文件、真实 rollout、完整 usage 响应或用户消息正文。
-- 当前机器存在 Swift 编译器与 SDK 小版本不匹配，Task 0 未通过前不进入业务代码。发布给普通用户的是已构建的 `.app`，普通用户不需要安装 Swift 或 Xcode。
+- Project root: `/Users/david/projects/tmp/codex-notch`.
+- Independent app with no dependency on Atoll, CodexIsland, CodexBar, CC Switch, hooks, or app-server.
+- Drive each task through “failing test → minimal implementation → passing test → commit”.
+- Do not commit tokens, auth files, real rollouts, complete usage responses, or user-message bodies.
+- The current machine has a minor Swift compiler/SDK mismatch; do not enter business code until Task 0 passes. Ordinary users receive a built `.app` and do not need Swift or Xcode.
 
-### Task 0: 固定工具链并建立隔离工作区
+### Task 0: Pin the Toolchain and Create an Isolated Worktree
 
 **Files:**
 - Existing: `/Users/david/projects/tmp/codex-notch/docs/plans/2026-07-16-codex-notch-session-activity-design.md`
 - Existing: `/Users/david/projects/tmp/codex-notch/docs/plans/2026-07-16-codex-notch-session-activity-implementation.md`
 - Create: `/Users/david/projects/tmp/codex-notch/.gitignore`
 
-**Step 1: 检查当前工具链**
+**Step 1: Check the current toolchain**
 
 Run:
 
@@ -36,11 +36,11 @@ xcrun swift --version
 xcrun --show-sdk-path
 ```
 
-Expected: Swift 编译器可以读取当前 macOS SDK。当前已知环境可能报“SDK built with Swift 6.2.3, compiler is Swift 6.2.4”一类不匹配错误。
+Expected: The Swift compiler can read the current macOS SDK. The known environment may report a mismatch such as “SDK built with Swift 6.2.3, compiler is Swift 6.2.4”.
 
-**Step 2: 切换到匹配的完整 Xcode**
+**Step 2: Switch to a matching full Xcode installation**
 
-如果 `/Applications/Xcode.app` 已安装：
+If `/Applications/Xcode.app` is installed:
 
 ```bash
 sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
@@ -48,9 +48,9 @@ sudo xcodebuild -runFirstLaunch
 xcrun swift --version
 ```
 
-Expected: 命令无 SDK compatibility error。若未安装完整 Xcode，本步骤是开发者构建源码前的前置条件；普通用户使用 release app 不受影响。
+Expected: The command produces no SDK compatibility error. If full Xcode is not installed, this is a prerequisite for source builds by developers; ordinary users of the release app are unaffected.
 
-**Step 3: 创建忽略规则**
+**Step 3: Create ignore rules**
 
 ```gitignore
 .build/
@@ -61,7 +61,7 @@ CodexNotch.app/
 .DS_Store
 ```
 
-**Step 4: 初始化仓库并提交规划文档**
+**Step 4: Initialize the repository and commit the plan documents**
 
 Run:
 
@@ -73,9 +73,9 @@ git add .gitignore docs/plans
 git commit -m "docs: define CodexNotch v1"
 ```
 
-Expected: 首次提交成功，工作树干净。
+Expected: The initial commit succeeds and the worktree is clean.
 
-**Step 5: 创建实施 worktree**
+**Step 5: Create the implementation worktree**
 
 Run:
 
@@ -84,9 +84,9 @@ mkdir -p /Users/david/projects/tmp/codex-notch-worktrees
 git worktree add /Users/david/projects/tmp/codex-notch-worktrees/v1 -b feat/codex-notch-v1
 ```
 
-Expected: 新工作区位于 `/Users/david/projects/tmp/codex-notch-worktrees/v1`。后续命令均在该目录执行。
+Expected: The new worktree is at `/Users/david/projects/tmp/codex-notch-worktrees/v1`. Run subsequent commands from that directory.
 
-### Task 1: 建立可测试的 Swift 应用骨架
+### Task 1: Establish a Testable Swift App Skeleton
 
 **Files:**
 - Create: `Package.swift`
@@ -94,7 +94,7 @@ Expected: 新工作区位于 `/Users/david/projects/tmp/codex-notch-worktrees/v1
 - Create: `Sources/CodexNotch/App/AppDelegate.swift`
 - Create: `Tests/CodexNotchTests/SmokeTests.swift`
 
-**Step 1: 写失败的 smoke test**
+**Step 1: Write the failing smoke test**
 
 ```swift
 import XCTest
@@ -107,7 +107,7 @@ final class SmokeTests: XCTestCase {
 }
 ```
 
-**Step 2: 创建 `Package.swift` 并运行测试**
+**Step 2: Create `Package.swift` and run the test**
 
 ```swift
 // swift-tools-version: 5.9
@@ -129,7 +129,7 @@ Run: `swift test --filter SmokeTests`
 
 Expected: FAIL because `AppIdentity` does not exist.
 
-**Step 3: 添加最小应用入口**
+**Step 3: Add the minimal app entry point**
 
 ```swift
 import SwiftUI
@@ -149,9 +149,9 @@ struct CodexNotchApp: App {
 }
 ```
 
-`AppDelegate` 先只设置 `.accessory` activation policy。
+For now, `AppDelegate` only sets the `.accessory` activation policy.
 
-**Step 4: 验证并提交**
+**Step 4: Verify and commit**
 
 Run:
 
@@ -161,16 +161,16 @@ git add Package.swift Sources Tests
 git commit -m "chore: bootstrap native CodexNotch app"
 ```
 
-Expected: 1 test passed。
+Expected: 1 test passes.
 
-### Task 2: 定义额度模型与动态窗口分类
+### Task 2: Define the Quota Model and Dynamic Window Classification
 
 **Files:**
 - Create: `Sources/CodexNotch/Models/UsageSnapshot.swift`
 - Create: `Sources/CodexNotch/Usage/UsageWindowClassifier.swift`
 - Create: `Tests/CodexNotchTests/UsageWindowClassifierTests.swift`
 
-**Step 1: 写分类失败测试**
+**Step 1: Write failing classification tests**
 
 ```swift
 func test604800SecondWindowIsWeekly() {
@@ -191,7 +191,7 @@ Run: `swift test --filter UsageWindowClassifierTests`
 
 Expected: FAIL because usage types do not exist。
 
-**Step 2: 实现最小模型与分类器**
+**Step 2: Implement the minimal model and classifier**
 
 ```swift
 enum UsageWindowKind: Equatable, Sendable {
@@ -219,11 +219,11 @@ struct UsageSnapshot: Equatable, Sendable {
 }
 ```
 
-分类规则：6–8 天归为 weekly，接近 1 天归为 daily，可整除小时的短窗口显示实际小时数，其余显示自定义时长。不得根据 primary/secondary 字段名分类。
+Classification rules: classify 6–8 days as weekly, a near-one-day window as daily, a short window divisible into hours by its actual hour count, and all others by custom duration. Never classify from the primary/secondary field names.
 
-**Step 3: 验证边界并提交**
+**Step 3: Verify boundaries and commit**
 
-再补 `usedPercent > 100`、负值、未知秒数测试；规范化为 0–100。
+Add tests for `usedPercent > 100`, negative values, and unknown durations; normalize to 0–100.
 
 Run:
 
@@ -233,9 +233,9 @@ git add Sources/CodexNotch/Models Sources/CodexNotch/Usage Tests/CodexNotchTests
 git commit -m "feat: classify Codex usage windows by duration"
 ```
 
-Expected: 所有额度分类测试通过。
+Expected: All quota-classification tests pass.
 
-### Task 3: 读取本地认证并请求额度
+### Task 3: Read Local Authentication and Request Quota
 
 **Files:**
 - Create: `Sources/CodexNotch/Usage/CodexAuthReader.swift`
@@ -247,21 +247,21 @@ Expected: 所有额度分类测试通过。
 - Create: `Tests/Fixtures/usage-weekly-only.json`
 - Create: `Tests/Fixtures/usage-multiple-windows.json`
 
-**Step 1: 写 auth 和响应映射失败测试**
+**Step 1: Write failing auth and response-mapping tests**
 
-测试必须覆盖：
+Tests must cover:
 
-- 从临时 fixture 读取 access token 与 account ID。
-- `CODEX_HOME` 覆盖默认目录。
-- 只有 604800 秒窗口时只生成一张 weekly 卡。
-- secondary 缺失时不报错。
-- 401 映射为 `reauthenticationRequired`。
+- Reading the access token and account ID from a temporary fixture.
+- `CODEX_HOME` overriding the default directory.
+- Creating only one weekly card when the only window is 604800 seconds.
+- No error when secondary is missing.
+- Mapping 401 to `reauthenticationRequired`.
 
 Run: `swift test --filter CodexAuthReaderTests && swift test --filter CodexUsageClientTests`
 
 Expected: FAIL because reader and client do not exist。
 
-**Step 2: 实现认证读取边界**
+**Step 2: Implement authentication-reading boundaries**
 
 ```swift
 struct CodexCredentials: Sendable {
@@ -286,13 +286,13 @@ struct CodexAuthReader: CredentialsReading {
 }
 ```
 
-**Step 3: 实现可注入 URLSession 的 usage client**
+**Step 3: Implement a usage client with an injectable URLSession**
 
-请求固定为 `GET https://chatgpt.com/backend-api/wham/usage`，设置 `Authorization: Bearer ...`；存在 account ID 时设置 `ChatGPT-Account-Id`。DTO 所有非关键字段可选，解析 primary 和 secondary 时统一交给 `UsageWindowClassifier`。
+Use the fixed request `GET https://chatgpt.com/backend-api/wham/usage` with `Authorization: Bearer ...`; set `ChatGPT-Account-Id` when an account ID exists. Make every non-critical DTO field optional, and send primary and secondary windows through `UsageWindowClassifier`.
 
-禁止记录 request headers 和 response body。client 返回 `UsageSnapshot` 或结构化错误，不直接修改 UI。
+Do not record request headers or response bodies. The client returns `UsageSnapshot` or a structured error and does not modify the UI directly.
 
-**Step 4: 测试与提交**
+**Step 4: Test and commit**
 
 Run:
 
@@ -303,9 +303,9 @@ git add Sources/CodexNotch/Usage Tests
 git commit -m "feat: fetch Codex quota from local login"
 ```
 
-Expected: fixture 测试通过，测试输出不含 fixture token。
+Expected: Fixture tests pass and test output contains no fixture token.
 
-### Task 4: 解析 rollout JSONL 事件
+### Task 4: Parse Rollout JSONL Events
 
 **Files:**
 - Create: `Sources/CodexNotch/Models/SessionActivity.swift`
@@ -315,7 +315,7 @@ Expected: fixture 测试通过，测试输出不含 fixture token。
 - Create: `Tests/Fixtures/rollout-aborted.jsonl`
 - Create: `Tests/Fixtures/rollout-malformed-line.jsonl`
 
-**Step 1: 写事件序列失败测试**
+**Step 1: Write failing event-sequence tests**
 
 ```swift
 func testStartedThenCompletedLeavesNoActiveTurn() throws {
@@ -335,9 +335,9 @@ Run: `swift test --filter RolloutEventParserTests`
 
 Expected: FAIL because parser does not exist。
 
-**Step 2: 实现窄字段解析**
+**Step 2: Implement narrow-field parsing**
 
-只解码顶层 `timestamp`、`type` 和 payload 中的 `id`、`type`、`turn_id`、`cwd`、`originator`。忽略 message content 和其他 response items。
+Decode only top-level `timestamp` and `type`, plus `id`, `type`, `turn_id`, `cwd`, and `originator` in the payload. Ignore message content and other response items.
 
 ```swift
 enum RolloutEventKind: Equatable, Sendable {
@@ -348,9 +348,9 @@ enum RolloutEventKind: Equatable, Sendable {
 }
 ```
 
-坏行返回可忽略的 parse issue，不能 throw 终止整个文件。终止事件缺少 turn ID 时，结束该 rollout 当前的活动 turn。
+Return a malformed line as an ignorable parse issue instead of throwing and terminating the file. If a termination event has no turn ID, end the current active turn for that rollout.
 
-**Step 3: 验证并提交**
+**Step 3: Verify and commit**
 
 Run:
 
@@ -360,9 +360,9 @@ git add Sources/CodexNotch/Models/SessionActivity.swift Sources/CodexNotch/Monit
 git commit -m "feat: parse Codex rollout activity events"
 ```
 
-Expected: started、complete、aborted、坏行恢复全部通过。
+Expected: Started, complete, aborted, and malformed-line recovery all pass.
 
-### Task 5: 增量读取文件并聚合多任务状态
+### Task 5: Read Files Incrementally and Aggregate Multiple-Task State
 
 **Files:**
 - Create: `Sources/CodexNotch/Monitoring/IncrementalJSONLReader.swift`
@@ -372,21 +372,21 @@ Expected: started、complete、aborted、坏行恢复全部通过。
 - Create: `Tests/CodexNotchTests/IncrementalJSONLReaderTests.swift`
 - Create: `Tests/CodexNotchTests/ActiveSessionStoreTests.swift`
 
-**Step 1: 写增量和多任务失败测试**
+**Step 1: Write failing incremental and multiple-task tests**
 
-覆盖以下行为：
+Cover the following behavior:
 
-- 第二次读取只返回 append 的新行。
-- 文件长度小于旧 offset 时视为截断并从头读取。
-- 两个活动任务按 `lastActivityAt` 倒序。
-- complete 只移除对应任务。
-- 冷启动时 6 小时无更新的 unmatched start 被清理。
+- The second read returns only newly appended lines.
+- A file shorter than the old offset is treated as truncated and read from the beginning.
+- Two active tasks are sorted by descending `lastActivityAt`.
+- A complete event removes only its corresponding task.
+- An unmatched start with no update for six hours is cleaned up during cold start.
 
 Run: `swift test --filter IncrementalJSONLReaderTests && swift test --filter ActiveSessionStoreTests`
 
 Expected: FAIL。
 
-**Step 2: 实现可测试的 offset reader**
+**Step 2: Implement a testable offset reader**
 
 ```swift
 struct FileCursor: Equatable, Sendable {
@@ -399,17 +399,17 @@ protocol IncrementalReading: Sendable {
 }
 ```
 
-只把以换行结尾的完整记录交给 parser；末尾半行留在 `remainder` 等下次 append。
+Pass only complete newline-terminated records to the parser; keep a trailing partial line in `remainder` until the next append.
 
-**Step 3: 实现活动任务 store**
+**Step 3: Implement the active-task store**
 
-`ActiveSessionStore` 使用 actor 串行化状态。每个 rollout 维护 thread metadata 和当前 turn。公开快照为排序后的 `[SessionActivity]`，主任务永远是第一项。
+`ActiveSessionStore` uses an actor to serialize state. Each rollout retains thread metadata and the current turn. The public snapshot is a sorted `[SessionActivity]`, with the primary task always first.
 
-**Step 4: 接入 FSEvents**
+**Step 4: Connect FSEvents**
 
-FSEvents 只负责通知“哪些路径可能变化”；实际读取仍经过 offset reader。启动扫描范围限定为 sessions 下最近 24 小时修改的 `.jsonl`。变化回调切回 actor，避免并发修改 cursors。
+FSEvents only reports which paths may have changed; actual reads still go through the offset reader. Limit the launch scan to `.jsonl` files modified within the last 24 hours under sessions. Hop back to the actor in change callbacks to avoid concurrent cursor mutation.
 
-**Step 5: 测试与提交**
+**Step 5: Test and commit**
 
 Run:
 
@@ -420,16 +420,16 @@ git add Sources/CodexNotch/Monitoring Tests/CodexNotchTests
 git commit -m "feat: monitor active Codex sessions incrementally"
 ```
 
-Expected: 多文件、截断、半行、过期清理测试全部通过。
+Expected: Multi-file, truncation, partial-line, and stale-cleanup tests all pass.
 
-### Task 6: 监听 ChatGPT 前台状态并实现 Codex 任务深链
+### Task 6: Monitor ChatGPT Foreground State and Deep-Link Codex Tasks
 
 **Files:**
 - Create: `Sources/CodexNotch/Monitoring/FrontmostAppMonitor.swift`
 - Create: `Sources/CodexNotch/Navigation/CodexThreadNavigator.swift`
 - Create: `Tests/CodexNotchTests/CodexThreadNavigatorTests.swift`
 
-**Step 1: 写深链失败测试**
+**Step 1: Write failing deep-link tests**
 
 ```swift
 func testThreadURLUsesCodexScheme() throws {
@@ -446,15 +446,15 @@ Run: `swift test --filter CodexThreadNavigatorTests`
 
 Expected: FAIL。
 
-**Step 2: 实现 workspace 监听**
+**Step 2: Implement workspace monitoring**
 
-启动时读取 `NSWorkspace.shared.frontmostApplication`，随后监听 `NSWorkspace.didActivateApplicationNotification`。目标是现在承载 Codex 任务的 ChatGPT，其 bundle ID 仍为 `com.openai.codex`。不能依赖显示名或安装路径，也不能把 ChatGPT Classic 误判为目标应用。
+Read `NSWorkspace.shared.frontmostApplication` at launch, then observe `NSWorkspace.didActivateApplicationNotification`. The target is ChatGPT, which currently hosts Codex tasks and still uses bundle ID `com.openai.codex`. Do not depend on the display name or installation path, and do not mistake ChatGPT Classic for the target app.
 
-**Step 3: 实现导航降级**
+**Step 3: Implement navigation fallback**
 
-有效 thread ID 用 `NSWorkspace.shared.open(codexURL)`；打开返回 false 时，使用 `NSWorkspace.shared.openApplication` 激活 bundle ID 为 `com.openai.codex` 的 ChatGPT。无活动任务时点击紧凑额度态也只激活该 ChatGPT 应用。
+Open a valid thread ID with `NSWorkspace.shared.open(codexURL)`; when opening returns false, use `NSWorkspace.shared.openApplication` to activate ChatGPT with bundle ID `com.openai.codex`. With no active task, clicking the compact quota state also activates only that ChatGPT app.
 
-**Step 4: 验证并提交**
+**Step 4: Verify and commit**
 
 Run:
 
@@ -464,25 +464,25 @@ git add Sources/CodexNotch/Monitoring/FrontmostAppMonitor.swift Sources/CodexNot
 git commit -m "feat: detect Codex foreground and deep-link tasks"
 ```
 
-Expected: URL 单测通过；手工 `open "codex://threads/<真实ID>"` 能跳到对应任务。
+Expected: URL unit tests pass; manually running `open "codex://threads/<real-id>"` opens the corresponding task.
 
-### Task 7: 用纯 reducer 决定刘海展示状态
+### Task 7: Use a Pure Reducer to Determine Notch Presentation
 
 **Files:**
 - Create: `Sources/CodexNotch/State/NotchPresentationState.swift`
 - Create: `Sources/CodexNotch/State/NotchPresentationReducer.swift`
 - Create: `Tests/CodexNotchTests/NotchPresentationReducerTests.swift`
 
-**Step 1: 写优先级失败测试**
+**Step 1: Write failing priority tests**
 
-必须覆盖：
+Must cover:
 
-- 活动任务 + 非 ChatGPT 前台 → working。
-- 活动任务 + ChatGPT 前台 → 仍然 working。
-- 无活动任务 + 刚完成 → completed。
-- 完成提示过期 + ChatGPT 前台 → quota。
-- 完成提示过期 + 其他应用 → hidden。
-- hover + 多任务 → expanded，主任务为最近活跃。
+- Active task + non-ChatGPT frontmost → working.
+- Active task + ChatGPT frontmost → still working.
+- No active task + just completed → completed.
+- Completion cue expired + ChatGPT frontmost → quota.
+- Completion cue expired + another app frontmost → hidden.
+- Hover + multiple tasks → expanded, with the most recently active task as primary.
 
 ```swift
 enum NotchPresentationState: Equatable {
@@ -498,11 +498,11 @@ Run: `swift test --filter NotchPresentationReducerTests`
 
 Expected: FAIL。
 
-**Step 2: 实现状态优先级**
+**Step 2: Implement state priority**
 
-reducer 的输入必须包含显式 `now`，测试不能直接依赖 `Date.now`。完成提示持续 3 秒；Codex 离开前台的 1.2 秒延迟由 coordinator 产生一个延迟后的 foreground 输入，不写进视图。
+The reducer input must include an explicit `now`; tests must not depend directly on `Date.now`. The completion cue lasts 3 seconds; the coordinator produces a delayed foreground input for the 1.2-second delay after Codex leaves the foreground instead of putting that delay in the view.
 
-**Step 3: 测试与提交**
+**Step 3: Test and commit**
 
 Run:
 
@@ -512,9 +512,9 @@ git add Sources/CodexNotch/State Tests/CodexNotchTests/NotchPresentationReducerT
 git commit -m "feat: define deterministic notch presentation states"
 ```
 
-Expected: 状态优先级和时间边界全部通过。
+Expected: State priority and time boundaries all pass.
 
-### Task 8: 实现刘海几何计算与非激活面板
+### Task 8: Implement Notch Geometry and a Nonactivating Panel
 
 **Files:**
 - Create: `Sources/CodexNotch/Window/NotchGeometry.swift`
@@ -522,19 +522,19 @@ Expected: 状态优先级和时间边界全部通过。
 - Create: `Sources/CodexNotch/Window/NotchWindowController.swift`
 - Create: `Tests/CodexNotchTests/NotchGeometryTests.swift`
 
-**Step 1: 写纯几何失败测试**
+**Step 1: Write failing pure-geometry tests**
 
-用人工构造的 screen frame、visible frame、左右 auxiliary rect 测试：
+Use constructed screen frames, visible frames, and left/right auxiliary rects to test:
 
-- 紧凑窗以刘海中心为轴。
-- 展开后不超出屏幕左右边界。
-- 没有 auxiliary rect 时返回 `.menuBarFallback`。
+- The compact window is centered on the notch.
+- Expansion stays within the screen's left and right boundaries.
+- `.menuBarFallback` is returned when auxiliary rects are absent.
 
 Run: `swift test --filter NotchGeometryTests`
 
 Expected: FAIL。
 
-**Step 2: 实现面板属性**
+**Step 2: Implement panel properties**
 
 ```swift
 final class NotchPanel: NSPanel {
@@ -558,11 +558,11 @@ final class NotchPanel: NSPanel {
 }
 ```
 
-**Step 3: 连接 geometry 与 controller**
+**Step 3: Connect geometry and controller**
 
-controller 监听 `NSApplication.didChangeScreenParametersNotification`，状态变化时只更新 frame 和 SwiftUI root view。hidden 时 `ignoresMouseEvents = true`；compact/expanded 时为 false。
+The controller observes `NSApplication.didChangeScreenParametersNotification` and updates only the frame and SwiftUI root view when state changes. Set `ignoresMouseEvents = true` when hidden and false when compact or expanded.
 
-**Step 4: 测试与提交**
+**Step 4: Test and commit**
 
 Run:
 
@@ -572,9 +572,9 @@ git add Sources/CodexNotch/Window Tests/CodexNotchTests/NotchGeometryTests.swift
 git commit -m "feat: position a nonactivating panel around the notch"
 ```
 
-Expected: 几何测试通过，假数据 demo 不抢键盘焦点。
+Expected: Geometry tests pass and the fake-data demo does not steal keyboard focus.
 
-### Task 9: 构建紧凑态与展开态 SwiftUI
+### Task 9: Build the Compact and Expanded SwiftUI States
 
 **Files:**
 - Create: `Sources/CodexNotch/UI/NotchRootView.swift`
@@ -586,23 +586,23 @@ Expected: 几何测试通过，假数据 demo 不抢键盘焦点。
 - Create: `Sources/CodexNotch/UI/ActiveSessionRow.swift`
 - Create: `Sources/CodexNotch/UI/NotchTheme.swift`
 
-**Step 1: 建立静态 preview 数据**
+**Step 1: Create static preview data**
 
-准备单周窗口、双窗口、单任务、双任务、完成态和无额度错误态。preview 数据不得读取真实 auth 或 rollout。
+Prepare single-week-window, two-window, single-task, two-task, completed, and no-quota-error states. Preview data must not read real auth or rollout files.
 
-**Step 2: 实现紧凑布局**
+**Step 2: Implement the compact layout**
 
-左侧显示 ChatGPT 图标、“Codex 工作中”或完成状态及 elapsed；右侧显示最重要额度窗口的剩余百分比。中间黑色区域与物理刘海融为一体。使用 monospaced digit 避免倒计时宽度抖动。
+Show the ChatGPT icon, “Codex working”, or the completed state with elapsed time on the left; show the most important quota window's remaining percentage on the right. Blend the central black area into the physical notch. Use monospaced digits to avoid countdown-width jitter.
 
-**Step 3: 实现展开布局**
+**Step 3: Implement the expanded layout**
 
-hover 进入 expanded，离开后延迟 300ms 收起。多任务按最近活动排序，每行显示目录末级名、运行时长和跳转图标；额度区只渲染真实窗口。
+Hover enters expanded and collapses after a 300ms delay when the pointer leaves. Sort multiple tasks by recent activity; each row shows the leaf directory name, runtime, and navigation icon. The quota area renders only real windows.
 
-**Step 4: 实现颜色和可访问性**
+**Step 4: Implement color and accessibility**
 
-额度 used < 70% 为绿、70–90% 为橙、> 90% 为红；运行态使用系统蓝，完成态使用系统绿。为按钮添加 accessibility label，尊重 Reduce Motion。
+Quota used < 70% is green, 70–90% is orange, and > 90% is red; use system blue for running and system green for completed. Add accessibility labels to buttons and respect Reduce Motion.
 
-**Step 5: 编译与提交**
+**Step 5: Build and commit**
 
 Run:
 
@@ -612,9 +612,9 @@ git add Sources/CodexNotch/UI
 git commit -m "feat: add compact and expanded notch views"
 ```
 
-Expected: build succeeded，所有 preview 可渲染。
+Expected: The build succeeds and every preview renders.
 
-### Task 10: 组装 coordinator、刷新节奏和完成提示
+### Task 10: Assemble the Coordinator, Refresh Cadence, and Completion Cue
 
 **Files:**
 - Create: `Sources/CodexNotch/App/AppCoordinator.swift`
@@ -622,31 +622,31 @@ Expected: build succeeded，所有 preview 可渲染。
 - Create: `Tests/CodexNotchTests/AppCoordinatorTests.swift`
 - Modify: `Sources/CodexNotch/App/AppDelegate.swift`
 
-**Step 1: 写调度失败测试**
+**Step 1: Write failing scheduling tests**
 
-使用 fake clock、fake usage client、fake activity monitor 验证：
+Use a fake clock, fake usage client, and fake activity monitor to verify:
 
-- 启动刷新一次。
-- Codex 激活时立即刷新。
-- task_started 时立即刷新。
-- 前台或运行中每 60 秒刷新。
-- 完全隐藏时停止 60 秒轮询。
-- 离开 ChatGPT 1.2 秒后才隐藏。
-- task_complete 展示 3 秒。
+- One refresh at launch.
+- Immediate refresh when Codex activates.
+- Immediate refresh on `task_started`.
+- Refresh every 60 seconds while frontmost or running.
+- Stop the 60-second poll while fully hidden.
+- Hide only 1.2 seconds after leaving ChatGPT.
+- Show `task_complete` for 3 seconds.
 
 Run: `swift test --filter AppCoordinatorTests`
 
 Expected: FAIL。
 
-**Step 2: 实现主线程 store**
+**Step 2: Implement the main-thread store**
 
-`AppStore` 使用 `@MainActor`，保存 credentials 状态、usage snapshot、active sessions、recent completion、foreground 和 hover。所有异步数据先进入 store，再调用 reducer，UI 不直接访问文件或网络。
+`AppStore` uses `@MainActor` and stores credentials state, usage snapshot, active sessions, recent completion, foreground, and hover. All asynchronous data enters the store first, then goes through the reducer; the UI does not access files or the network directly.
 
-**Step 3: 实现 coordinator 生命周期**
+**Step 3: Implement coordinator lifetime**
 
-启动 frontmost monitor、rollout monitor 和 usage refresh task；停止时取消 observers、FSEvent stream 和 timer。网络刷新必须去重，同一时刻只允许一个 usage 请求。
+Start the frontmost monitor, rollout monitor, and usage-refresh task; cancel observers, the FSEvent stream, and timers on stop. Deduplicate network refreshes so only one usage request can be active at a time.
 
-**Step 4: 测试与提交**
+**Step 4: Test and commit**
 
 Run:
 
@@ -657,9 +657,9 @@ git add Sources/CodexNotch/App Sources/CodexNotch/State Tests/CodexNotchTests/Ap
 git commit -m "feat: coordinate quota and session activity"
 ```
 
-Expected: 全量单测通过，无未取消异步任务警告。
+Expected: All unit tests pass with no warnings about uncancelled asynchronous tasks.
 
-### Task 11: 打包 `.app`、登录时启动和菜单栏降级
+### Task 11: Package the `.app`, Launch at Login, and Add Menu-Bar Fallback
 
 **Files:**
 - Create: `Resources/Info.plist`
@@ -669,9 +669,9 @@ Expected: 全量单测通过，无未取消异步任务警告。
 - Create: `scripts/build-app.sh`
 - Create: `Tests/CodexNotchTests/LoginItemControllerTests.swift`
 
-**Step 1: 创建 Info.plist**
+**Step 1: Create Info.plist**
 
-必须包含：
+It must include:
 
 ```xml
 <key>CFBundleIdentifier</key>
@@ -686,26 +686,26 @@ Expected: 全量单测通过，无未取消异步任务警告。
 <true/>
 ```
 
-**Step 2: 实现登录项控制器**
+**Step 2: Implement the login-item controller**
 
-用 `SMAppService.mainApp.register()` 和 `unregister()`；设置页显示系统返回的真实状态。注册失败显示错误，不反复重试。
+Use `SMAppService.mainApp.register()` and `unregister()`; Settings shows the actual state returned by the system. Show an error on registration failure and do not retry repeatedly.
 
-**Step 3: 实现无刘海菜单栏降级**
+**Step 3: Implement the no-notch menu-bar fallback**
 
-当 geometry 返回 fallback 时隐藏 panel，创建 `NSStatusItem`。菜单内容包含当前额度、活动任务列表、刷新、设置和退出。
+When geometry returns the fallback, hide the panel and create an `NSStatusItem`. The menu contains current quota, the active-task list, refresh, Settings, and Quit.
 
-**Step 4: 创建构建脚本**
+**Step 4: Create the build script**
 
-脚本执行 release build，把二进制复制到 `.build/CodexNotch.app/Contents/MacOS/`，复制 Info.plist，最后执行 ad-hoc 签名。后续发布时再用 Developer ID 签名、公证并压缩为 `.dmg`；GitHub Release 同时提供 `.app.zip` 和源码。
+The script runs a release build, copies the binary to `.build/CodexNotch.app/Contents/MacOS/`, copies Info.plist, and then applies ad-hoc signing. Later releases can use Developer ID signing, notarization, and `.dmg` packaging; the GitHub Release provides both `.app.zip` and source.
 
 ```bash
 codesign --force --deep --sign - .build/CodexNotch.app
 codesign --verify --deep --strict .build/CodexNotch.app
 ```
 
-**Step 5: 构建与提交**
+**Step 5: Build and commit**
 
-普通用户的安装说明只包含下载、解压、拖入 Applications，不要求 Swift、Xcode 或命令行工具。源码贡献者说明使用 Xcode 15+ 或等价的 Swift 5.9+ 工具链。
+Installation instructions for ordinary users contain only download, unzip, and drag into Applications; Swift, Xcode, and command-line tools are not required. Source contributors should use Xcode 15+ or an equivalent Swift 5.9+ toolchain.
 
 Run:
 
@@ -717,15 +717,15 @@ git add Resources Sources/CodexNotch/MenuBar Sources/CodexNotch/Settings scripts
 git commit -m "feat: package CodexNotch as a login item app"
 ```
 
-Expected: 签名验证成功，Dock 不出现图标，设置可开关登录时启动。普通用户安装 release app 时不需要 Swift、Xcode 或命令行工具。
+Expected: Signing verification succeeds, no Dock icon appears, and Settings can toggle launch at login. Ordinary users installing the release app do not need Swift, Xcode, or command-line tools.
 
-### Task 12: 真实环境验收与隐私检查
+### Task 12: Real-Environment Acceptance and Privacy Review
 
 **Files:**
 - Create: `docs/testing/manual-acceptance.md`
 - Create: `README.md`
 
-**Step 1: 运行自动化测试**
+**Step 1: Run automated tests**
 
 Run:
 
@@ -735,23 +735,23 @@ swift test
 codesign --verify --deep --strict .build/CodexNotch.app
 ```
 
-Expected: tests passed，签名验证通过。
+Expected: Tests pass and signing verification succeeds.
 
-**Step 2: 执行真实交互矩阵**
+**Step 2: Execute the real-interaction matrix**
 
-逐项记录：
+Record each item:
 
-1. ChatGPT 前台空闲时显示 Codex 额度。
-2. 切到其他应用 1.2 秒后隐藏。
-3. 开始任务后切到其他应用仍常驻。
-4. 两个任务同时运行时列表完整，主任务为最近活跃。
-5. 点击每个任务跳到正确 Codex 任务。
-6. 完成与 aborted 都清除运行态。
-7. 断网后保留最后额度，任务监听不受影响。
-8. 全屏、多个 Space、外接屏、睡眠唤醒位置正确。
-9. 无刘海屏使用菜单栏降级。
+1. Codex quota appears while ChatGPT is frontmost and idle.
+2. The notch hides 1.2 seconds after switching to another app.
+3. The notch remains visible after starting a task and switching to another app.
+4. With two tasks running, the list is complete and the primary task is the most recently active.
+5. Clicking each task opens the correct Codex task.
+6. Both completion and abort clear the running state.
+7. The last quota remains after network loss and task monitoring is unaffected.
+8. Position is correct in full screen, across multiple Spaces, on an external display, and after wake.
+9. A no-notch display uses the menu-bar fallback.
 
-**Step 3: 检查日志与产物**
+**Step 3: Check logs and artifacts**
 
 Run:
 
@@ -760,11 +760,11 @@ rg -n "access_token|Authorization|Bearer|chatgpt.com/backend-api/wham/usage" .bu
 git status --short
 ```
 
-Expected: 源码可以包含 endpoint 名称，但构建产物和文档不包含真实 token、Authorization 值、真实响应或消息正文。
+Expected: Source may contain endpoint names, but build artifacts and documentation contain no real tokens, Authorization values, real responses, or message bodies.
 
-**Step 4: 完善 README 并提交**
+**Step 4: Complete the README and commit**
 
-README 说明系统要求、构建、启动、登录项、数据来源、内部 usage 接口可能变化、隐私边界与已知限制。
+The README documents system requirements, build, launch, login item, data sources, possible changes to the internal usage endpoint, privacy boundaries, and known limitations.
 
 Run:
 
@@ -774,14 +774,14 @@ git commit -m "docs: add build and acceptance guidance"
 git status --short
 ```
 
-Expected: 工作树干净。
+Expected: The worktree is clean.
 
-## 完成定义
+## Definition of Done
 
-- 当前账号只有周额度时，界面只展示周额度。
-- Codex 任务运行时，切到其他应用仍持续显示。
-- 多任务时主任务选择和展开列表稳定。
-- 点击能精确跳回对应 Codex 任务。
-- 不需要辅助功能、屏幕录制、hooks 或 app-server。
-- usage/API 故障与 rollout 解析故障彼此隔离。
-- 全量测试、ad-hoc 签名和手工验收矩阵通过。
+- When the current account has only a weekly window, the UI shows only weekly quota.
+- The running Codex task remains visible after switching to another app.
+- Primary-task selection and the expanded list are stable with multiple tasks.
+- A click navigates precisely back to the corresponding Codex task.
+- Accessibility permission, screen recording, hooks, and app-server are not required.
+- Usage/API failures and rollout parsing failures remain isolated from each other.
+- The full test suite, ad-hoc signing, and manual acceptance matrix pass.

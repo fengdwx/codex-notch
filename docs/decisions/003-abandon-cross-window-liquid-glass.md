@@ -8,29 +8,29 @@ created_at: 2026-07-17
 last_verified_commit: 53beec8
 ---
 
-# 放弃跨窗口 Liquid Glass，展开表面固定为纯黑
+# Abandon Cross-Window Liquid Glass and Keep the Expanded Surface Pure Black
 
-## 背景
+## Context
 
-项目先后验证了 SwiftUI/AppKit 公共材质，以及借鉴 Atoll 分层思路的窗口服务器背景采样方案。物理刘海机器的最终结果是：正常使用时展开卡片仍为黑色；按下系统截图键后才会在截图合成状态中变成白色透视表面。截图路径的偶发现象不等于用户平时能看到的玻璃效果。
+The project tested the shared SwiftUI/AppKit materials and a window-server background-sampling approach inspired by Atoll's layering. The final result on a physical-notch Mac was that the expanded card remained black during normal use and became a white translucent surface only while the system screenshot key was held. An incidental screenshot-path effect is not the glass appearance users see in daily use.
 
-## 决策
+## Decision
 
-- 展开卡片固定使用既有纯黑表面，不再提供玻璃与黑色的外观切换。
-- 删除玻璃实现路径及其设置项，避免设置承诺与真实显示不一致。
-- 隐藏态继续保持完全透明；紧凑态、固定透明画布、只向下展开和收起后画布回收全部保持不变。
-- 不以系统截图、录屏或额外屏幕捕获权限作为实现玻璃外观的前提。
+- Keep the expanded card on the existing pure-black surface; no longer offer a glass/black appearance switch.
+- Remove the glass implementation path and its Settings option so the Settings promise matches the real display.
+- Keep the hidden state fully transparent, and preserve the compact state, fixed transparent canvas, downward-only expansion, and post-collapse canvas reclamation.
+- Do not make system screenshots, screen recording, or additional screen-capture permission prerequisites for a glass appearance.
 
-## 被拒绝的方案
+## Rejected Alternatives
 
-- **继续调整私有背景采样参数**：真机已证明效果依赖截图合成状态，继续堆私有参数没有稳定验收边界。
-- **把截图时的白色透视效果视为通过**：用户日常看到的仍是黑色，不能用不同的合成路径代替真实显示。
-- **自行捕获屏幕后绘制假背景**：需要额外的屏幕录制权限，也会引入性能、隐私和多屏同步问题。
-- **保留失效的玻璃设置作为实验选项**：会让用户选择一个日常不可见、不可预测的结果。
+- **Continue tuning private background-sampling parameters**: Real hardware proved that the effect depends on screenshot compositing, so more private parameters have no stable acceptance boundary.
+- **Treat the white translucent screenshot effect as a pass**: Users still see black during normal use; a different compositing path cannot replace the real display.
+- **Capture the screen and draw a fake background**: Requires extra screen-recording permission and introduces performance, privacy, and multi-display synchronization problems.
+- **Keep the broken glass option as an experiment**: Lets users choose a result that is invisible and unpredictable in daily use.
 
-## 后果与验证
+## Consequences and Verification
 
-- 自动测试锁定“可见表面恒为纯黑、隐藏画布恒为透明”的状态映射。
-- 设置页不再出现卡片外观选择，只保留最近聊天条数等真实可用设置。
-- 完整验证继续覆盖 macOS 14 部署目标、app bundle、固定画布与窗口几何。
-- 纯黑表面在真实刘海上的最终观感仍由正常使用状态确认，不再以截图键按下期间的表现验收。
+- Automated tests lock the mapping where the visible surface is always pure black and the hidden canvas is always transparent.
+- Settings no longer shows a card-appearance choice; it keeps only genuinely usable settings such as the recent-conversation count.
+- Full verification continues to cover the macOS 14 deployment target, app bundle, fixed canvas, and window geometry.
+- The final appearance of the black surface on a real notch is confirmed during normal use, not by the state shown while the screenshot key is held.

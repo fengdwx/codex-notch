@@ -1,9 +1,9 @@
 contracts:
   - id: NOTCH-LAYOUT-001
-    title: 紧凑岛体必须贴合物理刘海安全区
+    title: Compact island must align with the physical notch safe areas
     status: superseded
-    statement: 紧凑刘海的左右内容始终位于各自安全区中央，不被摄像头切口遮挡，也不下沉到刘海下方；左右指标共用 24pt 对齐容器，左侧 ChatGPT 标记可以做 22pt 的光学校正，右侧切换圆环或波浪球、或展开卡片时均不得改变容器尺寸或破坏两翼的视觉平衡。
-    rationale: 用户首先感知的是物理刘海几何与两翼的视觉平衡；错误位置、机械地等尺寸或右侧样式改变外轮廓都会直接破坏观感。
+    statement: The compact notch's left and right content always stays centered in its respective safe area, clear of the camera cutout and above the bottom of the notch; both indicators share a 24pt alignment container. The ChatGPT mark may use 22pt optical correction, and switching the right indicator between a ring and wave ball or expanding the card must not change the container size or disrupt the visual balance of the two wings.
+    rationale: Users first perceive the physical-notch geometry and the visual balance between the two wings; bad positioning, mechanically equal sizing, or a changed right-side silhouette directly harms the appearance.
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -11,8 +11,8 @@ contracts:
       include: [notch-screens, compact-state]
       exclude: [menu-bar-fallback]
     examples:
-      positive: 左图标和右额度指示器位于刘海两翼、共用 24pt 对齐容器，左标以较小本体达到视觉平衡，且紧凑面板顶边贴合屏幕顶部。
-      negative: 内容整体挂在刘海下方，额度指示器被摄像头切口覆盖，或波浪球/圆环/悬停状态改变两翼指标尺寸。
+      positive: The left mark and right quota indicator sit in the two notch wings inside shared 24pt alignment containers; the smaller left mark balances the visual weight and the compact panel's top edge touches the top of the screen.
+      negative: The content hangs below the notch, the quota indicator is covered by the camera cutout, or the wave ball, ring, or hover state changes the size of either wing indicator.
     guards:
       - Tests/CodexNotchTests/NotchGeometryTests.swift
       - "manual: physical-notch compact-state inspection"
@@ -21,10 +21,10 @@ contracts:
     last_verified_commit: 74cd749
 
   - id: NOTCH-LAYOUT-013
-    title: 紧凑岛体保持安全区平衡，左侧 GPT 标记使用 20pt 光学校正
+    title: Compact island preserves safe-area balance with 20pt optical correction for the left GPT mark
     status: superseded
-    statement: 紧凑刘海的左右内容始终位于各自安全区中央，不被摄像头切口遮挡，也不下沉到刘海下方；左右指标共用 24pt 对齐容器。左侧 ChatGPT 标记本体与运行回声使用 20pt 光学校正，右侧切换圆环或波浪球、或展开卡片时均不得改变容器尺寸或破坏两翼的视觉平衡。
-    rationale: 左标的实际图形密度高于右侧额度环，22pt 在真实刘海上显得偏大；收至 20pt 能保留清晰识别和运行态反馈，同时让两翼视觉重量更接近。
+    statement: The compact notch's left and right content always stays centered in its respective safe area, clear of the camera cutout and above the bottom of the notch; both indicators share a 24pt alignment container. The left ChatGPT mark and running echo use 20pt optical correction, and switching the right indicator between a ring and wave ball or expanding the card must not change the container size or disrupt the visual balance of the two wings.
+    rationale: The left mark has greater visual density than the right quota ring, and 22pt looks too large on a real notch; reducing it to 20pt preserves recognition and running feedback while bringing the visual weight of both wings closer together.
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -32,8 +32,8 @@ contracts:
       include: [notch-screens, compact-state]
       exclude: [menu-bar-fallback]
     examples:
-      positive: 左侧 GPT 标记与其运行回声在 24pt 容器内以 20pt 居中显示，右侧 24pt 额度指标保持原尺寸，紧凑面板顶边贴合屏幕顶部。
-      negative: 通过缩小整个左侧安全区或移动右侧额度指标来补偿左标，或让运行、完成、空闲状态使用不同的左标本体尺寸。
+      positive: The left GPT mark and running echo are centered at 20pt inside a 24pt container, the right 24pt quota indicator keeps its original size, and the compact panel's top edge touches the top of the screen.
+      negative: Shrinking the entire left safe area or moving the right quota indicator to compensate for the mark, or using different left-mark body sizes for running, completed, and idle states.
     guards:
       - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
       - "manual: physical-notch compact-state inspection across idle, running and completed states"
@@ -42,10 +42,10 @@ contracts:
     last_verified_commit: 9fc374b
 
   - id: NOTCH-LAYOUT-014
-    title: 紧凑岛体保持安全区平衡，左侧 GPT 标记使用 18pt 光学校正
+    title: Compact island preserves safe-area balance with 18pt optical correction for the left GPT mark
     status: active
-    statement: 紧凑刘海的左右内容始终位于各自安全区中央，不被摄像头切口遮挡，也不下沉到刘海下方；左右指标共用 24pt 对齐容器。左侧 ChatGPT 标记本体与运行回声使用 18pt 光学校正，右侧切换圆环或波浪球、或展开卡片时均不得改变容器尺寸或破坏两翼的视觉平衡。
-    rationale: 左标的实际图形密度仍高于右侧额度环，20pt 在真实刘海上仍显得略大；收至 18pt 能保持标识清晰和运行态反馈，同时进一步减轻左翼的视觉重量。
+    statement: The compact notch's left and right content always stays centered in its respective safe area, clear of the camera cutout and above the bottom of the notch; both indicators share a 24pt alignment container. The left ChatGPT mark and running echo use 18pt optical correction, and switching the right indicator between a ring and wave ball or expanding the card must not change the container size or disrupt the visual balance of the two wings.
+    rationale: The left mark still has greater visual density than the right quota ring, and 20pt remains slightly too large on a real notch; reducing it to 18pt preserves recognition and running feedback while further reducing the left wing's visual weight.
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -53,8 +53,8 @@ contracts:
       include: [notch-screens, compact-state]
       exclude: [menu-bar-fallback]
     examples:
-      positive: 左侧 GPT 标记与其运行回声在 24pt 容器内以 18pt 居中显示，右侧 24pt 额度指标保持原尺寸，紧凑面板顶边贴合屏幕顶部。
-      negative: 通过缩小整个左侧安全区或移动右侧额度指标来补偿左标，或让运行、完成、空闲状态使用不同的左标本体尺寸。
+      positive: The left GPT mark and running echo are centered at 18pt inside a 24pt container, the right 24pt quota indicator keeps its original size, and the compact panel's top edge touches the top of the screen.
+      negative: Shrinking the entire left safe area or moving the right quota indicator to compensate for the mark, or using different left-mark body sizes for running, completed, and idle states.
     guards:
       - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
       - "manual: physical-notch compact-state inspection across idle, running and completed states"
@@ -63,10 +63,10 @@ contracts:
     last_verified_commit: ff03e1c
 
   - id: NOTCH-COMPATIBILITY-015
-    title: 已适配刘海的应用不得回退到摄像头安全区兼容模式
+    title: A notch-aware app must not fall back to camera safe-area compatibility mode
     status: active
-    statement: CodexNotch.app 的 Info.plist 必须将 `NSPrefersDisplaySafeAreaCompatibilityMode` 设为 false，使已使用 NSScreen 安全区和辅助区域计算的紧凑岛体始终与物理摄像头开孔处于同一屏幕坐标系；不得让 Finder 的“缩放到摄像头下方”兼容策略改变刘海宽度或垂直锚点。
-    rationale: 14 英寸机型的屏幕对角线、原生分辨率或芯片代际不足以确定刘海坐标；缺少明确 opt-out 时，Finder 可以按用户级兼容设置缩放应用内容，导致同规格机器显示出不一致的刘海几何。
+    statement: CodexNotch.app's Info.plist must set `NSPrefersDisplaySafeAreaCompatibilityMode` to false so the compact island, calculated from NSScreen safe and auxiliary areas, remains in the same screen coordinate system as the physical camera opening; Finder's “Scale to fit below built-in camera” compatibility strategy must not change the notch width or vertical anchor.
+    rationale: Screen diagonal, native resolution, and chip generation are insufficient to determine notch coordinates on 14-inch models; without an explicit opt-out, Finder can scale app content according to a per-user compatibility setting and produce inconsistent notch geometry on otherwise identical machines.
     source: incident
     owner: project-maintainer
     risk: medium
@@ -74,8 +74,8 @@ contracts:
       include: [notch-screens, bundle, finder, safe-area-coordinates]
       exclude: [menu-bar-fallback, quota-semantics, session-monitoring]
     examples:
-      positive: 已构建 app 明确声明禁用安全区兼容模式，紧凑岛仍按 NSScreen 的 auxiliaryTopLeftArea 和 auxiliaryTopRightArea 居中并贴合摄像头开孔。
-      negative: Info.plist 缺少该声明而允许 Finder 以“缩放到摄像头下方”运行，造成 14 英寸机器之间的紧凑刘海宽度或顶部锚点不一致。
+      positive: The built app explicitly disables safe-area compatibility mode, and the compact island remains centered from NSScreen's auxiliaryTopLeftArea and auxiliaryTopRightArea while aligning with the camera opening.
+      negative: Info.plist lacks the declaration and lets Finder run with “Scale to fit below built-in camera,” producing inconsistent compact-notch width or top anchors between 14-inch machines.
     guards:
       - Resources/Info.plist
       - scripts/verify_app.sh
@@ -86,10 +86,10 @@ contracts:
     last_verified_commit: 3ae33b4
 
   - id: NOTCH-MOTION-002
-    title: 展开从紧凑岛体向下发生
+    title: Expansion proceeds downward from the compact island
     status: active
-    statement: 悬停展开从既有紧凑岛体向下揭示内容；外层窗口不得在 SwiftUI 布局期间持续缩放或导致闪烁、向上展开、居中炸开和鼠标拦截残留。
-    rationale: 固定画布、内部岛体动画是避免窗口跳动与历史布局崩溃的必要边界。
+    statement: Hover expansion reveals content downward from the existing compact island; the outer window must not continuously resize during SwiftUI layout or cause flicker, upward expansion, a centered burst, or lingering mouse interception.
+    rationale: A fixed canvas and inner-island animation are necessary boundaries for avoiding window jumping and historical layout crashes.
     source: incident
     owner: project-maintainer
     risk: high
@@ -97,8 +97,8 @@ contracts:
       include: [notch-screens, hover-expand, hover-collapse]
       exclude: [menu-bar-fallback]
     examples:
-      positive: 面板先准备最终画布，SwiftUI 可见岛体只向下展开，收起后透明画布回收。
-      negative: 用定时器逐帧调整 NSPanel 尺寸，或从物理刘海中间同时向上、向下弹开。
+      positive: The panel prepares the final canvas first, SwiftUI expands the visible island only downward, and the transparent canvas is reclaimed after collapse.
+      negative: Adjusting the NSPanel size frame by frame with a timer, or expanding both upward and downward from the middle of the physical notch.
     guards:
       - Tests/CodexNotchTests/NotchGeometryTests.swift
       - docs/decisions/001-fixed-canvas-notch-motion.md
@@ -108,10 +108,10 @@ contracts:
     last_verified_commit: 0d37196
 
   - id: EXPANDED-APPEARANCE-009
-    title: 展开卡片外观可在系统玻璃与纯黑之间实时切换
+    title: The expanded card can switch live between system glass and pure black
     status: superseded
-    statement: 设置页必须提供“玻璃”和“黑色”两种展开卡片外观并立即应用，默认使用玻璃。macOS 26 及以上使用系统原生 Liquid Glass，仍受支持的旧系统使用原生半透明 Material 降级；黑色模式保持既有纯黑表面。该设置只改变展开卡片材质，不得改变紧凑刘海的纯黑表面、固定透明画布、展开方向或窗口几何。
-    rationale: 原生系统材质能跟随桌面内容和指针产生一致的最新 macOS 观感，纯黑选项则保留高对比偏好；将材质选择与窗口几何隔离可避免重新引入展开跳动和鼠标拦截回归。
+    statement: Settings must provide glass and black expanded-card appearances and apply the choice immediately, with glass as the default. macOS 26 and later use native system Liquid Glass, supported older systems use a native translucent Material fallback, and black mode keeps the existing pure-black surface. This setting changes only the expanded-card material; it must not change the compact notch's pure-black surface, fixed transparent canvas, expansion direction, or window geometry.
+    rationale: Native system materials follow desktop content and pointer behavior for a consistent modern macOS appearance, while the pure-black option preserves a high-contrast preference; isolating material choice from window geometry avoids reintroducing expansion jumps and mouse-interception regressions.
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -119,8 +119,8 @@ contracts:
       include: [expanded-state, settings, notch-screens]
       exclude: [compact-state, menu-bar-fallback]
     examples:
-      positive: 设置为玻璃后真实展开卡片立即显示系统玻璃表面，设置为黑色后立即恢复纯黑；收起后的紧凑刘海始终为纯黑。
-      negative: 玻璃设置也让紧凑刘海透明、切换后必须重启、旧系统无法展开，或为材质动画重新逐帧改变 NSPanel 尺寸。
+      positive: Choosing glass immediately shows the system-glass surface on the real expanded card, choosing black immediately restores pure black, and the collapsed compact notch remains pure black.
+      negative: The glass setting makes the compact notch transparent, requires a restart, cannot expand on an older system, or changes the NSPanel size frame by frame to animate the material.
     guards:
       - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
       - docs/decisions/002-native-liquid-glass-with-fallback.md
@@ -130,10 +130,10 @@ contracts:
     last_verified_commit: 916f72b
 
   - id: EXPANDED-APPEARANCE-011
-    title: 展开卡片固定使用稳定纯黑表面
+    title: The expanded card uses a stable pure-black surface
     status: active
-    statement: 紧凑与展开状态的可见刘海表面必须始终使用纯黑背景，设置页不得提供无法在日常显示中成立的玻璃外观选项；隐藏态画布仍保持完全透明。该选择不得改变固定透明画布、只向下展开、收起后回收画布或窗口几何。
-    rationale: 物理刘海机器确认跨窗口玻璃在日常显示中仍是黑色，仅在触发系统截图时出现白色透视效果，不能作为稳定可交付的用户体验；固定纯黑能保持真实显示与设置承诺一致。
+    statement: The visible notch surface in both compact and expanded states must always use a pure-black background, and Settings must not offer a glass appearance that does not hold during normal use; the hidden canvas remains fully transparent. This choice must not change the fixed transparent canvas, downward-only expansion, post-collapse canvas reclamation, or window geometry.
+    rationale: A physical-notch Mac confirmed that cross-window glass remains black during normal use and becomes white translucent only during a system screenshot, which is not a stable shippable experience; fixed pure black keeps the real display consistent with the Settings promise.
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -141,8 +141,8 @@ contracts:
       include: [expanded-state, settings, notch-screens]
       exclude: [menu-bar-fallback]
     examples:
-      positive: 日常悬停展开时卡片稳定为纯黑，设置页只保留实际可用的展开内容设置，收起后透明画布照常回收。
-      negative: 设置页仍显示玻璃选项，或把只在截图合成路径中出现的透明效果当成真实日常显示通过。
+      positive: The card stays pure black during normal hover expansion, Settings keeps only usable expanded-content settings, and the transparent canvas is reclaimed after collapse.
+      negative: Settings still shows a glass option, or a translucent effect that appears only in the screenshot-compositing path is treated as a pass for normal display.
     guards:
       - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
       - docs/decisions/003-abandon-cross-window-liquid-glass.md
@@ -152,10 +152,10 @@ contracts:
     last_verified_commit: 53beec8
 
   - id: DISPLAY-TRANSITION-010
-    title: 投屏与屏幕变化不得触发菜单栏 fallback 递归
+    title: Projection and screen changes must not trigger menu-bar fallback recursion
     status: active
-    statement: 投屏、断开投屏或其他屏幕参数变化在刘海窗口与菜单栏 fallback 之间切换时，必须保持应用存活。NSStatusItem 写入的可见性和 autosave 偏好不得被当作应用设置再次触发运行态渲染；运行协调器只响应确实影响其状态或布局的应用偏好。
-    rationale: macOS 在创建、显示或隐藏 NSStatusItem 时会同步写入 UserDefaults；如果宽泛监听所有偏好并立即重建 fallback，会发生重入递归和主线程栈溢出。
+    statement: The app must remain alive when projection, disconnection, or another screen-parameter change switches between the notch window and the menu-bar fallback. Visibility and autosave preferences written by NSStatusItem must not be treated as app settings that trigger another running-state render; the runtime coordinator responds only to app preferences that actually affect its state or layout.
+    rationale: macOS synchronously writes UserDefaults while creating, showing, or hiding an NSStatusItem; broadly observing every preference and immediately rebuilding the fallback causes re-entrant recursion and a main-thread stack overflow.
     source: incident
     owner: project-maintainer
     risk: high
@@ -163,8 +163,8 @@ contracts:
       include: [screen-parameter-changes, notch-screens, menu-bar-fallback, settings]
       exclude: [quota-fetching, rollout-parsing]
     examples:
-      positive: 开始或停止投屏后应用继续运行，菜单栏 fallback 可以正常出现或隐藏，最近聊天条数变化仍实时更新布局。
-      negative: 投屏触发屏幕变化后反复创建 NSStatusItem，或系统菜单栏可见性偏好导致 render 递归直至应用退出。
+      positive: The app continues running after projection starts or stops, the menu-bar fallback appears or hides normally, and a recent-conversation-count change still updates layout live.
+      negative: A screen change caused by projection repeatedly creates NSStatusItem, or a system menu-bar visibility preference causes render recursion until the app exits.
     guards:
       - Tests/CodexNotchTests/NotchRuntimePreferencesTests.swift
       - Tests/CodexNotchTests/NotchGeometryTests.swift
@@ -174,10 +174,10 @@ contracts:
     last_verified_commit: 14271f5
 
   - id: ACTIVITY-STATE-003
-    title: 活动任务优先，完成状态可见
+    title: Active tasks take priority and completion remains visible
     status: active
-    statement: 有任一活动任务时紧凑刘海显示运行态；没有活动任务但存在最近完成记录时显示完成对号；没有两者时仍显示额度；新任务必须覆盖旧完成态。
-    rationale: 用户需要在不展开卡片时区分正在运行、刚完成和纯额度状态。
+    statement: The compact notch shows the running state when any task is active; when no task is active but a recent completion exists, it shows the completion checkmark; when neither exists, it still shows quota; a new task must override an old completed state.
+    rationale: Users need to distinguish running, just completed, and quota-only states without expanding the card.
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -185,8 +185,8 @@ contracts:
       include: [compact-state, expanded-state, rollout-session-monitoring]
       exclude: [task-termination]
     examples:
-      positive: 完成记录存在时，收起的刘海仍可看到左侧绿色对号；新会话出现后立刻变为运行态。
-      negative: 完成对号只在展开卡片内可见，或旧完成态覆盖新运行任务。
+      positive: When a completion record exists, the collapsed notch still shows a green checkmark on the left; when a new session appears, it immediately changes to the running state.
+      negative: The completion checkmark is visible only inside the expanded card, or an old completed state overrides a new running task.
     guards:
       - Tests/CodexNotchTests/NotchPresentationReducerTests.swift
       - Tests/CodexNotchTests/ActiveSessionStoreTests.swift
@@ -196,10 +196,10 @@ contracts:
     last_verified_commit: 0d37196
 
   - id: QUOTA-SEMANTICS-004
-    title: 周额度以剩余百分比清晰表达
+    title: Weekly quota is clearly expressed as a remaining percentage
     status: superseded
-    statement: 右侧优先显示周额度的剩余百分比；数字在圆环或波浪球内部；圆环缺口从 12 点方向按顺时针表达，额度高为绿色、低于 20% 为红色。存在运行任务且未启用 Reduce Motion 时，圆环的渐变色沿剩余额度弧柔和流动；空闲和完成态保持静止渐变，不能保留独立旋转的高光小弧。波浪球只在存在运行任务且未启用 Reduce Motion 时起伏，空闲和完成态保持静止液面。展开面板的额度、重置和最近对话正文均使用易读的字号和对应行高；额度条下方先保留当前周额度的精确重置时刻和秒级倒计时；其下整行“可重置 N 次”都是点击区，卡片只向下展开，逐条列出 `rate-limit-reset-credits` 中状态为 `available` 的重置券精确到期时刻和秒级倒计时，不重复显示重置券名称。设置窗口的实际刘海就是实时预览，不重复保留静态预览卡；展开面板右下角必须提供打开设置的入口。
-    rationale: 这是应用的主要信息目标，不能因动画、布局或过小字号而模糊、重复或误用滚动窗口；当前周额度的 reset_at 与重置券的 expires_at 是两类不同信息，必须分别展示。所有行的名称在当前界面都相同，重复显示会挤占时间的可读空间。重置券明细只读，不在刘海中触发“使用重置”。实时刘海比设置窗口的伪造静态预览更可信，空闲时持续波动也会错误暗示任务仍在运行；沿剩余额度弧流动的渐变比独立旋转的高光更像额度本身的活动状态。
+    statement: The right side prioritizes the weekly quota's remaining percentage; the number stays inside the ring or wave ball; the ring gap starts at 12 o'clock and progresses clockwise, with high quota green and below 20% red. When a task is running and Reduce Motion is disabled, the ring gradient flows gently along the remaining-quota arc; idle and completed states keep a still gradient and must not retain an independently rotating highlight arc. The wave ball rises and falls only while a task is running and Reduce Motion is disabled, and keeps a still liquid level while idle or completed. Expanded quota, reset, and recent-conversation text uses readable sizes and matching line heights; the quota bar is followed first by the current weekly reset timestamp and a second-level countdown; the full “N reset credits available” row is clickable, and the card expands only downward to list each `rate-limit-reset-credits` item with `status=available`, its exact expiry time, and a second-level countdown without repeating the reset-credit name. The real notch in Settings is the live preview, with no duplicate static preview card; the lower-right of the expanded panel must provide a Settings entry.
+    rationale: This is the app's primary information goal and must not become blurry, duplicated, or a misuse of a scrolling window because of animation, layout, or tiny text. The weekly window's reset_at and a reset credit's expires_at are different information and must be shown separately. Every row currently uses the same name, so repeating it wastes readable time. Reset-credit details are read-only and must not trigger a reset action in the notch. The live notch is more trustworthy than a fabricated static Settings preview, and continuous idle motion would incorrectly imply that a task is still running; a gradient flowing along the remaining-quota arc makes the quota itself feel active rather than using an independently rotating highlight.
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -207,8 +207,8 @@ contracts:
       include: [compact-state, quota-expanded-state, settings]
       exclude: [cost-estimation]
     examples:
-      positive: weekly window 存在时显示剩余数字；展开正文的额度、重置和最近对话均清晰可读；额度条下方保留当前周额度的重置时刻与倒计时；整行“可重置 N 次”任一点均可点击，点击后以大字号列出所有 status=available 的 expires_at 和倒计时，且不重复显示 Full reset；波浪球文字不遮挡液面，并且只在任务运行时起伏；圆环只在任务运行时让渐变沿剩余额度弧流动；设置页不重复展示预览卡，展开面板右下角能打开设置；20% 临界值仍是绿色。
-      negative: 只返回滚动窗口却伪造周额度，用额度窗口 reset_at 代替重置券 expires_at，展示已兑换的重置券，触发重置操作，或重置明细向上展开；空闲时波浪或圆环渐变持续流动，圆环额外出现独立旋转的小弧，或设置页仍保留与实际刘海不同步的静态预览。
+      positive: When a weekly window exists, show its remaining number; expanded quota, reset, and recent-conversation text is readable; the current weekly reset timestamp and countdown remain below the quota bar; every point in the “N reset credits available” row is clickable and reveals all `status=available` `expires_at` values and countdowns in large type without repeating Full reset; wave-ball text does not cover the liquid and the ball moves only while a task runs; the ring gradient flows along the remaining-quota arc only while a task runs; Settings has no duplicate preview card and the expanded panel can open Settings; exactly 20% is still green.
+      negative: Fabricating weekly quota from only a rolling window, using the quota window's reset_at instead of reset-credit expires_at, showing redeemed credits, triggering a reset action, or expanding reset details upward; a wave or ring gradient keeps moving while idle, the ring has an extra independently rotating highlight arc, or Settings keeps a static preview that is not synchronized with the real notch.
     guards:
       - Tests/CodexNotchTests/CodexUsageClientTests.swift
       - Tests/CodexNotchTests/NotchTextTests.swift
@@ -221,10 +221,10 @@ contracts:
     last_verified_commit: 2796cfe
 
   - id: QUOTA-SEMANTICS-008
-    title: 周额度以剩余百分比清晰表达
+    title: Weekly quota clearly expresses the remaining percentage
     status: superseded
-    statement: 右侧优先显示周额度的剩余百分比；数字在圆环或波浪球内部；圆环缺口从 12 点方向按顺时针表达，额度高为绿色、低于 20% 为红色。存在运行任务时圆环使用渐变色，未启用 Reduce Motion 时渐变沿剩余额度弧柔和流动；空闲和完成态必须立即改用当前额度对应的单一纯色，不能保留静态渐变或独立旋转的高光小弧。波浪球只在存在运行任务且未启用 Reduce Motion 时起伏，空闲和完成态保持静止液面。展开面板的额度、重置和最近对话正文均使用易读的字号和对应行高；额度条下方先保留当前周额度的精确重置时刻和秒级倒计时；其下整行“可重置 N 次”都是点击区，卡片只向下展开，逐条列出 `rate-limit-reset-credits` 中状态为 `available` 的重置券精确到期时刻和秒级倒计时，不重复显示重置券名称。设置窗口的实际刘海就是实时预览，不重复保留静态预览卡；展开面板右下角必须提供打开设置的入口。
-    rationale: 这是应用的主要信息目标，不能因动画、布局或过小字号而模糊、重复或误用滚动窗口；当前周额度的 reset_at 与重置券的 expires_at 是两类不同信息，必须分别展示。所有行的名称在当前界面都相同，重复显示会挤占时间的可读空间。重置券明细只读，不在刘海中触发“使用重置”。实时刘海比设置窗口的伪造静态预览更可信；运行时的渐变表达活动，停止后的单一纯色则提供明确的状态边界，避免静态渐变继续暗示任务仍在运行。
+    statement: The right side prioritizes the weekly quota's remaining percentage; the number stays inside the ring or wave ball; the ring gap starts at 12 o'clock and progresses clockwise, with high quota green and below 20% red. While a task is running, the ring uses a gradient, and with Reduce Motion disabled that gradient flows gently along the remaining-quota arc; idle and completed states must immediately use a single solid color for the current quota and must not retain a static gradient or independently rotating highlight arc. The wave ball rises and falls only while a task is running and Reduce Motion is disabled, and keeps a still liquid level while idle or completed. Expanded quota, reset, and recent-conversation text uses readable sizes and matching line heights; the quota bar is followed first by the current weekly reset timestamp and a second-level countdown; the full “N reset credits available” row is clickable, and the card expands only downward to list each `rate-limit-reset-credits` item with `status=available`, its exact expiry time, and a second-level countdown without repeating the reset-credit name. The real notch in Settings is the live preview, with no duplicate static preview card; the lower-right of the expanded panel must provide a Settings entry.
+    rationale: This is the app's primary information goal and must not become blurry, duplicated, or a misuse of a scrolling window because of animation, layout, or tiny text. The weekly window's reset_at and a reset credit's expires_at are different information and must be shown separately. Every row currently uses the same name, so repeating it wastes readable time. Reset-credit details are read-only and must not trigger a reset action in the notch. The live notch is more trustworthy than a fabricated static Settings preview; running gradient expresses activity, while a single solid color after stopping provides a clear state boundary and avoids implying that a task is still running.
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -232,8 +232,8 @@ contracts:
       include: [compact-state, quota-expanded-state, settings]
       exclude: [cost-estimation]
     examples:
-      positive: weekly window 存在时显示剩余数字；展开正文的额度、重置和最近对话均清晰可读；额度条下方保留当前周额度的重置时刻与倒计时；整行“可重置 N 次”任一点均可点击，点击后以大字号列出所有 status=available 的 expires_at 和倒计时，且不重复显示 Full reset；波浪球文字不遮挡液面，并且只在任务运行时起伏；圆环只在任务运行时使用渐变，空闲或完成后立即显示当前额度对应的纯色；设置页不重复展示预览卡，展开面板右下角能打开设置；20% 临界值仍是绿色。
-      negative: 只返回滚动窗口却伪造周额度，用额度窗口 reset_at 代替重置券 expires_at，展示已兑换的重置券，触发重置操作，或重置明细向上展开；空闲或完成时仍显示静态渐变、波浪或圆环渐变持续流动，圆环额外出现独立旋转的小弧，或设置页仍保留与实际刘海不同步的静态预览。
+      positive: When a weekly window exists, show its remaining number; expanded quota, reset, and recent-conversation text is readable; the current weekly reset timestamp and countdown remain below the quota bar; every point in the “N reset credits available” row is clickable and reveals all `status=available` `expires_at` values and countdowns in large type without repeating Full reset; wave-ball text does not cover the liquid and the ball moves only while a task runs; the ring uses a gradient only while a task runs and immediately becomes the current quota's solid color when idle or completed; Settings has no duplicate preview card and the expanded panel can open Settings; exactly 20% is still green.
+      negative: Fabricating weekly quota from only a rolling window, using the quota window's reset_at instead of reset-credit expires_at, showing redeemed credits, triggering a reset action, or expanding reset details upward; a static gradient, wave, or ring gradient keeps moving while idle or completed, the ring has an extra independently rotating highlight arc, or Settings keeps a static preview that is not synchronized with the real notch.
     guards:
       - Tests/CodexNotchTests/CodexUsageClientTests.swift
       - Tests/CodexNotchTests/NotchTextTests.swift
@@ -246,10 +246,10 @@ contracts:
     last_verified_commit: 2358997
 
   - id: QUOTA-SEMANTICS-012
-    title: 周额度使用绿色、黄色、深红三档告警色
+    title: Weekly quota uses green, yellow, and deep-red warning tiers
     status: superseded
-    statement: 右侧优先显示周额度的剩余百分比；数字在圆环或波浪球内部；圆环缺口从 12 点方向按顺时针表达。剩余额度高于 20% 时使用绿色，高于 10% 且不高于 20% 时使用黄色，10% 及以下使用深红色，不再随百分比连续改变色相。存在运行任务时圆环使用当前档位颜色的单色明暗渐变，不混入白色高光；未启用 Reduce Motion 时渐变沿剩余额度弧柔和流动。空闲和完成态必须立即改用当前档位的单一纯色，不能保留静态渐变或独立旋转的高光小弧。波浪球使用相同三档颜色，只在存在运行任务且未启用 Reduce Motion 时起伏，空闲和完成态保持静止液面。展开面板的额度、重置和最近对话正文均使用易读的字号和对应行高；额度条下方先保留当前周额度的精确重置时刻和秒级倒计时；其下整行“可重置 N 次”都是点击区，卡片只向下展开，逐条列出 `rate-limit-reset-credits` 中状态为 `available` 的重置券精确到期时刻和秒级倒计时，不重复显示重置券名称。设置窗口的实际刘海就是实时预览，不重复保留静态预览卡；展开面板右下角必须提供打开设置的入口。
-    rationale: 大部分可用额度保持稳定绿色能降低视觉噪声；20% 开始用黄色提醒，10% 才进入深红强警报，三档边界比连续彩虹色相更清晰。运行时只改变同一档位颜色的明暗，既保留任务活动感，也避免白色高光和跨色相渐变显得花哨。
+    statement: The right side prioritizes the weekly quota's remaining percentage; the number stays inside the ring or wave ball; the ring gap starts at 12 o'clock and progresses clockwise. Remaining quota above 20% is green, above 10% and up to 20% is yellow, and 10% or less is deep red; hue no longer changes continuously with the percentage. While a task is running, the ring uses a monochrome light-to-dark gradient for the current tier without a white highlight; with Reduce Motion disabled, the gradient flows gently along the remaining-quota arc. Idle and completed states must immediately use a single solid color for the current tier and must not retain a static gradient or independently rotating highlight arc. The wave ball uses the same three tiers and rises and falls only while a task is running and Reduce Motion is disabled; idle and completed states keep a still liquid level. Expanded quota, reset, and recent-conversation text uses readable sizes and matching line heights; the quota bar is followed first by the current weekly reset timestamp and a second-level countdown; the full “N reset credits available” row is clickable, and the card expands only downward to list each `rate-limit-reset-credits` item with `status=available`, its exact expiry time, and a second-level countdown without repeating the reset-credit name. The real notch in Settings is the live preview, with no duplicate static preview card; the lower-right of the expanded panel must provide a Settings entry.
+    rationale: Keeping most available quota a stable green reduces visual noise; yellow begins at 20% as a warning, while deep red begins at 10% as a strong alert. Three tiers are clearer than a continuous rainbow hue. Running state changes only the lightness of the same tier color, retaining activity while avoiding a flashy white highlight or cross-hue gradient.
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -257,8 +257,8 @@ contracts:
       include: [compact-state, quota-expanded-state, settings]
       exclude: [cost-estimation]
     examples:
-      positive: 35% 显示绿色，20% 显示黄色，10% 显示深红；圆环运行时只让当前档位的单色明暗渐变沿弧移动，停止后立即变为对应纯色；圆环、波浪球、展开百分比和额度条保持同色。
-      negative: 额度从红到绿连续改变色相，20% 仍显示绿色，10% 仍显示黄色，运行渐变混入突兀白色高光，或空闲与完成态继续显示渐变。
+      positive: 35% is green, 20% is yellow, and 10% is deep red; while running, only the current tier's monochrome light-to-dark gradient moves along the ring arc, and it immediately becomes the corresponding solid color when stopped; the ring, wave ball, expanded percentage, and quota bar use the same color.
+      negative: Quota continuously changes hue from red to green, 20% remains green, 10% remains yellow, the running gradient includes a jarring white highlight, or idle and completed states continue to show a gradient.
     guards:
       - Tests/CodexNotchTests/NotchTextTests.swift
       - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
@@ -270,10 +270,10 @@ contracts:
     last_verified_commit: 778fdc9
 
   - id: QUOTA-SEMANTICS-013
-    title: 周额度使用三档告警色并加强紧凑圆环
+    title: Weekly quota uses three warning tiers with a stronger compact ring
     status: active
-    statement: 右侧优先显示周额度的剩余百分比；数字在圆环或波浪球内部；圆环缺口从 12 点方向按顺时针表达。紧凑圆环线宽为 2.25pt，波浪球边缘保持 1.75pt。剩余额度高于 20% 时使用绿色，高于 10% 且不高于 20% 时使用黄色，10% 及以下使用深红色，不再随百分比连续改变色相。存在运行任务时圆环使用当前档位颜色的单色明暗渐变，不混入白色高光；未启用 Reduce Motion 时渐变沿剩余额度弧柔和流动。空闲和完成态必须立即改用当前档位的单一纯色，不能保留静态渐变或独立旋转的高光小弧。波浪球使用相同三档颜色，只在存在运行任务且未启用 Reduce Motion 时起伏，空闲和完成态保持静止液面。展开面板的额度、重置和最近对话正文均使用易读的字号和对应行高；额度条下方先保留当前周额度的精确重置时刻和秒级倒计时；其下整行“可重置 N 次”都是点击区，卡片只向下展开，逐条列出 `rate-limit-reset-credits` 中状态为 `available` 的重置券精确到期时刻和秒级倒计时，不重复显示重置券名称。设置窗口的实际刘海就是实时预览，不重复保留静态预览卡；展开面板右下角必须提供打开设置的入口。
-    rationale: 大部分可用额度保持稳定绿色能降低视觉噪声；20% 开始用黄色提醒，10% 才进入深红强警报，三档边界比连续彩虹色相更清晰。2.25pt 圆环在真实刘海上更容易分辨，仍为 24pt 直径内的克制线宽；波浪球保持原边缘线宽，避免未请求的视觉加重。运行时只改变同一档位颜色的明暗，既保留任务活动感，也避免白色高光和跨色相渐变显得花哨。
+    statement: The right side prioritizes the weekly quota's remaining percentage; the number stays inside the ring or wave ball; the ring gap starts at 12 o'clock and progresses clockwise. The compact ring stroke is 2.25pt and the wave-ball edge remains 1.75pt. Remaining quota above 20% is green, above 10% and up to 20% is yellow, and 10% or less is deep red; hue no longer changes continuously with the percentage. While a task is running, the ring uses a monochrome light-to-dark gradient for the current tier without a white highlight; with Reduce Motion disabled, the gradient flows gently along the remaining-quota arc. Idle and completed states must immediately use a single solid color for the current tier and must not retain a static gradient or independently rotating highlight arc. The wave ball uses the same three tiers and rises and falls only while a task is running and Reduce Motion is disabled; idle and completed states keep a still liquid level. Expanded quota, reset, and recent-conversation text uses readable sizes and matching line heights; the quota bar is followed first by the current weekly reset timestamp and a second-level countdown; the full “N reset credits available” row is clickable, and the card expands only downward to list each `rate-limit-reset-credits` item with `status=available`, its exact expiry time, and a second-level countdown without repeating the reset-credit name. The real notch in Settings is the live preview, with no duplicate static preview card; the lower-right of the expanded panel must provide a Settings entry.
+    rationale: Keeping most available quota a stable green reduces visual noise; yellow begins at 20% as a warning, while deep red begins at 10% as a strong alert. Three tiers are clearer than a continuous rainbow hue. A 2.25pt ring is easier to distinguish on a real notch while remaining restrained inside the 24pt diameter; the wave-ball edge keeps its original stroke to avoid unrequested visual weight. Running state changes only the lightness of the same tier color, retaining activity while avoiding a flashy white highlight or cross-hue gradient.
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -281,8 +281,8 @@ contracts:
       include: [compact-state, quota-expanded-state, settings]
       exclude: [cost-estimation]
     examples:
-      positive: 35% 显示绿色，20% 显示黄色，10% 显示深红；紧凑圆环为 2.25pt，波浪球边缘仍为 1.75pt，二者外径和内部数字位置不变；圆环运行时只让当前档位的单色明暗渐变沿弧移动，停止后立即变为对应纯色；圆环、波浪球、展开百分比和额度条保持同色。
-      negative: 缩小圆环外径、挤压内部百分比、同时加粗波浪球边缘，或让额度从红到绿连续改变色相，20% 仍显示绿色，10% 仍显示黄色，运行渐变混入突兀白色高光，或空闲与完成态继续显示渐变。
+      positive: 35% is green, 20% is yellow, and 10% is deep red; the compact ring is 2.25pt, the wave-ball edge remains 1.75pt, and both outer diameters and internal number positions stay unchanged; while running, only the current tier's monochrome light-to-dark gradient moves along the arc, and it immediately becomes the corresponding solid color when stopped; the ring, wave ball, expanded percentage, and quota bar use the same color.
+      negative: Shrinking the ring's outer diameter, squeezing the internal percentage, thickening the wave-ball edge at the same time, continuously changing hue from red to green, keeping 20% green, keeping 10% yellow, adding a jarring white highlight to the running gradient, or continuing to show a gradient while idle or completed.
     guards:
       - Tests/CodexNotchTests/NotchTextTests.swift
       - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
@@ -294,10 +294,10 @@ contracts:
     last_verified_commit: 9837df1
 
   - id: PRIVACY-BOUNDARY-005
-    title: 本机认证与对话内容不得被持久化或公开
+    title: Local authentication and conversation content must not be persisted or exposed
     status: active
-    statement: 认证令牌只在进程内存使用；不得写入仓库、应用缓存或日志；不得展示或记录用户消息正文；无刘海 fallback 也不得扩大内容暴露。
-    rationale: 应用读取本机 ChatGPT/Codex 登录态和会话日志，最小暴露是不可降低的边界。
+    statement: Authentication tokens are used only in process memory; they must not be written to the repository, app cache, or logs; user-message bodies must not be displayed or recorded; the no-notch fallback must not broaden content exposure.
+    rationale: The app reads local ChatGPT/Codex login state and session logs, so minimizing exposure is a non-negotiable boundary.
     source: technical-constraint
     owner: project-maintainer
     risk: critical
@@ -305,8 +305,8 @@ contracts:
       include: [auth-reader, usage-client, rollout-monitor, logs, fallback-menu]
       exclude: [user-provided project names and thread identifiers needed for navigation]
     examples:
-      positive: usage 请求的 Authorization header 不进入日志；展开列表只显示摘要标题与项目名。
-      negative: 提交 auth.json、打印 token、缓存完整 usage 响应或显示用户正文。
+      positive: The Authorization header from a usage request does not enter logs; the expanded list shows only summary titles and project names.
+      negative: Committing auth.json, printing a token, caching the complete usage response, or displaying a user-message body.
     guards:
       - Tests/CodexNotchTests/CodexAuthReaderTests.swift
       - "manual: sensitive-diff and runtime-log review until a dedicated secret scanner exists"
@@ -315,10 +315,10 @@ contracts:
     last_verified_commit: 0d37196
 
   - id: PACKAGE-VERIFY-006
-    title: 可分发 app 必须来自已验证构建
+    title: A distributable app must come from a verified build
     status: active
-    statement: 任何声称可运行或可分发的 CodexNotch.app 都必须由当前工作树构建，并通过 bundle、Info.plist 和 codesign 验证；发布 zip 必须由 release 脚本生成。
-    rationale: 源码测试通过不代表 app bundle 可启动或签名正确。
+    statement: Any CodexNotch.app claimed to be runnable or distributable must be built from the current worktree and verified through the bundle, Info.plist, and codesign checks; a release ZIP must be generated by the release script.
+    rationale: Passing source tests does not prove that the app bundle launches or is correctly signed.
     source: technical-constraint
     owner: project-maintainer
     risk: medium
@@ -326,8 +326,8 @@ contracts:
       include: [build, bundle, local-release]
       exclude: [remote-release-upload]
     examples:
-      positive: "./scripts/verify.sh 构建并验证 dist/CodexNotch.app。"
-      negative: 只运行 `swift test` 就宣称 release 已可安装，或验证旧 bundle 后替换为新二进制。
+      positive: './scripts/verify.sh builds and verifies dist/CodexNotch.app.'
+      negative: Running only `swift test` and claiming that the release is installable, or verifying an old bundle and then replacing its binary with a new one.
     guards:
       - scripts/build_app.sh
       - scripts/verify_app.sh
@@ -337,10 +337,10 @@ contracts:
     last_verified_commit: 0d37196
 
   - id: APP-IDENTITY-007
-    title: 应用包提供原创且完整的图标
+    title: The app bundle provides an original and complete icon
     status: superseded
-    statement: CodexNotch.app 的 Info.plist 必须声明 CodexNotch 图标，并在 Resources 中包含完整的 .icns 表示；图标使用原创的深绿终端窗口、顶部小刘海槽和绿色 `>_` 提示符矢量设计，不包含账号、认证或对话数据。
-    rationale: Finder、启动台和安装包需要稳定可辨识的应用身份；清晰的终端轮廓和高对比绿色提示符应在小尺寸下保留产品的 Codex 属性，同时顶部小刘海槽呼应实体刘海。图标生成不能扩大本机数据暴露或挪用其他产品的品牌资产。
+    statement: CodexNotch.app's Info.plist must declare the CodexNotch icon and Resources must contain a complete .icns representation; the icon uses an original vector design with a deep-green terminal window, a small notch slot at the top, and a green `>_` prompt, with no account, authentication, or conversation data.
+    rationale: Finder, Launchpad, and the installer need a stable recognizable app identity; a clear terminal outline and high-contrast green prompt should preserve the product's Codex identity at small sizes, while the small top notch echoes the physical notch. Icon generation must not broaden local-data exposure or appropriate another product's brand assets.
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -348,8 +348,8 @@ contracts:
       include: [build, bundle, finder, launchpad]
       exclude: [notch-screens, chatgpt-assets, user-data]
     examples:
-      positive: 构建后的 app 能在 Resources 中找到 CodexNotch.icns，且该文件包含 1024px 表示和原创的深绿终端 `>_` 图形。
-      negative: Info.plist 指向不存在的图标，只在仓库保留设计稿而未将图标打入 app，或将图标绘制成没有终端语义的大面积碗状轮廓。
+      positive: The built app contains CodexNotch.icns in Resources, and the file includes a 1024px representation with the original deep-green terminal `>_` graphic.
+      negative: Info.plist points to a missing icon, the repository contains only a design source without bundling the icon into the app, or the icon is drawn as a large bowl-like outline without terminal meaning.
     guards:
       - Resources/AppIcon.svg
       - scripts/build_icon.sh
@@ -360,10 +360,10 @@ contracts:
     last_verified_commit: 9fd7a89
 
   - id: APP-IDENTITY-016
-    title: 应用包采用黑色刘海命令提示符图标
+    title: The app bundle uses a black-notch command-prompt icon
     status: active
-    statement: CodexNotch.app 的 Info.plist 必须声明 CodexNotch 图标，并在 Resources 中包含完整的 .icns 表示；图标使用用户指定的浅色底、黑色横向刘海壳、顶部居中镂空、左侧白色 `>_` 命令提示符和右侧四角绿色星芒，不包含账号、认证或对话数据。
-    rationale: 图标必须与用户指定的产品身份一致，并在 Finder、启动台和安装包中保持对“刘海里的 Codex 命令提示符”的直接识别；应用内紧凑刘海的 ChatGPT 状态图标是独立交互，不应随 app bundle 图标替换。
+    statement: CodexNotch.app's Info.plist must declare the CodexNotch icon and Resources must contain a complete .icns representation; the icon uses the user-specified light background, black horizontal notch shell, centered top cutout, white `>_` command prompt on the left, and four-corner green sparkle on the right, with no account, authentication, or conversation data.
+    rationale: The icon must match the user-specified product identity and remain directly recognizable in Finder, Launchpad, and the installer as a “Codex command prompt in the notch”; the ChatGPT status icon inside the compact notch is a separate interaction and must not be replaced by the app-bundle icon.
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -371,8 +371,8 @@ contracts:
       include: [build, bundle, finder, launchpad, app-icon]
       exclude: [notch-screens, compact-state, chatgpt-assets, user-data]
     examples:
-      positive: 构建后的 app 能在 Resources 中找到完整的 CodexNotch.icns，Finder 图标展示黑色刘海壳、白色 `>_` 与绿色星芒；紧凑刘海内仍按任务状态展示 ChatGPT 图形。
-      negative: 安装包继续保留旧的深绿终端窗口图标、缺失高分辨率图标表示，或误将 app 图标替换为运行状态的 ChatGPT 标记。
+      positive: The built app contains a complete CodexNotch.icns in Resources, Finder shows the black notch shell, white `>_`, and green sparkle, and the compact notch still shows the ChatGPT visual according to task state.
+      negative: The installer retains the old deep-green terminal-window icon, lacks a high-resolution icon representation, or mistakenly replaces the app icon with the running-state ChatGPT mark.
     guards:
       - Resources/AppIcon.svg
       - Tests/CodexNotchTests/AppIconAssetTests.swift

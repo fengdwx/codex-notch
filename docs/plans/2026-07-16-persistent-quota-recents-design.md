@@ -15,9 +15,9 @@ Keep CodexNotch visible as a calm quota indicator at all times, make running and
 
 ## Expanded layout
 
-The panel remains attached to the physical notch. The quota section comes first and displays `本周剩余 51%`, the horizontal progress bar, the exact reset timestamp, and a countdown to seconds. The compact ring continues to omit the percent sign.
+The panel remains attached to the physical notch. The quota section comes first and displays `51% remaining this week`, the horizontal progress bar, the exact reset timestamp, and a countdown to seconds. The compact ring continues to omit the percent sign.
 
-Below a subtle separator, a `最近对话` section displays at most two conversations. Active conversations come first, followed by completed conversations sorted by last activity. Entries are deduplicated by thread ID. Each row uses the latest real user message as its title, with project name and status/time as secondary text. Clicking a row opens that thread in ChatGPT.
+Below a subtle separator, a `Recent conversations` section displays at most two conversations. Active conversations come first, followed by completed conversations sorted by last activity. Entries are deduplicated by thread ID. Each row uses the latest real user message as its title, with project name and status/time as secondary text. Clicking a row opens that thread in ChatGPT.
 
 Running rows use a small pulsing status dot. Completed rows use a static checkmark. Rows share one quiet grouped surface instead of separate floating cards.
 

@@ -1,24 +1,24 @@
-# 额度指示器与设置界面设计
+# Quota Indicator and Settings Design
 
-## 目标
+## Goal
 
-让刘海里的额度显示不再被单一的环形方向限制。用户可以在原生 macOS 设置窗口中即时切换两种样式，并在实际刘海里观察效果。
+Free the notch quota display from a single ring direction. Users can switch between two styles immediately in the native macOS Settings window and observe the result on the actual notch.
 
-## 视觉方案
+## Visual Options
 
-1. **顺时针圆环（默认）**：填充弧的末端固定在 12 点钟方向，额度下降时缺口从这里沿顺时针展开。它最接近常见进度环，也保留现有紧凑布局。
-2. **波浪球**：圆形容器内用液面高度表示剩余额度，运行时波浪缓慢流动；完成时保留一次轻微脉冲。它在小尺寸下比环形更像一个状态徽标。
+1. **Clockwise ring (default)**: The end of the filled arc stays at 12 o'clock, and the gap grows clockwise from there as quota falls. It is closest to a familiar progress ring and preserves the existing compact layout.
+2. **Wave ball**: The liquid level inside a circular container represents remaining quota; the wave flows slowly while running and keeps one subtle pulse on completion. At small sizes it reads more like a status badge than a ring.
 
-两种样式都将数字固定在指标内。圆环使用直接的中心读数；波浪球只在字形外围增加极细深色描边与阴影，确保数字不会被动态波浪吞没，同时不遮挡液面。两种样式也都复用同一套额度颜色：100% 为绿色，50% 为中间色，0% 为红色；运行中的动画仍使用当前额度对应的颜色。
+Both styles keep the number inside the indicator. The ring uses a direct centered readout; the wave ball adds only a very thin dark outline and shadow around the glyph so the number is not swallowed by the moving wave without hiding the liquid level. Both styles reuse the same quota colors: 100% is green, 50% is the midpoint color, and 0% is red; running animation still uses the color for the current quota.
 
-## 设置与数据流
+## Settings and Data Flow
 
-`QuotaDisplayStyle` 使用 `UserDefaults` 持久化。`NotchView` 和设置窗口都通过同一个 `@AppStorage` 键读取，因此设置修改后不需要重启即可更新刘海。设置窗口通过 SwiftUI `Settings` scene 提供，刘海右键菜单和应用菜单都提供入口；数值位置固定为指标内部，不再提供单独设置。
+`QuotaDisplayStyle` is persisted in `UserDefaults`. `NotchView` and the Settings window read the same `@AppStorage` key, so a change updates the notch without a restart. The Settings window is provided by a SwiftUI `Settings` scene, and both the notch context menu and app menu provide an entry point; the number remains inside the indicator and has no separate position setting.
 
-展开面板外壳从屏幕顶部与实体刘海连成一体；屏幕的 `safeAreaInsets.top` 仅作为内容顶部内边距，因此横向额度进度条和文字会避开摄像头，但卡片不会悬在刘海下方。
+The expanded panel shell connects to the physical notch at the top of the screen. The screen's `safeAreaInsets.top` is used only as top content padding, so the horizontal quota bar and text avoid the camera while the card does not float below the notch.
 
-## 验证
+## Verification
 
-- 为样式枚举和进度方向添加单元测试。
-- 跑完整 Swift 测试套件并重新构建签名发布包。
-- 重启应用，分别截图确认两种样式在紧凑刘海中不遮挡文字、不产生悬停闪烁；运行状态下左侧 ChatGPT 脉冲应清晰但不刺眼。
+- Add unit tests for the style enum and progress direction.
+- Run the full Swift test suite and rebuild the signed release package.
+- Restart the app and capture each style to confirm that neither blocks text or causes hover flicker in the compact notch; the left ChatGPT pulse should be clear but not distracting while running.

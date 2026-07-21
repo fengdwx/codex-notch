@@ -1,28 +1,28 @@
-# CodexNotch 项目交接记忆
+# CodexNotch Project Handoff Notes
 
-## 这是什么
+## What This Is
 
-CodexNotch 是一个独立、开源的原生 macOS SwiftUI/AppKit 应用；不依赖 Atoll。它围绕 MacBook 的物理刘海展示当前 ChatGPT/Codex 的周额度、运行中的任务以及最近完成的对话，并可点击回到对应 ChatGPT 任务。
+CodexNotch is an independent, open-source native macOS SwiftUI/AppKit app. It does not depend on Atoll. It displays the current ChatGPT/Codex weekly quota, running tasks, and recently completed conversations beside the physical MacBook notch, with clickable navigation back to the corresponding ChatGPT task.
 
-## 行为变更 Harness（强制入口）
+## Behavior-Change Harness (Required Entry Point)
 
-对用户可见交互、额度语义、会话状态、隐私数据、窗口几何、设置、打包或发布的修改，编辑前必须阅读：
+Before editing any user-visible interaction, quota semantics, session state, privacy data, window geometry, settings, packaging, or release behavior, read:
 
-1. [项目 Harness](docs/agent-harness.md)
-2. [有效行为契约](docs/contracts/behavior-contracts.yaml)
-3. 相关的 [架构决策](docs/decisions/)
+1. [Project harness](docs/agent-harness.md)
+2. [Active behavior contracts](docs/contracts/behavior-contracts.yaml)
+3. The relevant [architecture decisions](docs/decisions/)
 
-先明确“改变 / 保持 / 不做”和风险等级，再写代码。优先新增或定位一个结果导向的 guard；UI 无法自动验证的部分必须在完成报告中写成“需要真实硬件确认”，不能默认视为通过。`swift test` 是快速检查，`./scripts/verify.sh` 是完整检查；发布包才运行 `./scripts/release.sh`。不要删除既有回归测试来迁就新实现；契约冲突必须先明确 supersede。详见 Harness。
+Before writing code, state what will change, what must remain stable, what is out of scope, and the risk level. Prefer adding or locating an outcome-oriented guard. If a UI behavior cannot be verified automatically, the completion report must say that real hardware confirmation is required; it must not be assumed to pass. `swift test` is the fast check, `./scripts/verify.sh` is the full check, and `./scripts/release.sh` is reserved for release packages. Do not delete existing regression tests to accommodate a new implementation; resolve contract conflicts explicitly with a superseding contract. See the harness for details.
 
-## 当前位置与 Git
+## Current Location and Git
 
-- 当前可工作的仓库：`/Users/david/projects/codex-notch`
-- 个人远端：`https://github.com/fengdwx/codex-notch.git`，默认分支为 `main`
-- 当前开发分支：`feat/codex-notch-v1`；此前按用户要求通过 `git push origin HEAD:main` 直接同步到远端 `main`。推送前先检查工作区，并仅在用户要求时推送。
-- `/Users/david/projects/tmp/codex-notch` 是另一个 `main` 工作树；不要删除或混淆两个工作树。
-- 用户希望每个有意义的改动单独提交；仓库必须推送到个人仓库，不要推组织仓库。
+- Working repository: `/Users/david/projects/codex-notch`
+- Personal remote: `https://github.com/fengdwx/codex-notch.git`, with `main` as the default branch
+- Current development branch: `feat/codex-notch-v1`; at the user's request, it was previously synchronized directly to remote `main` with `git push origin HEAD:main`. Check the worktree before pushing, and push only when requested.
+- `/Users/david/projects/tmp/codex-notch` is another `main` worktree; do not delete or confuse the two worktrees.
+- The user prefers one commit per meaningful change. Push to the personal repository, never to an organization repository.
 
-## 常用命令
+## Common Commands
 
 ```bash
 swift test
@@ -31,31 +31,31 @@ swift test
 open dist/CodexNotch.app
 ```
 
-- `./scripts/build_app.sh` 会运行测试并构建 `dist/CodexNotch.app`。
-- 最近一次完整验证：63 个测试通过。
-- 改 UI 后应重新构建、重启该 `.app`，再让用户在真实刘海上确认；不要只凭截图声称动画正确。
+- `./scripts/build_app.sh` runs the tests and builds `dist/CodexNotch.app`.
+- Latest complete verification: 63 tests passed.
+- After changing the UI, rebuild and restart the `.app`, then have the user confirm it on a real notch. Do not claim that an animation is correct based only on screenshots.
 
-## 运行与状态模型
+## Runtime and State Model
 
-- 当前 ChatGPT/Codex app 的 bundle identifier 是 `com.openai.codex`；`com.openai.chatgpt.classic` 是 Classic，不应当作当前目标。
-- 额度来自本机 Codex/ChatGPT 登录态；绝不提交认证文件、access token 或任何 `~/.codex` 私密内容。
-- 会话活动来自本机 rollout/session 日志。`ActiveSessionStore` 保留最近完成记录 24 小时。
-- 有活动任务时一定显示运行态；没有活动任务但有最近完成记录时，紧凑刘海保持完成态和绿色对号；新任务开始后立即切回运行动画。
+- The current ChatGPT/Codex app has bundle identifier `com.openai.codex`; `com.openai.chatgpt.classic` is Classic and must not be treated as the current target.
+- Quota comes from the local Codex/ChatGPT login state. Never commit authentication files, access tokens, or any private `~/.codex` content.
+- Session activity comes from local rollout/session logs. `ActiveSessionStore` retains recent completion records for 24 hours.
+- An active task always shows the running state. With no active task but a recent completion, the compact notch remains in the completed state with a green check; a new task immediately switches back to the running animation.
 
-## 已确认的视觉与交互约束
+## Confirmed Visual and Interaction Constraints
 
-- 额度始终显示在右侧刘海安全区，数字位于圆环/波浪球内部，不显示旁边的重复数字。
-- 额度环缺口在 12 点方向，按顺时针表达进度；颜色从高额度绿色平滑过渡到低额度红色。
-- 左右图标必须始终在各自安全区居中，不能下沉到刘海下方，也不能被物理摄像头切口遮住。
-- 悬停展开必须从原有紧凑岛体向下展开，不能从物理刘海中间炸开、向上展开或出现窗口跳动。
-- 展开实现刻意采用 Atoll 的分层思路：`NotchWindowController` 先一次性准备最终透明画布，SwiftUI 在画布内展开可见岛体。不要恢复旧版按帧调整 `NSPanel` 尺寸的做法；它既不顺滑，也曾在 SwiftUI 文本布局期间导致崩溃。
-- 收起后应回收透明画布，避免在紧凑刘海外拦截鼠标。
-- 运行态左侧为蓝色 ChatGPT 图形回声；完成态为一次绿色图形回声和清晰的绿色对号。减少动态效果时保留静态状态。
-- 展开卡片展示周额度、精确重置时间和最近对话；“最近对话数”由设置控制（1–5）。设置窗口必须能自动置前。
+- Quota always appears in the right notch safe area, with the number inside the ring or wave ball and no duplicate number beside it.
+- The quota ring has a gap at 12 o'clock and expresses progress clockwise; its color transitions smoothly from high-quota green to low-quota red.
+- The left and right icons must remain centered in their respective safe areas, never drop below the notch, and never be covered by the physical camera cutout.
+- Hover expansion must grow downward from the existing compact island. It must not burst out of the physical notch, expand upward, or cause window jumping.
+- Expansion intentionally follows Atoll's layered approach: `NotchWindowController` prepares the final transparent canvas once, and SwiftUI expands the visible island inside that canvas. Do not restore the old frame-per-frame `NSPanel` resizing approach; it was not smooth and once caused crashes during SwiftUI text layout.
+- Reclaim the transparent canvas after collapse so it does not intercept mouse events outside the compact notch.
+- The running state uses a blue ChatGPT visual echo on the left; the completed state uses one green echo and a clear green checkmark. Preserve static state cues when motion is reduced.
+- The expanded card shows weekly quota, the exact reset time, and recent conversations. Settings control the number of recent conversations (1–5), and the Settings window must be able to come to the front automatically.
 
-## 用户协作偏好
+## User Collaboration Preferences
 
-- 用中文、简洁地先说明结果再说明做法；用户会直接给截图做像素级反馈。
-- 不要擅自扩大为 Atoll 插件或引入 Atoll 依赖；这是用户自己的独立 app。
-- 用户更重视真实机器上的观感、平滑和刘海几何，而不接受只靠参数猜测的改动。
-- 遇到 UI 回归，先检查真实运行状态与对应状态机，而不是只改样式。
+- Use concise Chinese, lead with the result, and then explain the approach; the user may provide screenshots for pixel-level feedback.
+- Do not expand this into an Atoll plugin or add an Atoll dependency; this is the user's independent app.
+- The user values real-machine appearance, smoothness, and notch geometry over changes based only on guessed parameters.
+- When a UI regression appears, inspect the actual runtime state and corresponding state machine before changing styles.
