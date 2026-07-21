@@ -61,7 +61,7 @@ Assess risk by impact, not line count:
 | contracts | `./scripts/check_contracts.sh` | Validate the behavior-contract YAML structure and required fields |
 | fast | `swift test` | Fast deterministic check for all code changes |
 | full | `./scripts/verify.sh` | L2/L3: tests, release build, app bundle, and signing validation |
-| release | `./scripts/release.sh` | When a distributable ZIP is required; creates only a local artifact and does not upload it |
+| release | `./scripts/release.sh` | When distributable ZIP and DMG artifacts are required; creates only local artifacts and does not upload them |
 
 `full` does not send notifications, request real task operations, or change remote state by default. Only the local `dist/` packaging directory is updated, and that directory is ignored by Git.
 

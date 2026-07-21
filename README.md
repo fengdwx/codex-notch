@@ -71,15 +71,15 @@ While Codex works, a blue activity echo shows that the task is still running; co
 
 ## Install
 
-Download `CodexNotch-...zip` from [**GitHub Releases**](https://github.com/fengdwx/codex-notch/releases/latest):
+From [**GitHub Releases**](https://github.com/fengdwx/codex-notch/releases/latest), prefer `CodexNotch-...dmg` when the release provides one. Otherwise, use the ZIP archive:
 
-1. Unzip the archive.
+1. For a DMG, open the disk image; for a ZIP, unzip the archive.
 2. Drag `CodexNotch.app` into Applications.
 3. Sign in to ChatGPT, use Codex once, then launch CodexNotch.
 
 Swift, Swift Package Manager, and Xcode are not required.
 
-> The current public build uses an ad-hoc signature. On first launch, macOS may say the developer cannot be verified. Choose **Open Anyway** in **System Settings → Privacy & Security**, or Control-click the app and choose **Open**.
+> A ZIP is also provided as an alternative archive. The current public build uses an ad-hoc signature, so a DMG does not remove the first-launch macOS warning. Choose **Open Anyway** in **System Settings → Privacy & Security**, or Control-click the app and choose **Open**.
 
 CodexNotch reads the default `~/.codex` directory. If Codex uses another directory, set `CODEX_HOME` before launching the app.
 
@@ -126,13 +126,13 @@ swift test
 open dist/CodexNotch.app
 ```
 
-Create a distributable archive:
+Create distributable ZIP and DMG archives:
 
 ```sh
 ./scripts/release.sh
 ```
 
-The release script runs tests, builds the release app, validates its code signature, and produces a ZIP plus SHA-256 file. To skip signing entirely:
+The release script runs tests, builds the release app, validates its code signature, produces ZIP and DMG archives plus SHA-256 files, and mounts the DMG to verify its bundled app. The DMG improves installation flow; it does not replace Developer ID signing or notarization. To skip signing entirely:
 
 ```sh
 SIGN_IDENTITY=none ./scripts/build_app.sh
