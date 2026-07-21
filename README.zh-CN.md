@@ -2,6 +2,8 @@
 
 # CodexNotch
 
+<img src="Resources/AppIcon.svg" width="240" alt="CodexNotch 应用图标">
+
 ### Codex 额度，始终在眼前。
 
 **把周额度、精确重置时间和任务状态，固定在 MacBook 刘海旁。**<br>
