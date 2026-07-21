@@ -1,40 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="background" x1="132" y1="78" x2="890" y2="956" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#102b1e"/>
-      <stop offset=".52" stop-color="#07140f"/>
-      <stop offset="1" stop-color="#030805"/>
-    </linearGradient>
-    <linearGradient id="terminal" x1="184" y1="196" x2="842" y2="828" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#10241a"/>
-      <stop offset="1" stop-color="#07110d"/>
-    </linearGradient>
-    <radialGradient id="promptGlow" cx="0" cy="0" r="1" gradientTransform="translate(500 540) rotate(90) scale(290 390)">
-      <stop stop-color="#4df58c" stop-opacity=".20"/>
-      <stop offset="1" stop-color="#4df58c" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="prompt" x1="260" y1="402" x2="728" y2="642" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#b5ffd1"/>
-      <stop offset=".56" stop-color="#62f49a"/>
-      <stop offset="1" stop-color="#25c86d"/>
+    <linearGradient id="sparkle-gradient" x1="710" y1="404" x2="886" y2="610" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#92e755"/>
+      <stop offset="1" stop-color="#35b85f"/>
     </linearGradient>
   </defs>
 
-  <rect width="1024" height="1024" rx="226" fill="url(#background)"/>
-  <rect x="26" y="26" width="972" height="972" rx="204" fill="none" stroke="#8affae" stroke-opacity=".12" stroke-width="4"/>
+  <rect width="1024" height="1024" fill="#f7f7f7"/>
 
-  <!-- A terminal window, not a floating bowl: squared composition and a clear command prompt. -->
-  <rect x="112" y="156" width="800" height="712" rx="112" fill="#020604" stroke="#2d6f4a" stroke-opacity=".72" stroke-width="10"/>
-  <rect x="130" y="174" width="764" height="676" rx="94" fill="url(#terminal)"/>
-  <path d="M130 330h764" stroke="#5cf495" stroke-opacity=".18" stroke-width="4"/>
-  <rect x="378" y="174" width="268" height="74" rx="37" fill="#020604"/>
-  <circle cx="212" cy="252" r="14" fill="#4df58c"/>
-  <circle cx="256" cy="252" r="14" fill="#4df58c" fill-opacity=".52"/>
-  <circle cx="300" cy="252" r="14" fill="#4df58c" fill-opacity=".20"/>
+  <!-- Match the supplied app identity: a black, horizontal camera-notch shell. -->
+  <rect id="notch-shell" x="64" y="300" width="896" height="438" rx="142" fill="#080808"/>
+  <circle cx="512" cy="300" r="102" fill="#f7f7f7"/>
 
-  <ellipse cx="500" cy="548" rx="330" ry="244" fill="url(#promptGlow)"/>
-  <path d="m270 454 92 84-92 84" fill="none" stroke="url(#prompt)" stroke-linecap="round" stroke-linejoin="round" stroke-width="42"/>
-  <path d="M424 622h174" fill="none" stroke="url(#prompt)" stroke-linecap="round" stroke-width="42"/>
-  <rect x="632" y="581" width="38" height="82" rx="12" fill="#73fca7"/>
-  <rect x="640" y="590" width="22" height="64" rx="8" fill="#ccffe0"/>
+  <!-- The white command prompt is intentionally simple and legible at Finder sizes. -->
+  <path id="prompt-mark" d="m264 454 88 74-88 74" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="30"/>
+  <path d="M400 614h82" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="30"/>
+
+  <!-- Four-point green spark from the supplied icon, separate from the command prompt. -->
+  <path id="sparkle" d="M790 410c14 62 42 90 104 104-62 14-90 42-104 104-14-62-42-90-104-104 62-14 90-42 104-104Z" fill="url(#sparkle-gradient)"/>
 </svg>

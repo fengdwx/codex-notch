@@ -338,7 +338,7 @@ contracts:
 
   - id: APP-IDENTITY-007
     title: 应用包提供原创且完整的图标
-    status: active
+    status: superseded
     statement: CodexNotch.app 的 Info.plist 必须声明 CodexNotch 图标，并在 Resources 中包含完整的 .icns 表示；图标使用原创的深绿终端窗口、顶部小刘海槽和绿色 `>_` 提示符矢量设计，不包含账号、认证或对话数据。
     rationale: Finder、启动台和安装包需要稳定可辨识的应用身份；清晰的终端轮廓和高对比绿色提示符应在小尺寸下保留产品的 Codex 属性，同时顶部小刘海槽呼应实体刘海。图标生成不能扩大本机数据暴露或挪用其他产品的品牌资产。
     source: user-confirmed
@@ -356,5 +356,29 @@ contracts:
       - scripts/verify_app.sh
       - "manual: inspect the app icon in Finder or Launchpad"
     supersedes: []
-    superseded_by: null
+    superseded_by: APP-IDENTITY-016
     last_verified_commit: 9fd7a89
+
+  - id: APP-IDENTITY-016
+    title: 应用包采用黑色刘海命令提示符图标
+    status: active
+    statement: CodexNotch.app 的 Info.plist 必须声明 CodexNotch 图标，并在 Resources 中包含完整的 .icns 表示；图标使用用户指定的浅色底、黑色横向刘海壳、顶部居中镂空、左侧白色 `>_` 命令提示符和右侧四角绿色星芒，不包含账号、认证或对话数据。
+    rationale: 图标必须与用户指定的产品身份一致，并在 Finder、启动台和安装包中保持对“刘海里的 Codex 命令提示符”的直接识别；应用内紧凑刘海的 ChatGPT 状态图标是独立交互，不应随 app bundle 图标替换。
+    source: user-confirmed
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [build, bundle, finder, launchpad, app-icon]
+      exclude: [notch-screens, compact-state, chatgpt-assets, user-data]
+    examples:
+      positive: 构建后的 app 能在 Resources 中找到完整的 CodexNotch.icns，Finder 图标展示黑色刘海壳、白色 `>_` 与绿色星芒；紧凑刘海内仍按任务状态展示 ChatGPT 图形。
+      negative: 安装包继续保留旧的深绿终端窗口图标、缺失高分辨率图标表示，或误将 app 图标替换为运行状态的 ChatGPT 标记。
+    guards:
+      - Resources/AppIcon.svg
+      - Tests/CodexNotchTests/AppIconAssetTests.swift
+      - scripts/build_icon.sh
+      - scripts/verify_app.sh
+      - "manual: inspect the app icon in Finder or Launchpad after replacing the app"
+    supersedes: [APP-IDENTITY-007]
+    superseded_by: null
+    last_verified_commit: e27336c
