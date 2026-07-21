@@ -2,6 +2,8 @@
 
 # CodexNotch
 
+<img src="Resources/AppIcon.svg" width="240" alt="CodexNotch app icon">
+
 ### Your Codex quota—always in sight.
 
 **Weekly quota, exact reset times, and task status stay beside your MacBook notch.**<br>
