@@ -18,4 +18,25 @@ final class AppIconAssetTests: XCTestCase {
         XCTAssertTrue(source.contains("id=\"sparkle\""))
         XCTAssertTrue(source.contains("stroke=\"#fff\""))
     }
+
+    func testNotchMarkUsesEmbeddedTemplateWithoutReadingAnotherAppBundle() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let notchViewSource = try String(
+            contentsOf: repositoryRoot.appendingPathComponent(
+                "Sources/CodexNotch/UI/NotchView.swift"
+            ),
+            encoding: .utf8
+        )
+        let image = try XCTUnwrap(ChatGPTMarkAsset.templateImage)
+
+        XCTAssertEqual(image.size.width, 18)
+        XCTAssertEqual(image.size.height, 18)
+        XCTAssertTrue(image.isTemplate)
+        XCTAssertTrue(notchViewSource.contains("ChatGPTMarkAsset.templateImage"))
+        XCTAssertFalse(notchViewSource.contains("Bundle(url: appURL)"))
+        XCTAssertFalse(notchViewSource.contains("chatgptTemplate"))
+    }
 }

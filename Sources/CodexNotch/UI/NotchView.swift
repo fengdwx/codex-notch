@@ -546,26 +546,6 @@ private struct CompletedChatGPTIcon: View {
     }
 }
 
-private enum ChatGPTIconAsset {
-    static let templateImage: NSImage? = {
-        let workspace = NSWorkspace.shared
-        guard let appURL = workspace.urlForApplication(
-            withBundleIdentifier: AppIdentity.chatGPTCodexBundleIdentifier
-        ) else {
-            return nil
-        }
-        guard let resourceURL = Bundle(url: appURL)?.url(
-            forResource: "chatgptTemplate@2x",
-            withExtension: "png"
-        ), let image = NSImage(contentsOf: resourceURL) else {
-            return nil
-        }
-        image.size = NSSize(width: 18, height: 18)
-        image.isTemplate = true
-        return image
-    }()
-}
-
 private struct ChatGPTMark: View {
     let size: CGFloat
     var fallbackSystemName = "sparkles"
@@ -573,7 +553,7 @@ private struct ChatGPTMark: View {
 
     var body: some View {
         Group {
-            if let image = ChatGPTIconAsset.templateImage {
+            if let image = ChatGPTMarkAsset.templateImage {
                 Image(nsImage: image)
                     .renderingMode(.template)
                     .resizable()

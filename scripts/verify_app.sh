@@ -43,4 +43,17 @@ iconutil -c iconset "$ICON_PATH" -o "$ICONSET_DIR/CodexNotch.iconset"
 }
 
 codesign --verify --deep --strict "$APP_PATH"
+
+if /usr/libexec/PlistBuddy \
+    -c 'Print :NSAppBundlesUsageDescription' \
+    "$INFO_PLIST" >/dev/null 2>&1; then
+    echo "error: app must not request access to other application bundles" >&2
+    exit 1
+fi
+
+if strings "$EXECUTABLE" | grep -q 'chatgptTemplate'; then
+    echo "error: app still references the external ChatGPT bundle icon" >&2
+    exit 1
+fi
+
 echo "Verified: $APP_PATH"

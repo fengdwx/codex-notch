@@ -863,6 +863,28 @@ contracts:
     superseded_by: null
     last_verified_commit: 0d37196
 
+  - id: PRIVACY-APP-BUNDLE-039
+    title: The notch mark must not require access to another application bundle
+    status: active
+    statement: The ChatGPT-shaped notch mark must be compiled into CodexNotch and rendered without locating, opening, or reading the contents of ChatGPT.app, Codex.app, or any other application bundle. CodexNotch must not declare or rely on App Management permission merely to render its compact, running, or completed states; the 18pt mark, template tinting, completion checkmark, and task navigation behavior remain unchanged.
+    rationale: Reading `chatgptTemplate` from ChatGPT.app caused macOS to register CodexNotch for App Management even though quota and task monitoring do not need authority over other applications. A decorative status mark does not justify that privacy permission or a runtime dependency on another app's private resource layout.
+    source: user-reported-permission-and-requested-fix
+    owner: project-maintainer
+    risk: critical
+    scope:
+      include: [notch-mark, compact-state, running-state, completed-state, privacy-permissions, app-bundle]
+      exclude: [quota-semantics, activity-state-machine, window-geometry, release-upload]
+    examples:
+      positive: CodexNotch renders the same tintable 18pt mark from data compiled into its own executable while App Management remains disabled.
+      negative: Resolving ChatGPT.app with NSWorkspace, opening its bundle with Bundle(url:), reading chatgptTemplate from its Resources directory, or adding NSAppBundlesUsageDescription only to preserve the icon.
+    guards:
+      - Tests/CodexNotchTests/AppIconAssetTests.swift
+      - scripts/verify_app.sh
+      - "manual: launch with CodexNotch disabled or absent from App Management and inspect idle, running, and completed marks on a physical notch"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null
+
   - id: PACKAGE-VERIFY-006
     title: A distributable app must come from a verified build
     status: active
