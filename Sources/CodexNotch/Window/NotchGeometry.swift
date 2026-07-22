@@ -61,13 +61,26 @@ extension NotchLayout {
 }
 
 enum NotchCompactLayout {
-    static let sideWingWidth: CGFloat = 52
-    static let minimumWidth: CGFloat = 289
+    static let sideExtensionWidth: CGFloat = 36
+    static let indicatorLaneWidth: CGFloat = 46
+    static let minimumWidth: CGFloat = 257
     static let height: CGFloat = 32
-    static let indicatorDiameter: CGFloat = 24
+    static let indicatorDiameter: CGFloat = 22
+    static let quotaIndicatorOutwardOffset: CGFloat = 0
     static let appMarkSize: CGFloat = 18
     static let quotaRingLineWidth: CGFloat = 2.25
     static let quotaWaveBallBorderLineWidth: CGFloat = 1.75
+
+    static var quotaIndicatorCameraClearance: CGFloat {
+        sideExtensionWidth
+            - (indicatorLaneWidth + indicatorDiameter) / 2
+            + quotaIndicatorOutwardOffset
+    }
+
+    static var quotaIndicatorScreenEdgeClearance: CGFloat {
+        (indicatorLaneWidth - indicatorDiameter) / 2
+            - quotaIndicatorOutwardOffset
+    }
 
     static func quotaIndicatorLineWidth(for style: QuotaDisplayStyle) -> CGFloat {
         switch style {
@@ -180,12 +193,12 @@ enum NotchGeometry {
 
         let centerX = (left.maxX + right.minX) / 2
         // The auxiliary areas describe the safe regions beside the camera
-        // cutout. Keep a full 52pt wing on each side: it gives a circular
-        // indicator and its optional number independent breathing room.
+        // cutout. Keep the visible island extension at 36pt per side; the
+        // indicator lanes may be wider to balance their inner and outer gaps.
         let notchWidth = right.minX - left.maxX
         let compactWidth = max(
             compactSize.width,
-            notchWidth + NotchCompactLayout.sideWingWidth * 2
+            notchWidth + NotchCompactLayout.sideExtensionWidth * 2
         )
         let compactHeight = min(
             compactSize.height,

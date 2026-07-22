@@ -43,7 +43,7 @@ contracts:
 
   - id: NOTCH-LAYOUT-014
     title: Compact island preserves safe-area balance with 18pt optical correction for the left GPT mark
-    status: active
+    status: superseded
     statement: The compact notch's left and right content always stays centered in its respective safe area, clear of the camera cutout and above the bottom of the notch; both indicators share a 24pt alignment container. The left ChatGPT mark and running echo use 18pt optical correction, and switching the right indicator between a ring and wave ball or expanding the card must not change the container size or disrupt the visual balance of the two wings.
     rationale: The left mark still has greater visual density than the right quota ring, and 20pt remains slightly too large on a real notch; reducing it to 18pt preserves recognition and running feedback while further reducing the left wing's visual weight.
     source: user-confirmed
@@ -59,8 +59,440 @@ contracts:
       - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
       - "manual: physical-notch compact-state inspection across idle, running and completed states"
     supersedes: [NOTCH-LAYOUT-013]
-    superseded_by: null
+    superseded_by: NOTCH-LAYOUT-019
     last_verified_commit: ff03e1c
+
+  - id: NOTCH-LAYOUT-019
+    title: Compact island keeps narrow balanced wings around the physical notch
+    status: superseded
+    statement: The compact notch derives its visible width from the physical camera cutout plus one 38pt wing on each side. Each wing keeps its 24pt alignment container centered with 7pt of horizontal breathing room, while the left ChatGPT mark and running echo retain their 18pt optical correction. Switching the right indicator between a ring and wave ball or changing activity state must not widen the compact island, move either indicator toward the camera cutout, or change the expanded-card width.
+    rationale: The former 52pt wings reserved space for a quota number beside the indicator, but the number now always appears inside the ring or wave ball. Keeping that obsolete allowance made the visible island 28pt wider than needed on a 14-inch notch; 38pt wings preserve safe centering without excessive black width.
+    source: user-feedback
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state]
+      exclude: [menu-bar-fallback, expanded-card-width]
+    examples:
+      positive: A 185pt physical camera cutout produces a 261pt compact island with one centered 24pt indicator in each 38pt wing, and hover still expands into the unchanged 420pt card.
+      negative: The compact island retains 52pt wings, an indicator touches the camera cutout, or reducing compact width also shrinks the expanded card.
+    guards:
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - "manual: physical-notch compact-state inspection across idle, running and completed states"
+    supersedes: [NOTCH-LAYOUT-014]
+    superseded_by: NOTCH-LAYOUT-020
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-020
+    title: Compact indicators balance a narrower center with wider outer breathing room
+    status: superseded
+    statement: The compact island keeps its physical camera cutout plus 38pt visible extension on each side, preserving the 261pt total width for a 185pt cutout. Inside that unchanged surface, each indicator uses a 44pt layout lane so the left and right indicators move 3pt toward the camera, their outer breathing room grows from 7pt to 10pt, and the 24pt quota indicator remains 4pt clear of the camera edge. The left ChatGPT mark retains its 18pt optical correction. Activity state, quota style, and expansion must not change this balance or the 420pt expanded-card width.
+    rationale: Real-notch inspection showed that merely narrowing the island left too much perceived empty space between the indicators. Separating visible side extension from indicator-lane width redistributes the existing 261pt surface toward wider outer margins and a tighter visual center without widening the island or placing content under the camera.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state]
+      exclude: [menu-bar-fallback, expanded-card-width]
+    examples:
+      positive: A 185pt camera cutout still produces a 261pt island, while two 44pt indicator lanes leave a 173pt center spacer and keep the 24pt quota ring 4pt outside the camera edge.
+      negative: Widening the whole compact island to create larger outer margins, leaving both indicators in the former 38pt lanes, or moving either visible indicator beneath the physical camera cutout.
+    guards:
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - "manual: physical-notch compact-state inspection across idle, running and completed states"
+    supersedes: [NOTCH-LAYOUT-019]
+    superseded_by: NOTCH-LAYOUT-021
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-021
+    title: Compact indicators sit one point closer to the camera edge
+    status: superseded
+    statement: The compact island keeps its physical camera cutout plus 38pt visible extension on each side, preserving the 261pt total width for a 185pt cutout. Each indicator uses a 46pt layout lane so the left and right indicators move another 1pt toward the camera compared with NOTCH-LAYOUT-020, their outer breathing room reaches 11pt, and the 24pt quota indicator remains 3pt clear of the camera edge. The left ChatGPT mark retains its 18pt optical correction. Activity state, quota style, and expansion must not change this balance or the 420pt expanded-card width.
+    rationale: Real-notch review of the 44pt lanes still showed slightly too much perceived separation between the two indicators. A 46pt lane provides a restrained final inward adjustment while retaining visible clearance from the physical camera cutout.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state]
+      exclude: [menu-bar-fallback, expanded-card-width]
+    examples:
+      positive: A 185pt camera cutout still produces a 261pt island, while two 46pt indicator lanes leave a 169pt center spacer and keep the 24pt quota ring 3pt outside the camera edge.
+      negative: Increasing the compact island's total width, reducing camera clearance below 3pt, or applying the inward shift to only one activity or quota style.
+    guards:
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - "manual: physical-notch compact-state inspection across idle, running and completed states"
+    supersedes: [NOTCH-LAYOUT-020]
+    superseded_by: NOTCH-LAYOUT-022
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-022
+    title: Compact quota ring keeps a one-point camera clearance
+    status: superseded
+    statement: The compact island keeps its physical camera cutout plus 38pt visible extension on each side, preserving the 261pt total width for a 185pt cutout. Each indicator uses a 50pt layout lane so the left and right indicators move another 2pt toward the camera compared with NOTCH-LAYOUT-021, their outer breathing room reaches 13pt, and the 24pt quota indicator keeps exactly 1pt of geometric clearance from the camera edge. The left ChatGPT mark retains its 18pt optical correction. Activity state, quota style, and expansion must not change this balance or the 420pt expanded-card width.
+    rationale: The user explicitly requested reducing the remaining camera clearance from 3pt to 1pt after real-notch review. A 50pt lane reaches that target without widening the compact island or geometrically placing the visible 24pt indicator beneath the camera cutout.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state]
+      exclude: [menu-bar-fallback, expanded-card-width]
+    examples:
+      positive: A 185pt camera cutout still produces a 261pt island, while two 50pt indicator lanes leave a 161pt center spacer and keep the 24pt quota ring 1pt outside the camera edge.
+      negative: Increasing the compact island's total width, allowing the ring frame to cross beneath the camera cutout, or applying the inward shift to only one activity or quota style.
+    guards:
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - "manual: physical-notch compact-state inspection across idle, running and completed states"
+    supersedes: [NOTCH-LAYOUT-021]
+    superseded_by: NOTCH-LAYOUT-023
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-023
+    title: Compact quota rendering stays inside its one-point camera clearance
+    status: superseded
+    statement: The compact island retains its 261pt width for a 185pt camera cutout, its 50pt indicator lanes, and the 24pt quota indicator's 1pt geometric camera clearance. The ring track, quota arc, wave-ball border, and completion pulse must render entirely inside that 24pt indicator frame. With Reduce Motion disabled, completion still shows one restrained pulse that grows from 0.84 scale to 1.00 scale while fading; it must never expand beyond the indicator frame. Reduce Motion continues to suppress the pulse.
+    rationale: Physical-notch inspection showed that the former centered strokes and 1.32-scale completion pulse exceeded the nominal 24pt frame and visibly entered the camera cutout even though layout geometry reported 1pt clearance. Inset strokes and a contained inward-to-edge pulse preserve the requested close spacing without hiding animation beneath the camera.
+    source: user-confirmed-incident
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state, completion-animation]
+      exclude: [menu-bar-fallback, expanded-card-width, activity-state-machine]
+    examples:
+      positive: The 24pt ring remains 1pt from the camera in idle, running, and completed states, while completion visibly pulses from a smaller circle to the normal ring edge and fades without crossing the camera boundary.
+      negative: Drawing any ring stroke outside the 24pt frame, restoring a completion scale above 1.00, widening the island to hide the overflow, or showing the pulse when Reduce Motion is enabled.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: loop completion transitions on a physical notch and inspect the camera-side edge"
+    supersedes: [NOTCH-LAYOUT-022]
+    superseded_by: NOTCH-LAYOUT-024
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-024
+    title: Compact completion pulse visibly contracts inside the camera-safe frame
+    status: superseded
+    statement: The compact island retains its 261pt width for a 185pt camera cutout, its 50pt indicator lanes, and the 24pt quota indicator's 1pt geometric camera clearance. The ring track, quota arc, wave-ball border, and completion pulse render entirely inside the 24pt indicator frame. With Reduce Motion disabled, completion begins with one clearly visible full-size current-color ring, then contracts inward from 1.00 scale to 0.70 scale while fading over 0.62 seconds. The transition begins after the initial completed frame is rendered so SwiftUI cannot collapse both endpoints into an invisible update. Reduce Motion continues to suppress the pulse.
+    rationale: The first contained version grew from 0.84 to 1.00 scale and faded too subtly to perceive on the physical notch; it also read as outward motion rather than the requested inward completion cue. Starting at the safe outer edge and visibly shrinking inward preserves the camera boundary while making the direction legible.
+    source: user-feedback
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state, completion-animation]
+      exclude: [menu-bar-fallback, expanded-card-width, activity-state-machine]
+    examples:
+      positive: On completion, a bright full-size ring appears at the existing 24pt edge, contracts toward the percentage text, and fades without crossing the camera boundary.
+      negative: Expanding the pulse outward, starting and ending the state in one unrendered frame, making the pulse imperceptibly faint, exceeding 1.00 scale, or showing it when Reduce Motion is enabled.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: loop completion transitions on a physical notch and confirm visible inward motion"
+    supersedes: [NOTCH-LAYOUT-023]
+    superseded_by: NOTCH-LAYOUT-025
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-025
+    title: Compact completion uses one contained clockwise orbit
+    status: superseded
+    statement: The compact island retains its 261pt width for a 185pt camera cutout, its 50pt indicator lanes, and the 24pt quota indicator's 1pt geometric camera clearance. The ring track, quota arc, wave-ball border, and completion animation render entirely inside the 24pt indicator frame. With Reduce Motion disabled, completion shows one small bright point with a restrained current-color tail travelling clockwise around the indicator exactly once over 0.9 seconds, fading in and out without covering the percentage text. Reduce Motion suppresses the orbit while preserving the static completed state.
+    rationale: >-
+      Frame-by-frame physical-notch capture showed that radial contraction was technically running but visually disappeared: its full-size start overlapped the existing ring, while its smaller frames moved underneath the percentage glyph and shadow. Motion along the circumference stays outside the text, remains legible at 24pt, and preserves the camera-safe boundary without widening the island.
+    source: user-feedback-and-frame-capture
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state, completion-animation]
+      exclude: [menu-bar-fallback, expanded-card-width, activity-state-machine]
+    examples:
+      positive: On completion, one subtle comet-like highlight makes a single clockwise lap around the quota ring or wave ball, then disappears while the completed state remains static.
+      negative: Hiding radial motion underneath the percentage, looping the orbit continuously, exceeding the 24pt frame, widening the compact island, or animating when Reduce Motion is enabled.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: loop completion transitions on a physical notch and confirm one visible contained clockwise orbit"
+    supersedes: [NOTCH-LAYOUT-024]
+    superseded_by: NOTCH-LAYOUT-026
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-026
+    title: Compact completion scatters seven contained particles
+    status: superseded
+    statement: The compact island retains its 261pt width for a 185pt camera cutout, its 50pt indicator lanes, and the 24pt quota indicator's 1pt geometric camera clearance. The ring track, quota arc, wave-ball border, and completion animation render entirely inside the 24pt indicator frame. With Reduce Motion disabled, completion emits seven small green and white particles from near the percentage text, easing outward in distinct directions with at most 0.12 seconds of stagger and disappearing after at most 0.9 seconds. The percentage remains readable above the particles. Reduce Motion suppresses the particles while preserving the static completed state.
+    rationale: >-
+      The contained clockwise orbit was visible but felt mechanical. A small, staggered radial scatter gives completion a lighter celebratory cue while keeping every particle inside the same camera-safe 24pt frame and leaving the compact notch geometry unchanged.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state, completion-animation]
+      exclude: [menu-bar-fallback, expanded-card-width, activity-state-machine]
+    examples:
+      positive: On completion, seven tiny green and white particles emerge around the percentage, travel toward distinct edges inside the indicator, and disappear once while the percentage stays readable.
+      negative: Looping the particles continuously, placing particles beyond the 24pt frame, hiding the percentage, widening the compact island, or animating when Reduce Motion is enabled.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: loop completion transitions on a physical notch and confirm the contained particle scatter is visible and restrained"
+    supersedes: [NOTCH-LAYOUT-025]
+    superseded_by: NOTCH-LAYOUT-027
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-027
+    title: Compact completion scatters particles inside and outside the quota ring
+    status: superseded
+    statement: The compact island retains its 261pt width for a 185pt camera cutout, its 50pt indicator lanes, and the 24pt quota indicator's 1pt geometric camera clearance. With Reduce Motion disabled, completion emits seven small green and white particles from near the percentage text toward the inside of the quota ring, while six additional particles travel from the ring toward its top, right, and bottom exterior. Exterior particles may leave the 24pt ring frame, but must remain inside the 50pt by 32pt compact indicator lane and must never travel beyond the ring on its camera-facing left edge. Both layers use at most 0.12 seconds of stagger and disappear after at most 0.9 seconds. The percentage remains readable above the particles. Reduce Motion suppresses both layers while preserving the static completed state.
+    rationale: >-
+      A contained scatter made the inner burst visible but did not provide a clear release beyond the ring. Splitting completion into an inner burst and an asymmetric outer burst provides both cues while using the generous screen-side lane space and preserving the one-point camera-side boundary.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state, completion-animation]
+      exclude: [menu-bar-fallback, expanded-card-width, activity-state-machine]
+    examples:
+      positive: On completion, one group of particles spreads around the percentage inside the quota ring while a second group clears the ring toward the safe top, right, and bottom edges, then both disappear once.
+      negative: Sending exterior particles toward the camera cutout, exceeding the compact lane height or width, hiding the percentage, widening the compact island, looping continuously, or animating when Reduce Motion is enabled.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: loop completion transitions on a physical notch and confirm both particle layers are visible without entering the camera cutout"
+    supersedes: [NOTCH-LAYOUT-026]
+    superseded_by: NOTCH-LAYOUT-028
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-028
+    title: Compact inner and outer completion particles remain clearly visible
+    status: superseded
+    statement: The compact island retains its 261pt width for a 185pt camera cutout, its 50pt indicator lanes, and the 24pt quota indicator's 1pt geometric camera clearance. With Reduce Motion disabled, completion emits seven 1.8pt to 2.4pt green and white particles from near the percentage text toward the inside of the quota ring, while six additional particles travel from the ring toward its top, right, and bottom exterior. Exterior particles may leave the 24pt ring frame, but must remain inside the 50pt by 32pt compact indicator lane and must never travel beyond the ring on its camera-facing left edge. Particles fade in quickly, remain fully visible through the middle of their travel, briefly grow to full scale, then ease down while fading. Both layers use at most 0.12 seconds of stagger and disappear after at most 0.9 seconds. The percentage remains readable above the particles. Reduce Motion suppresses both layers while preserving the static completed state.
+    rationale: >-
+      The first two-layer scatter had the correct directions but its small particles faded and shrank too early to read clearly on a physical notch. Slightly larger particles, a sustained full-opacity phase, and a short grow-then-settle motion improve legibility without increasing travel distance or spending the camera-side clearance.
+    source: user-feedback
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state, completion-animation]
+      exclude: [menu-bar-fallback, expanded-card-width, activity-state-machine]
+    examples:
+      positive: On completion, both the inner and outer particle groups are immediately legible, remain bright while separating, and then disappear once without changing the quota ring position.
+      negative: Fading before the two layers separate, shrinking throughout the whole animation, sending exterior particles toward the camera cutout, hiding the percentage, widening the compact island, looping continuously, or animating when Reduce Motion is enabled.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: loop completion transitions on a physical notch and confirm the brighter inner and outer particles remain restrained"
+    supersedes: [NOTCH-LAYOUT-027]
+    superseded_by: NOTCH-LAYOUT-029
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-029
+    title: Compact completion uses a camera-clear mini firework
+    status: superseded
+    statement: The compact island retains its 261pt total width for a 185pt camera cutout and its 50pt indicator lanes. The right quota indicator and its complete animation move 1pt toward the screen edge, increasing the visible camera clearance from 1pt to 2pt without moving the left ChatGPT mark or widening the island. With Reduce Motion disabled, completion begins with one white ignition flash, emits seven 1.8pt to 2.4pt green and white particles inside the quota ring, then sends six additional particles toward the top, right, and bottom exterior. Exactly two exterior particles use warm coral red rather than the deep-red quota warning color. Three four-point endpoint sparks follow, with two white and one warm coral red. All firework layers finish within 0.9 seconds, remain inside the 50pt by 32pt compact indicator lane, never travel beyond the ring on its camera-facing left edge, and stay behind the readable percentage. Reduce Motion suppresses the firework while preserving the static completed state.
+    rationale: >-
+      Real-notch review found that the former one-point camera gap made the left side of the brighter particle effect look visually clipped even though its geometry did not cross the camera boundary. Moving only the right indicator one point outward creates a clean two-point visual separation. A white ignition, warm-coral accents, and three endpoint stars provide the requested firework character without reusing the deep-red quota warning semantic.
+    source: user-confirmed-physical-notch-feedback
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state, completion-animation]
+      exclude: [menu-bar-fallback, expanded-card-width, activity-state-machine, quota-warning-colors]
+    examples:
+      positive: On completion, the right indicator sits 2pt from the camera, flashes white, bursts green, white, and two coral particles in two layers, then shows three small endpoint stars and settles within 0.9 seconds.
+      negative: Leaving the brighter effect visually clipped against a 1pt camera gap, moving the left icon, widening the island, using quota-critical deep red, sending particles toward the camera cutout, hiding the percentage, looping continuously, or animating when Reduce Motion is enabled.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: loop completion transitions on a physical notch and confirm the 2pt left clearance, warm-coral accents, ignition flash, and endpoint stars"
+    supersedes: [NOTCH-LAYOUT-028]
+    superseded_by: NOTCH-LAYOUT-030
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-030
+    title: Compact completion shows a complete firework on both sides
+    status: superseded
+    statement: The compact island retains its 261pt total width for a 185pt camera cutout and its 50pt indicator lanes. The right quota indicator and its complete animation move 6pt toward the screen edge from the lane center, leaving 7pt between the 24pt ring and both the camera edge and the outer edge of the 38pt wing; the left ChatGPT mark does not move. With Reduce Motion disabled, completion begins with one white ignition flash, emits seven 1.8pt to 2.4pt green and white particles inside the quota ring, then sends nine exterior particles around the complete circumference, including left-up, direct-left, and left-down directions. Exactly two exterior particles use warm coral red rather than the deep-red quota warning color. Four four-point endpoint sparks follow, including a direct-left white spark and one warm coral-red spark. All firework layers and their declared glow radii remain outside the physical camera cutout and inside the compact wing, finish within 0.9 seconds, and stay behind the readable percentage. Reduce Motion suppresses the firework while preserving the static completed state.
+    rationale: >-
+      Physical-notch review showed that a two-point ring clearance still made the left half of the firework look absent: the animation had deliberately omitted exterior particles on the camera side. Centering the 24pt ring in the 38pt visible wing creates equal seven-point ring clearances, enough for a guarded full-circumference burst and its glow on both sides without widening the island.
+    source: user-confirmed-physical-notch-feedback
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state, completion-animation]
+      exclude: [menu-bar-fallback, expanded-card-width, activity-state-machine, quota-warning-colors]
+    examples:
+      positive: On completion, visible particles and a white endpoint star appear to the left of the ring as well as the top, right, and bottom, while the ring keeps equal seven-point wing clearances and no glow enters the camera cutout.
+      negative: Omitting the left exterior burst, clipping its glow under the camera, moving the left icon, widening the island, using quota-critical deep red, hiding the percentage, looping continuously, or animating when Reduce Motion is enabled.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: loop completion transitions on a physical notch and confirm the complete left firework and equal 7pt ring clearances"
+    supersedes: [NOTCH-LAYOUT-029]
+    superseded_by: NOTCH-LAYOUT-031
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-031
+    title: Compact completion keeps a balanced narrow firework envelope
+    status: superseded
+    statement: The compact island retains its 261pt total width for a 185pt camera cutout and its 50pt indicator lanes. The right quota indicator remains centered in the 38pt visible wing with 7pt between the 24pt ring and both the camera edge and the outer screen edge; the left ChatGPT mark does not move. With Reduce Motion disabled, completion preserves the full-circumference inner and outer firework, including its left-up, direct-left, and left-down particles, four endpoint sparks, warm-coral accents, white ignition, particle sizes, vertical travel, brightness, and timing. Only horizontal particle and endpoint-spark travel is compressed. The declared particle and spark geometry, including glow radii, must occupy no more than 32pt horizontally and leave at least 3pt between the firework and each edge of the visible wing. The animation finishes within 0.9 seconds and stays behind the readable percentage. Reduce Motion suppresses the firework while preserving the static completed state.
+    rationale: >-
+      Physical-notch review showed that the complete 35.1pt firework left only 1.8pt beside the camera and 1.1pt at the screen edge, making the right side look cramped. Compressing horizontal travel preserves a clearly visible complete burst and its vertical celebration while restoring balanced breathing room without widening or narrowing the compact island.
+    source: user-confirmed-physical-notch-feedback
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state, completion-animation]
+      exclude: [menu-bar-fallback, expanded-card-width, activity-state-machine, quota-warning-colors]
+    examples:
+      positive: On completion, the full left and right burst remains visible, while its complete glow-aware horizontal envelope stays within 32pt and leaves at least 3pt to both wing edges around the centered ring.
+      negative: Widening or narrowing the island, moving the ring, clipping the left burst, compressing vertical travel, weakening the firework, using quota-critical deep red, hiding the percentage, looping continuously, or animating when Reduce Motion is enabled.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: loop completion transitions on a physical notch and confirm a complete but horizontally balanced firework with at least 3pt visual breathing room"
+    supersedes: [NOTCH-LAYOUT-030]
+    superseded_by: NOTCH-LAYOUT-032
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-032
+    title: Compact completion balances its left and right visual reach
+    status: superseded
+    statement: The compact island retains its 261pt total width for a 185pt camera cutout and its 50pt indicator lanes. The right quota indicator remains centered in the 38pt visible wing with 7pt between the 24pt ring and both wing edges; the left ChatGPT mark does not move. With Reduce Motion disabled, completion preserves the full-circumference inner and outer firework, including its camera-side particles, four endpoint sparks, warm-coral accents, white ignition, vertical travel, brightness, and timing. The glow-aware firework geometry must occupy no more than 32pt horizontally, leave at least 3pt beside each wing edge, and keep the absolute difference between its left and right visual reaches at or below 0.25pt. The animation finishes within 0.9 seconds and stays behind the readable percentage. Reduce Motion suppresses the firework while preserving the static completed state.
+    rationale: >-
+      Physical-notch review found that the compressed firework still looked crowded on the right because its direct-right coral spark extended 0.592pt farther than the direct-left edge. Pulling only that endpoint inward makes both visual reaches nearly equal without moving the ring, narrowing the island, or weakening the rest of the burst.
+    source: user-confirmed-physical-notch-feedback
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state, completion-animation]
+      exclude: [menu-bar-fallback, expanded-card-width, activity-state-machine, quota-warning-colors]
+    examples:
+      positive: On completion, the complete left and right burst remains visible with at least 3pt to both wing edges, while the glow-aware outer reaches differ by no more than 0.25pt.
+      negative: Extending the right coral spark farther than the left edge, moving the ring to disguise the imbalance, changing the island width, clipping the camera-side burst, hiding the percentage, looping continuously, or animating when Reduce Motion is enabled.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: loop completion transitions on a physical notch and confirm the left and right firework edges feel visually balanced"
+    supersedes: [NOTCH-LAYOUT-031]
+    superseded_by: NOTCH-LAYOUT-033
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-033
+    title: Compact icons share symmetric centers with a camera-contained firework
+    status: superseded
+    statement: The compact island retains its 261pt total width for a 185pt camera cutout and its 50pt indicator lanes. The left ChatGPT mark and right quota indicator use their unshifted lane centers, placing both centers 13pt from the adjacent camera edge. The 24pt quota ring therefore keeps 1pt of camera clearance and 13pt of screen-edge clearance. With Reduce Motion disabled, completion preserves seven green and white particles inside the ring, while six exterior particles and three endpoint sparks use only the top, screen-side, and bottom exterior of the ring. The camera-facing side may show contained inner motion but no exterior particle or endpoint spark may cross beyond the ring toward the camera cutout. Exactly two exterior particles and one endpoint spark use warm coral red. Every particle and declared glow remains inside the black compact wing, the percentage stays readable, and the animation finishes within 0.9 seconds. Reduce Motion suppresses the firework while preserving the static completed state.
+    rationale: >-
+      Physical-notch review showed that the apparent imbalance came from icon placement rather than the final spark radius: the right quota center sat 19pt from the camera while the left icon center sat 13pt away. Returning the right indicator to its lane center restores symmetric icon centers. Constraining the camera-facing firework to the ring avoids hiding effects beneath the physical cutout while retaining a celebratory exterior burst in the available black wing.
+    source: user-confirmed-physical-notch-feedback
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state, completion-animation]
+      exclude: [menu-bar-fallback, expanded-card-width, activity-state-machine, quota-warning-colors]
+    examples:
+      positive: The left and right icon centers sit equally far from the camera; completion shows inner motion on both sides but exterior particles and stars bloom only through the black top, right, and bottom wing space.
+      negative: Keeping the right ring 6pt farther from the camera than the left icon, widening the island, allowing a camera-facing exterior spark beneath the cutout, hiding the percentage, looping continuously, or animating when Reduce Motion is enabled.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: loop completion transitions on a physical notch and confirm symmetric icon centers plus a fully visible camera-contained firework"
+    supersedes: [NOTCH-LAYOUT-032]
+    superseded_by: NOTCH-LAYOUT-034
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-034
+    title: Compact boundaries tighten around symmetric icon centers
+    status: superseded
+    statement: For a 185pt camera cutout, the compact island uses 36pt black wings and a 257pt total width, with two 46pt indicator lanes. The left ChatGPT mark and right quota indicator retain their unshifted symmetric centers 13pt from the adjacent camera edge; shrinking the black boundaries must not move either icon. The 24pt quota ring keeps 1pt of camera clearance and 11pt of screen-edge clearance. With Reduce Motion disabled, seven inner particles remain inside the ring, while six exterior particles and three endpoint sparks use only the top, screen-side, and bottom exterior. No camera-facing exterior effect may cross the ring, every declared glow remains inside the black compact wing, and the screen-side firework keeps at least 8pt of visual clearance. The percentage stays readable and the animation finishes within 0.9 seconds. Reduce Motion suppresses the firework while preserving the static completed state.
+    rationale: >-
+      Once both icon centers were aligned, physical-notch review showed that the remaining outer black boundaries still looked slightly wide. Removing 2pt from each wing and 4pt from each layout lane reduces the total width by 4pt while keeping both icon centers fixed relative to the camera. The contained firework retains more than 8pt at the outer boundary, so the tighter surface does not crowd or clip the animation.
+    source: user-confirmed-physical-notch-feedback
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state, completion-animation]
+      exclude: [menu-bar-fallback, expanded-card-width, activity-state-machine, quota-warning-colors]
+    examples:
+      positive: A 185pt camera cutout produces a 257pt compact island; both icon centers stay 13pt from the camera while the black outer edges move inward 2pt and the completion firework remains comfortably contained.
+      negative: Moving either icon while narrowing the island, reducing the camera clearance below 1pt, clipping the screen-side firework, changing the expanded card, hiding the percentage, looping continuously, or animating when Reduce Motion is enabled.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: inspect the 257pt compact island and loop completion transitions on a physical notch"
+    supersedes: [NOTCH-LAYOUT-033]
+    superseded_by: NOTCH-LAYOUT-035
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-035
+    title: Compact quota indicator uses a lighter visual size
+    status: superseded
+    statement: For a 185pt camera cutout, the compact island keeps its 36pt black wings, 257pt total width, and two 46pt indicator lanes. The left ChatGPT mark remains 18pt and the right quota ring or wave ball is 22pt; both retain their unshifted symmetric centers 13pt from the adjacent camera edge. The right indicator therefore keeps 2pt of camera clearance and 12pt of screen-edge clearance. With Reduce Motion disabled, seven inner particles remain inside the smaller ring, while the existing six exterior particles and three endpoint sparks continue to use only the top, screen-side, and bottom exterior. No camera-facing exterior effect may cross the ring, every declared glow remains inside the black compact wing, and the screen-side firework keeps at least 8pt of visual clearance. The percentage stays readable and the animation finishes within 0.9 seconds. Reduce Motion suppresses the firework while preserving the static completed state.
+    rationale: >-
+      Physical-notch review found that symmetric centers alone still looked right-heavy because the 24pt quota visual was 6pt larger than the 18pt ChatGPT mark. Reducing only the right visual to 22pt narrows that difference to 4pt without moving either center, widening the island, or making the internal percentage impractically small. The smaller visual also adds 1pt of breathing room on each side while preserving the established exterior firework reach.
+    source: user-confirmed-physical-notch-feedback
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state, completion-animation]
+      exclude: [menu-bar-fallback, expanded-card-width, activity-state-machine, quota-warning-colors]
+    examples:
+      positive: The left mark remains 18pt, the right quota visual is 22pt, both centers stay 13pt from the camera, and completion remains fully visible inside the 257pt compact island.
+      negative: Moving either icon, shrinking the left mark, retaining a visually heavy 24pt quota indicator, widening the island, clipping the firework, hiding the percentage, looping continuously, or animating when Reduce Motion is enabled.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: inspect the 18pt/22pt icon balance and loop completion transitions on a physical notch"
+    supersedes: [NOTCH-LAYOUT-034]
+    superseded_by: NOTCH-LAYOUT-036
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-036
+    title: Compact completion firework also opens toward the camera
+    status: superseded
+    statement: For a 185pt camera cutout, the compact island keeps its 36pt black wings, 257pt total width, and two 46pt indicator lanes. The left ChatGPT mark remains 18pt and the right quota ring or wave ball remains 22pt; both retain their unshifted symmetric centers 13pt from the adjacent camera edge, leaving 2pt between the right visual and camera and 12pt at the screen edge. With Reduce Motion disabled, seven inner particles remain inside the ring. Completion uses nine exterior particles, including three that travel left-up, left, and left-down toward the camera, plus four endpoint sparks including one camera-facing star. The declared camera-facing particle and spark glow may leave the ring but must remain within the camera boundary; the established top, screen-side, and bottom burst, warm-coral accents, readable percentage, and at least 8pt of screen-edge clearance remain unchanged. The animation finishes within 0.9 seconds. Reduce Motion suppresses the firework while preserving the static completed state.
+    rationale: >-
+      After reviewing the one-sided contained version on physical-notch hardware, the user requested a direct comparison with visible camera-facing dispersion. Three compact leftward particles and one smaller star use the available 2pt gap without moving the indicator or widening the island. Keeping their declared glow inside the camera boundary gives the experiment the best available visibility while exposing any remaining physical-cutout masking for real-hardware judgment.
+    source: user-requested-physical-notch-comparison
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state, completion-animation]
+      exclude: [menu-bar-fallback, expanded-card-width, activity-state-machine, quota-warning-colors]
+    examples:
+      positive: Completion visibly opens left-up, left, and left-down as well as through the existing top, right, and bottom burst, while the 22pt indicator, symmetric center, 257pt island, and readable percentage remain fixed.
+      negative: Moving the quota indicator, widening the island, allowing declared glow to cross the camera boundary, weakening the right-side burst, hiding the percentage, looping continuously, or animating when Reduce Motion is enabled.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: loop completion on a physical notch and compare camera-facing visibility and overall firework balance"
+    supersedes: [NOTCH-LAYOUT-035]
+    superseded_by: NOTCH-LAYOUT-037
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-037
+    title: Compact completion firework is uniformly radial
+    status: active
+    statement: >-
+      For a 185pt camera cutout, the compact island keeps its 36pt black wings, 257pt total width, and two 46pt indicator lanes. The left ChatGPT mark remains 18pt and the right quota ring or wave ball remains 22pt; both retain their unshifted symmetric centers 13pt from the adjacent camera edge. With Reduce Motion disabled, seven inner particles remain inside the ring. The exterior firework is intentionally independent of the camera boundary: twelve particles are distributed every 30 degrees and eight endpoint sparks every 45 degrees around the full circle. Each exterior element has an opposite element with the same radius, size, color, and timing, including matching warm-coral particles and stars on the direct left and right axes. Camera-facing effects may pass beneath the physical cutout rather than being shortened; the screen-facing edge retains at least 8pt of clearance, the percentage stays readable, and the animation finishes within 0.9 seconds. Reduce Motion suppresses the firework while preserving the static completed state.
+    rationale: >-
+      The camera-contained comparison still appeared weaker on the left because it necessarily used fewer and shorter stars. The user requested an uncontrolled version to judge the underlying animation itself. A fixed 30-degree particle grid and 45-degree spark grid make the generated firework mathematically uniform; any remaining left-side loss on real hardware can therefore be attributed to the physical camera cutout instead of asymmetric animation data.
+    source: user-requested-physical-notch-comparison
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state, completion-animation]
+      exclude: [menu-bar-fallback, expanded-card-width, activity-state-machine, quota-warning-colors]
+    examples:
+      positive: Ignoring physical masking, every particle and star has an identical opposite partner and the burst opens uniformly through all four quadrants without moving or resizing the quota indicator.
+      negative: Shortening only the camera-facing elements, using fewer stars on the left, changing opposite colors or timing, widening the island, hiding the percentage, looping continuously, or animating when Reduce Motion is enabled.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: loop completion on a physical notch and judge the uniform source animation separately from camera-cutout masking"
+    supersedes: [NOTCH-LAYOUT-036]
+    superseded_by: null
+    last_verified_commit: null
 
   - id: NOTCH-COMPATIBILITY-015
     title: A notch-aware app must not fall back to camera safe-area compatibility mode
@@ -295,7 +727,7 @@ contracts:
 
   - id: QUOTA-SEMANTICS-013
     title: Weekly quota uses three warning tiers with a stronger compact ring
-    status: active
+    status: superseded
     statement: The right side prioritizes the weekly quota's remaining percentage; the number stays inside the ring or wave ball; the ring gap starts at 12 o'clock and progresses clockwise. The compact ring stroke is 2.25pt and the wave-ball edge remains 1.75pt. Remaining quota above 20% is green, above 10% and up to 20% is yellow, and 10% or less is deep red; hue no longer changes continuously with the percentage. While a task is running, the ring uses a monochrome light-to-dark gradient for the current tier without a white highlight; with Reduce Motion disabled, the gradient flows gently along the remaining-quota arc. Idle and completed states must immediately use a single solid color for the current tier and must not retain a static gradient or independently rotating highlight arc. The wave ball uses the same three tiers and rises and falls only while a task is running and Reduce Motion is disabled; idle and completed states keep a still liquid level. Expanded quota, reset, and recent-conversation text uses readable sizes and matching line heights; the quota bar is followed first by the current weekly reset timestamp and a second-level countdown; the full “N reset credits available” row is clickable, and the card expands only downward to list each `rate-limit-reset-credits` item with `status=available`, its exact expiry time, and a second-level countdown without repeating the reset-credit name. The real notch in Settings is the live preview, with no duplicate static preview card; the lower-right of the expanded panel must provide a Settings entry.
     rationale: Keeping most available quota a stable green reduces visual noise; yellow begins at 20% as a warning, while deep red begins at 10% as a strong alert. Three tiers are clearer than a continuous rainbow hue. A 2.25pt ring is easier to distinguish on a real notch while remaining restrained inside the 24pt diameter; the wave-ball edge keeps its original stroke to avoid unrequested visual weight. Running state changes only the lightness of the same tier color, retaining activity while avoiding a flashy white highlight or cross-hue gradient.
     source: user-confirmed
@@ -314,8 +746,32 @@ contracts:
       - "manual: inspect green, yellow and deep-red quota states on physical-notch hardware"
       - "manual: inspect the compact ring stroke and wave-ball border"
     supersedes: [QUOTA-SEMANTICS-012]
-    superseded_by: null
+    superseded_by: QUOTA-SEMANTICS-014
     last_verified_commit: 9837df1
+
+  - id: QUOTA-SEMANTICS-014
+    title: Weekly quota keeps three warning tiers in a lighter compact indicator
+    status: active
+    statement: The right side prioritizes the weekly quota's remaining percentage; the number stays readable inside a 22pt ring or wave ball; the ring gap starts at 12 o'clock and progresses clockwise. The compact ring stroke remains 2.25pt and the wave-ball edge remains 1.75pt. Remaining quota above 20% is green, above 10% and up to 20% is yellow, and 10% or less is deep red; hue does not change continuously with the percentage. While a task is running, the ring uses a monochrome light-to-dark gradient for the current tier without a white highlight; with Reduce Motion disabled, the gradient flows gently along the remaining-quota arc. Idle and completed states immediately use a single solid color for the current tier and do not retain a static gradient or independently rotating highlight arc. The wave ball uses the same three tiers and rises and falls only while a task is running and Reduce Motion is disabled; idle and completed states keep a still liquid level. Expanded quota, reset, and recent-conversation text retain their readable sizes and matching line heights; the quota bar is followed first by the current weekly reset timestamp and a second-level countdown; the full “N reset credits available” row remains clickable, and the card expands only downward to list each `rate-limit-reset-credits` item with `status=available`, its exact expiry time, and a second-level countdown without repeating the reset-credit name. The real notch in Settings remains the live preview, with no duplicate static preview card; the lower-right of the expanded panel continues to provide a Settings entry.
+    rationale: Keeping most available quota a stable green reduces visual noise; yellow begins at 20% as a warning, while deep red begins at 10% as a strong alert. Physical-notch review found the previous 24pt quota indicator visually heavier than the 18pt ChatGPT mark. A 22pt outer diameter reduces that imbalance while retaining the 2.25pt ring weight, the 1.75pt wave-ball edge, and readable internal percentage text.
+    source: user-confirmed-physical-notch-feedback
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [compact-state, quota-expanded-state, settings]
+      exclude: [cost-estimation]
+    examples:
+      positive: The compact quota visual is 22pt with a 2.25pt ring or 1.75pt wave-ball edge; 35% is green, 20% is yellow, and 10% is deep red; the percentage remains centered and readable, and running versus stopped motion semantics remain unchanged.
+      negative: Leaving the quota visual at the heavier 24pt size, shrinking the percentage until it is unreadable, changing the warning thresholds, thickening the wave-ball edge, adding a white running highlight, or continuing motion while idle, completed, or Reduce Motion is enabled.
+    guards:
+      - Tests/CodexNotchTests/NotchTextTests.swift
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: inspect green, yellow and deep-red states plus percentage readability in the 22pt indicator on physical-notch hardware"
+      - "manual: inspect the running monochrome gradient and stopped solid ring"
+    supersedes: [QUOTA-SEMANTICS-013]
+    superseded_by: null
+    last_verified_commit: null
 
   - id: PRIVACY-BOUNDARY-005
     title: Local authentication and conversation content must not be persisted or exposed

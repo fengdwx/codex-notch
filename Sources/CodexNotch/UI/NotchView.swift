@@ -378,15 +378,14 @@ private struct CompactNotchView: View {
             HStack(spacing: 0) {
                 CompactAppIconView(status: icon)
                     .frame(
-                        width: NotchCompactLayout.sideWingWidth,
+                        width: NotchCompactLayout.indicatorLaneWidth,
                         height: NotchCompactLayout.height
                     )
 
                 Spacer(minLength: 0)
 
-                // Keep the complete quota control centered in the right safe
-                // area. Its number is always inside the indicator, so neither
-                // display style shifts visual weight toward the camera cutout.
+                // The wider content lanes move both indicators slightly toward
+                // the camera while keeping their visible shapes outside it.
                 CompactQuotaView(
                     usage: usage,
                     activity: icon.quotaActivity,
@@ -441,9 +440,10 @@ private struct CompactQuotaView: View {
 
     var body: some View {
         quotaIndicator
+            .offset(x: NotchCompactLayout.quotaIndicatorOutwardOffset)
             .frame(maxWidth: .infinity, alignment: .center)
             .frame(
-                width: NotchCompactLayout.sideWingWidth,
+                width: NotchCompactLayout.indicatorLaneWidth,
                 height: NotchCompactLayout.height,
                 alignment: .center
             )
@@ -597,6 +597,179 @@ private struct QuotaIndicatorView: View {
     }
 }
 
+private struct QuotaCompletionParticles: View {
+    let color: Color
+    let diameter: CGFloat
+
+    @State private var startedAt = Date()
+    @State private var hasFinished = false
+
+    var body: some View {
+        TimelineView(
+            .animation(
+                minimumInterval: 1.0 / 60.0,
+                paused: hasFinished
+            )
+        ) { context in
+            particleField(
+                elapsed: context.date.timeIntervalSince(startedAt)
+            )
+        }
+        .onAppear {
+            startedAt = .now
+            hasFinished = false
+        }
+        .task {
+            try? await Task.sleep(
+                nanoseconds: UInt64(
+                    QuotaIndicatorMotion.completionFireworkTotalDuration
+                        * 1_000_000_000
+                )
+            )
+            guard !Task.isCancelled else { return }
+            hasFinished = true
+        }
+    }
+
+    private func particleField(elapsed: TimeInterval) -> some View {
+        ZStack {
+            ignitionFlash(elapsed: elapsed)
+
+            ForEach(
+                Array(QuotaIndicatorMotion.completionParticles.enumerated()),
+                id: \.offset
+            ) { _, spec in
+                particle(spec: spec, elapsed: elapsed)
+            }
+
+            ForEach(
+                Array(QuotaIndicatorMotion.completionEndpointSparks.enumerated()),
+                id: \.offset
+            ) { _, spec in
+                endpointSpark(spec: spec, elapsed: elapsed)
+            }
+        }
+        .frame(width: diameter, height: diameter)
+    }
+
+    private func ignitionFlash(elapsed: TimeInterval) -> some View {
+        let progress = QuotaIndicatorMotion.completionIgnitionProgress(
+            elapsed: elapsed
+        )
+        let opacity = QuotaIndicatorMotion.completionIgnitionOpacity(
+            progress: progress
+        )
+
+        return ZStack {
+            Circle()
+                .fill(Color.white.opacity(0.82))
+                .blur(radius: 0.7)
+
+            Circle()
+                .stroke(Color.white.opacity(0.96), lineWidth: 0.9)
+        }
+        .frame(
+            width: 5 + progress * 9,
+            height: 5 + progress * 9
+        )
+        .opacity(opacity)
+    }
+
+    private func particle(
+        spec: CompletionParticleSpec,
+        elapsed: TimeInterval
+    ) -> some View {
+        let progress = QuotaIndicatorMotion.completionParticleProgress(
+            elapsed: elapsed,
+            delay: spec.delay
+        )
+        let offset = QuotaIndicatorMotion.completionParticleOffset(
+            spec: spec,
+            progress: progress
+        )
+
+        let particleColor = toneColor(spec.tone)
+
+        return Circle()
+            .fill(particleColor)
+            .frame(width: spec.diameter, height: spec.diameter)
+            .scaleEffect(
+                QuotaIndicatorMotion.completionParticleScale(
+                    progress: progress
+                )
+            )
+            .offset(x: offset.width, y: offset.height)
+            .opacity(
+                QuotaIndicatorMotion.completionParticleOpacity(
+                    progress: progress
+                )
+            )
+            .shadow(
+                color: particleColor.opacity(spec.tone == .highlight ? 0.9 : 0.7),
+                radius: QuotaIndicatorMotion.completionParticleGlowRadius(
+                    tone: spec.tone
+                )
+            )
+    }
+
+    private func endpointSpark(
+        spec: CompletionSparkSpec,
+        elapsed: TimeInterval
+    ) -> some View {
+        let progress = QuotaIndicatorMotion.completionSparkProgress(
+            elapsed: elapsed,
+            delay: spec.delay
+        )
+        let offset = QuotaIndicatorMotion.completionSparkOffset(spec: spec)
+        let sparkColor = toneColor(spec.tone)
+
+        return CompletionSparkShape()
+            .fill(sparkColor)
+            .frame(width: spec.diameter, height: spec.diameter)
+            .scaleEffect(
+                QuotaIndicatorMotion.completionSparkScale(progress: progress)
+            )
+            .offset(x: offset.width, y: offset.height)
+            .opacity(
+                QuotaIndicatorMotion.completionSparkOpacity(progress: progress)
+            )
+            .shadow(
+                color: sparkColor.opacity(0.92),
+                radius: QuotaIndicatorMotion.completionSparkGlowRadius
+            )
+    }
+
+    private func toneColor(_ tone: CompletionParticleTone) -> Color {
+        switch tone {
+        case .success:
+            return color
+        case .highlight:
+            return Color.white.opacity(0.98)
+        case .coral:
+            return NotchPalette.completionCoral
+        }
+    }
+}
+
+private struct CompletionSparkShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let inner = min(rect.width, rect.height) * 0.16
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+
+        var path = Path()
+        path.move(to: CGPoint(x: center.x, y: rect.minY))
+        path.addLine(to: CGPoint(x: center.x + inner, y: center.y - inner))
+        path.addLine(to: CGPoint(x: rect.maxX, y: center.y))
+        path.addLine(to: CGPoint(x: center.x + inner, y: center.y + inner))
+        path.addLine(to: CGPoint(x: center.x, y: rect.maxY))
+        path.addLine(to: CGPoint(x: center.x - inner, y: center.y + inner))
+        path.addLine(to: CGPoint(x: rect.minX, y: center.y))
+        path.addLine(to: CGPoint(x: center.x - inner, y: center.y - inner))
+        path.closeSubpath()
+        return path
+    }
+}
+
 private struct QuotaValueText: View {
     let value: String
     let isAvailable: Bool
@@ -649,7 +822,6 @@ private struct QuotaWaveBall: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var displayedProgress: CGFloat = 0
-    @State private var completionPulse = false
 
     private var window: UsageWindow? {
         usage?.weeklyWindow
@@ -676,16 +848,13 @@ private struct QuotaWaveBall: View {
             waveFill
 
             Circle()
-                .stroke(NotchPalette.border, lineWidth: lineWidth)
+                .strokeBorder(NotchPalette.border, lineWidth: lineWidth)
 
             if activity == .completed, !reduceMotion {
-                Circle()
-                    .stroke(
-                        progressColor.opacity(completionPulse ? 0 : 0.7),
-                        lineWidth: 1
-                    )
-                    .scaleEffect(completionPulse ? 1.32 : 0.84)
-                    .animation(.easeOut(duration: 0.5), value: completionPulse)
+                QuotaCompletionParticles(
+                    color: NotchPalette.success,
+                    diameter: diameter
+                )
             }
 
             // The value uses glyph-only outlining: nothing masks the liquid.
@@ -755,21 +924,15 @@ private struct QuotaWaveBall: View {
 
     private func updateActivityAnimation() {
         guard !reduceMotion else {
-            completionPulse = false
             displayedProgress = targetProgress
             return
         }
 
         switch activity {
         case .idle, .running:
-            completionPulse = false
             updateProgress()
         case .completed:
             displayedProgress = targetProgress
-            completionPulse = false
-            withAnimation(.easeOut(duration: 0.5)) {
-                completionPulse = true
-            }
         }
     }
 }
@@ -821,7 +984,6 @@ private struct WeeklyQuotaRing: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var displayedProgress: CGFloat = 0
-    @State private var completionPulse = false
 
     private var window: UsageWindow? {
         usage?.weeklyWindow
@@ -861,19 +1023,16 @@ private struct WeeklyQuotaRing: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(NotchPalette.track, lineWidth: lineWidth)
+                .strokeBorder(NotchPalette.track, lineWidth: lineWidth)
 
             if window != nil {
                 quotaStroke
 
                 if activity == .completed, !reduceMotion {
-                    Circle()
-                        .stroke(
-                            progressColor.opacity(completionPulse ? 0 : 0.7),
-                            lineWidth: 1
-                        )
-                        .scaleEffect(completionPulse ? 1.32 : 0.84)
-                        .animation(.easeOut(duration: 0.5), value: completionPulse)
+                    QuotaCompletionParticles(
+                        color: NotchPalette.success,
+                        diameter: diameter
+                    )
                 }
             }
 
@@ -926,6 +1085,7 @@ private struct WeeklyQuotaRing: View {
 
     private func quotaArc<S: ShapeStyle>(_ shapeStyle: S) -> some View {
         Circle()
+            .inset(by: QuotaRingMath.containedStrokeInset(lineWidth: lineWidth))
             .trim(from: progressTrim.from, to: progressTrim.to)
             .stroke(
                 shapeStyle,
@@ -957,27 +1117,20 @@ private struct WeeklyQuotaRing: View {
 
     private func updateActivityAnimation() {
         guard !reduceMotion else {
-            completionPulse = false
             displayedProgress = targetProgress
             return
         }
 
         switch activity {
         case .idle:
-            completionPulse = false
             updateProgress()
         case .running:
-            completionPulse = false
             displayedProgress = 1
             withAnimation(.easeOut(duration: 0.9)) {
                 displayedProgress = targetProgress
             }
         case .completed:
             displayedProgress = targetProgress
-            completionPulse = false
-            withAnimation(.easeOut(duration: 0.5)) {
-                completionPulse = true
-            }
         }
     }
 }
@@ -1534,6 +1687,7 @@ private enum NotchPalette {
     static let accent = Color(red: 0.38, green: 0.66, blue: 1.0)
     static let warning = Color(red: 1.0, green: 0.68, blue: 0.28)
     static let success = Color(red: 0.34, green: 0.88, blue: 0.55)
+    static let completionCoral = Color(red: 1.0, green: 0.31, blue: 0.22)
     static let danger = Color(red: 1.0, green: 0.35, blue: 0.35)
 }
 

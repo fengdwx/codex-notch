@@ -3,6 +3,68 @@ import XCTest
 @testable import CodexNotch
 
 final class NotchGeometryTests: XCTestCase {
+    func testIndicatorLanesKeepIconCentersSymmetricWithoutWideningTheIsland() {
+        let visualCenterWidth = NotchCompactLayout.minimumWidth
+            - NotchCompactLayout.indicatorLaneWidth * 2
+        let centeredIndicatorCameraClearance = NotchCompactLayout.sideExtensionWidth
+            - (NotchCompactLayout.indicatorLaneWidth + NotchCompactLayout.indicatorDiameter) / 2
+        let quotaIndicatorCameraClearance = centeredIndicatorCameraClearance
+            + NotchCompactLayout.quotaIndicatorOutwardOffset
+        let leftIndicatorCenterDistance = centeredIndicatorCameraClearance
+            + NotchCompactLayout.indicatorDiameter / 2
+        let rightIndicatorCenterDistance = quotaIndicatorCameraClearance
+            + NotchCompactLayout.indicatorDiameter / 2
+
+        XCTAssertEqual(NotchCompactLayout.sideExtensionWidth, 36, accuracy: 0.1)
+        XCTAssertEqual(NotchCompactLayout.indicatorLaneWidth, 46, accuracy: 0.1)
+        XCTAssertEqual(NotchCompactLayout.minimumWidth, 257, accuracy: 0.1)
+        XCTAssertEqual(visualCenterWidth, 165, accuracy: 0.1)
+        XCTAssertEqual(NotchCompactLayout.quotaIndicatorOutwardOffset, 0, accuracy: 0.1)
+        XCTAssertEqual(centeredIndicatorCameraClearance, 2, accuracy: 0.1)
+        XCTAssertEqual(quotaIndicatorCameraClearance, 2, accuracy: 0.1)
+        XCTAssertEqual(leftIndicatorCenterDistance, 13, accuracy: 0.1)
+        XCTAssertEqual(rightIndicatorCenterDistance, 13, accuracy: 0.1)
+        XCTAssertEqual(
+            leftIndicatorCenterDistance,
+            rightIndicatorCenterDistance,
+            accuracy: 0.1
+        )
+        XCTAssertEqual(
+            NotchCompactLayout.quotaIndicatorCameraClearance,
+            2,
+            accuracy: 0.1
+        )
+        XCTAssertEqual(
+            NotchCompactLayout.quotaIndicatorScreenEdgeClearance,
+            12,
+            accuracy: 0.1
+        )
+    }
+
+    func testCompactWingsStayCloseToTheCameraCutoutWithoutCrowdingIndicators() {
+        let metrics = NotchScreenMetrics(
+            frame: NSRect(x: 0, y: 0, width: 1512, height: 982),
+            visibleFrame: NSRect(x: 0, y: 0, width: 1512, height: 949),
+            safeAreaInsets: NSEdgeInsets(top: 32, left: 0, bottom: 0, right: 0),
+            auxiliaryTopLeftArea: NSRect(x: 0, y: 950, width: 663, height: 32),
+            auxiliaryTopRightArea: NSRect(x: 848, y: 950, width: 664, height: 32)
+        )
+
+        let layout = NotchGeometry.layout(metrics: metrics)
+        let cameraCutoutWidth = 185.0
+
+        XCTAssertEqual(NotchCompactLayout.sideExtensionWidth, 36, accuracy: 0.1)
+        XCTAssertGreaterThan(
+            NotchCompactLayout.sideExtensionWidth,
+            NotchCompactLayout.indicatorDiameter
+        )
+        XCTAssertEqual(
+            layout.compactFrame.width,
+            cameraCutoutWidth + NotchCompactLayout.sideExtensionWidth * 2,
+            accuracy: 0.1
+        )
+    }
+
     func testCompactFrameIsCenteredBetweenAuxiliaryAreas() {
         let metrics = NotchScreenMetrics(
             frame: NSRect(x: 0, y: 0, width: 3024, height: 1964),
@@ -62,7 +124,7 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertEqual(layout.hoverSensorFrame.width, 185, accuracy: 0.1)
         XCTAssertEqual(layout.hoverSensorFrame.height, 32, accuracy: 0.1)
         XCTAssertEqual(layout.hoverSensorFrame.maxY, 982, accuracy: 0.1)
-        XCTAssertEqual(layout.compactFrame.width, 289, accuracy: 0.1)
+        XCTAssertEqual(layout.compactFrame.width, 257, accuracy: 0.1)
         XCTAssertEqual(layout.compactFrame.height, 32, accuracy: 0.1)
         XCTAssertEqual(layout.compactFrame.midX, 755.5, accuracy: 0.1)
         XCTAssertEqual(layout.compactFrame.maxY, 982, accuracy: 0.1)
