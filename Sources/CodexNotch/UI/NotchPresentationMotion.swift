@@ -22,4 +22,11 @@ enum NotchPresentationMotion {
     static func animation(forExpanding isExpanding: Bool) -> Animation {
         isExpanding ? expand : collapse
     }
+
+    static func shouldAnimateSurface(
+        changesSurface _: Bool,
+        animationsEnabled _: Bool
+    ) -> Bool {
+        false
+    }
 }

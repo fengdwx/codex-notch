@@ -32,6 +32,7 @@ enum RecentConversationLimit: Int, CaseIterable, Identifiable, Sendable {
 struct NotchRuntimePreferences: Equatable, Sendable {
     let recentConversationLimit: RecentConversationLimit
     let language: AppLanguage
+    let animationsEnabled: Bool
 
     static func read(from userDefaults: UserDefaults) -> NotchRuntimePreferences {
         let recentConversationLimit = (userDefaults.object(
@@ -42,7 +43,8 @@ struct NotchRuntimePreferences: Equatable, Sendable {
             recentConversationLimit: RecentConversationLimit.fromStoredValue(recentConversationLimit),
             language: AppLanguage.fromStoredValue(
                 userDefaults.string(forKey: AppLanguage.storageKey)
-            )
+            ),
+            animationsEnabled: AppAnimationPreference.isEnabled(in: userDefaults)
         )
     }
 }

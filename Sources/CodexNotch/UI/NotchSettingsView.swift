@@ -7,6 +7,8 @@ struct NotchSettingsView: View {
     private var recentConversationLimitRaw = RecentConversationLimit.defaultLimit.rawValue
     @AppStorage(AppLanguage.storageKey)
     private var appLanguageRaw = AppLanguage.defaultLanguage.rawValue
+    @AppStorage(AppAnimationPreference.storageKey)
+    private var animationsEnabled = AppAnimationPreference.defaultEnabled
 
     private var appLanguage: AppLanguage {
         AppLanguage.fromStoredValue(appLanguageRaw)
@@ -57,6 +59,24 @@ struct NotchSettingsView: View {
 
             } header: {
                 Text(appLanguage.localized(chinese: "刘海显示", english: "Notch display"))
+            }
+
+            Section {
+                Toggle(
+                    appLanguage.localized(chinese: "动画效果", english: "Animations"),
+                    isOn: $animationsEnabled
+                )
+
+                Text(
+                    appLanguage.localized(
+                        chinese: "关闭后停止持续转动、波浪、完成特效和界面过渡，但保留运行中与已完成的静态提示。",
+                        english: "Turn off continuous quota motion, completion effects, and interface transitions while keeping static running and completed indicators."
+                    )
+                )
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            } header: {
+                Text(appLanguage.localized(chinese: "动效", english: "Motion"))
             }
 
             Section {

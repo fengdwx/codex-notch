@@ -472,9 +472,9 @@ contracts:
 
   - id: NOTCH-LAYOUT-037
     title: Compact completion firework is uniformly radial
-    status: active
+    status: superseded
     statement: >-
-      For a 185pt camera cutout, the compact island keeps its 36pt black wings, 257pt total width, and two 46pt indicator lanes. The left ChatGPT mark remains 18pt and the right quota ring or wave ball remains 22pt; both retain their unshifted symmetric centers 13pt from the adjacent camera edge. With Reduce Motion disabled, seven inner particles remain inside the ring. The exterior firework is intentionally independent of the camera boundary: twelve particles are distributed every 30 degrees and eight endpoint sparks every 45 degrees around the full circle. Each exterior element has an opposite element with the same radius, size, color, and timing, including matching warm-coral particles and stars on the direct left and right axes. Camera-facing effects may pass beneath the physical cutout rather than being shortened; the screen-facing edge retains at least 8pt of clearance, the percentage stays readable, and the animation finishes within 0.9 seconds. Reduce Motion suppresses the firework while preserving the static completed state.
+      For a 185pt camera cutout, the compact island keeps its 36pt black wings, 257pt total width, and two 46pt indicator lanes. The left ChatGPT mark remains 18pt and the right quota ring or wave ball remains 22pt; both retain their unshifted symmetric centers 13pt from the adjacent camera edge. With app animations enabled and Reduce Motion disabled, seven inner particles remain inside the ring. The exterior firework is intentionally independent of the camera boundary: twelve particles are distributed every 30 degrees and eight endpoint sparks every 45 degrees around the full circle. Each exterior element has an opposite element with the same radius, size, color, and timing, including matching warm-coral particles and stars on the direct left and right axes. Camera-facing effects may pass beneath the physical cutout rather than being shortened; the screen-facing edge retains at least 8pt of clearance, the percentage stays readable, and the animation finishes within 0.9 seconds. Reduce Motion or the disabled app animation setting suppresses the firework while preserving the static completed state.
     rationale: >-
       The camera-contained comparison still appeared weaker on the left because it necessarily used fewer and shorter stars. The user requested an uncontrolled version to judge the underlying animation itself. A fixed 30-degree particle grid and 45-degree spark grid make the generated firework mathematically uniform; any remaining left-side loss on real hardware can therefore be attributed to the physical camera cutout instead of asymmetric animation data.
     source: user-requested-physical-notch-comparison
@@ -485,12 +485,35 @@ contracts:
       exclude: [menu-bar-fallback, expanded-card-width, activity-state-machine, quota-warning-colors]
     examples:
       positive: Ignoring physical masking, every particle and star has an identical opposite partner and the burst opens uniformly through all four quadrants without moving or resizing the quota indicator.
-      negative: Shortening only the camera-facing elements, using fewer stars on the left, changing opposite colors or timing, widening the island, hiding the percentage, looping continuously, or animating when Reduce Motion is enabled.
+      negative: Shortening only the camera-facing elements, using fewer stars on the left, changing opposite colors or timing, widening the island, hiding the percentage, looping continuously, or animating when Reduce Motion is enabled or app animations are disabled.
     guards:
       - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
       - Tests/CodexNotchTests/NotchGeometryTests.swift
       - "manual: loop completion on a physical notch and judge the uniform source animation separately from camera-cutout masking"
     supersedes: [NOTCH-LAYOUT-036]
+    superseded_by: NOTCH-LAYOUT-038
+    last_verified_commit: null
+
+  - id: NOTCH-LAYOUT-038
+    title: Completion keeps its green cue without a quota firework
+    status: active
+    statement: >-
+      Completion must preserve the readable quota percentage, the green completed ChatGPT mark, and its clear green checkmark, but the quota ring and wave ball must never create or play the particle firework, even when app animations are enabled and Reduce Motion is disabled. The dormant particle geometry may remain available for rollback, but no completion TimelineView may run in normal use.
+    rationale: >-
+      The firework adds a short 60fps rendering burst and more visual activity than the completed state needs. The user chose the persistent green completion cue as the signal and explicitly removed the quota firework to reduce transient CPU work and visual noise.
+    source: user-requested-performance-simplification
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state, completion-state]
+      exclude: [menu-bar-fallback, expanded-card-width, activity-state-machine, quota-warning-colors]
+    examples:
+      positive: A task completes and immediately shows the green ChatGPT cue, checkmark, and readable static quota without creating a particle timeline.
+      negative: Any ignition flash, radial particle, endpoint spark, or completion TimelineView runs after a task finishes.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - "manual: finish a real task and confirm the green completion cue remains without any quota firework"
+    supersedes: [NOTCH-LAYOUT-037]
     superseded_by: null
     last_verified_commit: null
 
@@ -519,8 +542,8 @@ contracts:
 
   - id: NOTCH-MOTION-002
     title: Expansion proceeds downward from the compact island
-    status: active
-    statement: Hover expansion reveals content downward from the existing compact island; the outer window must not continuously resize during SwiftUI layout or cause flicker, upward expansion, a centered burst, or lingering mouse interception.
+    status: superseded
+    statement: With animations enabled, hover expansion reveals content downward from the existing compact island; with animations disabled, the same top-anchored state change happens immediately. The outer window must not continuously resize during SwiftUI layout or cause flicker, upward expansion, a centered burst, or lingering mouse interception in either mode.
     rationale: A fixed canvas and inner-island animation are necessary boundaries for avoiding window jumping and historical layout crashes.
     source: incident
     owner: project-maintainer
@@ -536,8 +559,31 @@ contracts:
       - docs/decisions/001-fixed-canvas-notch-motion.md
       - "manual: hover expansion and collapse on physical-notch hardware"
     supersedes: []
-    superseded_by: null
+    superseded_by: NOTCH-MOTION-003
     last_verified_commit: 0d37196
+
+  - id: NOTCH-MOTION-003
+    title: Expansion and collapse switch immediately inside the fixed canvas
+    status: active
+    statement: Hover expansion and collapse must change the visible top-anchored card immediately, regardless of the app animation setting. The controller still prepares the final transparent canvas before an expanded state is applied, and it reclaims unused transparent canvas immediately after collapse so no off-card region intercepts the mouse. The outer window must not resize frame by frame, flicker, expand upward, or burst from the middle of the physical notch.
+    rationale: The fixed-canvas boundary remains necessary to avoid historical AppKit and SwiftUI layout crashes, but the user no longer wants a visible card transition. An animation-free state switch also avoids transient layout and compositing work while keeping the same geometry and interaction model.
+    source: user-requested-performance-simplification
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [notch-screens, hover-expand, hover-collapse]
+      exclude: [menu-bar-fallback, quota-animation]
+    examples:
+      positive: Hover prepares the final canvas and immediately reveals the expanded card from the same top anchor; collapse immediately restores the compact frame and mouse hit region.
+      negative: A spring, fade, delayed canvas reclamation, upward expansion, centered burst, or timer-driven NSPanel frame loop appears during expansion or collapse.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - docs/decisions/005-static-card-transitions-and-completion-cue.md
+      - "manual: hover-expand and collapse on physical-notch hardware and confirm both switches are immediate"
+    supersedes: [NOTCH-MOTION-002]
+    superseded_by: null
+    last_verified_commit: null
 
   - id: EXPANDED-APPEARANCE-009
     title: The expanded card can switch live between system glass and pure black
@@ -606,25 +652,25 @@ contracts:
     last_verified_commit: 14271f5
 
   - id: SETTINGS-PREFERENCES-017
-    title: Language and recent-conversation visibility settings apply immediately
+    title: Language, recent-conversation, and animation settings apply immediately
     status: active
-    statement: Settings must offer Chinese and English app languages and apply the selected language immediately to the settings window, notch content, and menu-bar fallback. Settings must offer 0 through 5 recent conversations; selecting 0 hides the recent-conversations section while preserving quota, active-task, and completion state.
-    rationale: Users need a readable interface choice without restarting the app, and setting recent conversations to 0 should control only that optional list rather than suppressing the primary quota or activity signal.
-    source: user-request
+    statement: Settings must offer Chinese and English app languages and apply the selected language immediately to the settings window, notch content, and menu-bar fallback. Settings must offer 0 through 5 recent conversations; selecting 0 hides the recent-conversations section while preserving quota, active-task, and completion state. Settings must also offer an animations toggle that is enabled by default and applies immediately; disabling it stops continuous quota motion and remaining pulses while preserving static running and completed cues. Card surface transitions and the quota completion firework remain unavailable in either setting.
+    rationale: Users need readable interface choices without restarting the app. Recent-conversation visibility should control only the optional list, while the animation preference should reduce visual distraction and continuous rendering cost without suppressing the primary quota or activity signal.
+    source: user-request-and-issue-2
     owner: project-maintainer
     risk: medium
     scope:
       include: [settings, compact-state, expanded-state, menu-bar-fallback]
       exclude: [quota-semantics, privacy-data, window-geometry]
     examples:
-      positive: Choosing English immediately changes settings, expanded labels, and fallback-menu labels; choosing 0 removes the recent-conversations heading and rows while the quota and active/completed compact state remain available; missing stored values keep the English and two-conversation defaults.
-      negative: Language changes require a restart, only the settings page changes, 0 is rejected or treated as a missing value, or 0 hides the quota/activity state along with the optional conversation list.
+      positive: Choosing English immediately changes settings, expanded labels, and fallback-menu labels; choosing 0 removes the recent-conversations heading and rows while the quota and active/completed compact state remain available; disabling animations immediately freezes the running indicator and remaining pulses while leaving the static state legible; card switches and quota completion stay free of transitions and fireworks in both modes; missing stored values keep the English, two-conversation, and animations-enabled defaults.
+      negative: Language or animation changes require a restart, only the settings page changes, 0 is rejected or treated as a missing value, 0 hides the quota/activity state along with the optional conversation list, or disabling animations leaves a TimelineView rendering continuously.
     guards:
       - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
       - Tests/CodexNotchTests/NotchRuntimePreferencesTests.swift
       - Tests/CodexNotchTests/NotchPresentationReducerTests.swift
       - Tests/CodexNotchTests/NotchTextTests.swift
-      - "manual: switch language and set recent-conversation count to 0 on a running app"
+      - "manual: switch language, set recent-conversation count to 0, and disable animations on a running app"
     supersedes: []
     superseded_by: null
     last_verified_commit: null
@@ -774,8 +820,8 @@ contracts:
   - id: QUOTA-SEMANTICS-014
     title: Weekly quota keeps three warning tiers in a lighter compact indicator
     status: active
-    statement: The right side prioritizes the weekly quota's remaining percentage; the number stays readable inside a 22pt ring or wave ball; the ring gap starts at 12 o'clock and progresses clockwise. The compact ring stroke remains 2.25pt and the wave-ball edge remains 1.75pt. Remaining quota above 20% is green, above 10% and up to 20% is yellow, and 10% or less is deep red; hue does not change continuously with the percentage. While a task is running, the ring uses a monochrome light-to-dark gradient for the current tier without a white highlight; with Reduce Motion disabled, the gradient flows gently along the remaining-quota arc. Idle and completed states immediately use a single solid color for the current tier and do not retain a static gradient or independently rotating highlight arc. The wave ball uses the same three tiers and rises and falls only while a task is running and Reduce Motion is disabled; idle and completed states keep a still liquid level. Expanded quota, reset, and recent-conversation text retain their readable sizes and matching line heights; the quota bar is followed first by the current weekly reset timestamp and a second-level countdown; the full “N reset credits available” row remains clickable, and the card expands only downward to list each `rate-limit-reset-credits` item with `status=available`, its exact expiry time, and a second-level countdown without repeating the reset-credit name. The real notch in Settings remains the live preview, with no duplicate static preview card; the lower-right of the expanded panel continues to provide a Settings entry.
-    rationale: Keeping most available quota a stable green reduces visual noise; yellow begins at 20% as a warning, while deep red begins at 10% as a strong alert. Physical-notch review found the previous 24pt quota indicator visually heavier than the 18pt ChatGPT mark. A 22pt outer diameter reduces that imbalance while retaining the 2.25pt ring weight, the 1.75pt wave-ball edge, and readable internal percentage text.
+    statement: The right side prioritizes the weekly quota's remaining percentage; the number stays readable at 9.5pt inside a 22pt ring or wave ball; the ring gap starts at 12 o'clock and progresses clockwise. The compact ring stroke remains 2.25pt and the wave-ball edge remains 1.75pt. Remaining quota above 20% is green, above 10% and up to 20% is yellow, and 10% or less is deep red; hue does not change continuously with the percentage. While a task is running, app animations are enabled, and Reduce Motion is disabled, the ring uses a gently flowing monochrome light-to-dark gradient for the current tier without a white highlight. Its continuous timeline requests no more than 8 frames per second and completes a gradient cycle in 3 seconds. When app animations are disabled or Reduce Motion is enabled, a running ring immediately uses the same full-brightness solid tier color as idle and completed states; it does not retain a dim static gradient or independently rotating highlight arc. The wave ball uses the same three tiers and rises and falls only while a task is running, app animations are enabled, and Reduce Motion is disabled; its continuous timeline requests no more than 8 frames per second. Idle, completed, user-disabled-animation, and Reduce Motion states keep a still liquid level. Expanded quota, reset, and recent-conversation text retain their readable sizes and matching line heights; the quota bar is followed first by the current weekly reset timestamp and a second-level countdown; the full “N reset credits available” row remains clickable, and the card expands only downward to list each `rate-limit-reset-credits` item with `status=available`, its exact expiry time, and a second-level countdown without repeating the reset-credit name. The real notch in Settings remains the live preview, with no duplicate static preview card; the lower-right of the expanded panel continues to provide a Settings entry.
+    rationale: Keeping most available quota a stable green reduces visual noise; yellow begins at 20% as a warning, while deep red begins at 10% as a strong alert. Physical-notch review found the previous 24pt quota indicator visually heavier than the 18pt ChatGPT mark, then found the 10.5pt internal number slightly too large after the indicator moved to 22pt. A 22pt outer diameter with a 9.5pt number reduces both sources of visual weight while retaining the 2.25pt ring weight, the 1.75pt wave-ball edge, and readable internal percentage text.
     source: user-confirmed-physical-notch-feedback
     owner: project-maintainer
     risk: medium
@@ -783,14 +829,15 @@ contracts:
       include: [compact-state, quota-expanded-state, settings]
       exclude: [cost-estimation]
     examples:
-      positive: The compact quota visual is 22pt with a 2.25pt ring or 1.75pt wave-ball edge; 35% is green, 20% is yellow, and 10% is deep red; the percentage remains centered and readable, and running versus stopped motion semantics remain unchanged.
-      negative: Leaving the quota visual at the heavier 24pt size, shrinking the percentage until it is unreadable, changing the warning thresholds, thickening the wave-ball edge, adding a white running highlight, or continuing motion while idle, completed, or Reduce Motion is enabled.
+      positive: The compact quota visual is 22pt with a centered 9.5pt number and a 2.25pt ring or 1.75pt wave-ball edge; 35% is green, 20% is yellow, and 10% is deep red; a running ring completes a 3-second flow while requesting at most 8 frames per second, the wave ball also requests at most 8 frames per second, and both become still when motion is disabled.
+      negative: Leaving the quota visual at the heavier 24pt size, leaving the internal number at 10.5pt or shrinking it until it is unreadable, changing the warning thresholds, thickening the wave-ball edge, adding a white running highlight, running either persistent timeline above its frame budget, leaving a dim static gradient when motion is disabled, or continuing motion while idle, completed, Reduce Motion is enabled, or app animations are disabled.
     guards:
       - Tests/CodexNotchTests/NotchTextTests.swift
       - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
       - Tests/CodexNotchTests/NotchGeometryTests.swift
       - "manual: inspect green, yellow and deep-red states plus percentage readability in the 22pt indicator on physical-notch hardware"
-      - "manual: inspect the running monochrome gradient and stopped solid ring"
+      - "manual: inspect the running monochrome gradient with motion enabled and the full-brightness solid running ring with motion disabled"
+      - "manual: confirm the 3-second 8fps ring and 8fps wave remain visually acceptable on physical-notch hardware"
     supersedes: [QUOTA-SEMANTICS-013]
     superseded_by: null
     last_verified_commit: null

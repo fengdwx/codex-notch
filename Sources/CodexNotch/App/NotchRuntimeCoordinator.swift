@@ -157,7 +157,11 @@ final class NotchRuntimeCoordinator {
 
         frontmostMonitor.stop()
         rolloutMonitor.stop()
-        viewModel.update(state: .hidden, now: nowProvider())
+        viewModel.update(
+            state: .hidden,
+            now: nowProvider(),
+            animationsEnabled: animationsEnabled
+        )
         windowController.window?.orderOut(nil)
     }
 
@@ -317,6 +321,10 @@ final class NotchRuntimeCoordinator {
         runtimePreferences.recentConversationLimit
     }
 
+    private var animationsEnabled: Bool {
+        runtimePreferences.animationsEnabled
+    }
+
     private var runtimePreferences: NotchRuntimePreferences {
         NotchRuntimePreferences.read(from: userDefaults)
     }
@@ -437,16 +445,25 @@ final class NotchRuntimeCoordinator {
         // The controller allocates the final canvas before the SwiftUI state
         // changes. That lets the island grow within one stable window instead
         // of animating the NSPanel itself.
-        windowController.prepare(layout: layout, state: displayState)
+        windowController.prepare(
+            layout: layout,
+            state: displayState,
+            animationsEnabled: animationsEnabled
+        )
         viewModel.update(
             state: displayState,
             now: renderDate,
             cameraSafeAreaInset: max(0, screen.safeAreaInsets.top),
             compactWidth: layout.compactFrame.width,
             surfaceSize: targetFrame.size,
-            isResetScheduleExpanded: isResetScheduleExpanded
+            isResetScheduleExpanded: isResetScheduleExpanded,
+            animationsEnabled: animationsEnabled
         )
-        windowController.settleFrame(layout: layout, state: displayState)
+        windowController.settleFrame(
+            layout: layout,
+            state: displayState,
+            animationsEnabled: animationsEnabled
+        )
     }
 
     private func renderCompactState(
@@ -457,16 +474,25 @@ final class NotchRuntimeCoordinator {
     ) {
         let layout = NotchGeometry.layout(metrics: metrics)
         let targetFrame = layout.frame(for: displayState)
-        windowController.prepare(layout: layout, state: displayState)
+        windowController.prepare(
+            layout: layout,
+            state: displayState,
+            animationsEnabled: animationsEnabled
+        )
         viewModel.update(
             state: displayState,
             now: now,
             cameraSafeAreaInset: max(0, screen.safeAreaInsets.top),
             compactWidth: layout.compactFrame.width,
             surfaceSize: targetFrame.size,
-            isResetScheduleExpanded: false
+            isResetScheduleExpanded: false,
+            animationsEnabled: animationsEnabled
         )
-        windowController.settleFrame(layout: layout, state: displayState)
+        windowController.settleFrame(
+            layout: layout,
+            state: displayState,
+            animationsEnabled: animationsEnabled
+        )
     }
 
     private func preferredScreen() -> NSScreen? {

@@ -69,6 +69,41 @@ final class NotchRuntimePreferencesTests: XCTestCase {
         )
     }
 
+    func testAnimationSettingChangesRuntimePreferences() {
+        let suiteName = "NotchRuntimePreferencesTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        XCTAssertTrue(NotchRuntimePreferences.read(from: defaults).animationsEnabled)
+
+        defaults.set(false, forKey: AppAnimationPreference.storageKey)
+
+        XCTAssertFalse(NotchRuntimePreferences.read(from: defaults).animationsEnabled)
+    }
+
+    func testMotionRequiresBothTheAppSettingAndSystemPermission() {
+        XCTAssertTrue(
+            AppAnimationPreference.allowsMotion(
+                animationsEnabled: true,
+                reduceMotion: false
+            )
+        )
+        XCTAssertFalse(
+            AppAnimationPreference.allowsMotion(
+                animationsEnabled: false,
+                reduceMotion: false
+            )
+        )
+        XCTAssertFalse(
+            AppAnimationPreference.allowsMotion(
+                animationsEnabled: true,
+                reduceMotion: true
+            )
+        )
+    }
+
     func testMissingRecentConversationLimitUsesTheTwoItemDefault() {
         let suiteName = "NotchRuntimePreferencesTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -80,5 +115,6 @@ final class NotchRuntimePreferencesTests: XCTestCase {
             NotchRuntimePreferences.read(from: defaults).recentConversationLimit,
             .two
         )
+        XCTAssertTrue(NotchRuntimePreferences.read(from: defaults).animationsEnabled)
     }
 }

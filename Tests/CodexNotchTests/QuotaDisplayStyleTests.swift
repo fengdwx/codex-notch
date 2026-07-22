@@ -48,6 +48,7 @@ final class QuotaDisplayStyleTests: XCTestCase {
 
     func testCompactRingUsesAThickerStrokeWithoutChangingTheWaveBallBorder() {
         XCTAssertEqual(NotchCompactLayout.indicatorDiameter, 22)
+        XCTAssertEqual(NotchCompactLayout.quotaValueFontSize, 9.5)
         XCTAssertEqual(
             NotchCompactLayout.quotaIndicatorLineWidth(for: .clockwiseRing),
             2.25
@@ -64,13 +65,56 @@ final class QuotaDisplayStyleTests: XCTestCase {
 
     func testQuotaIndicatorMotionRunsOnlyWhileATaskIsRunning() {
         XCTAssertTrue(
-            QuotaIndicatorMotion.shouldAnimate(isTaskRunning: true, reduceMotion: false)
+            QuotaIndicatorMotion.shouldAnimate(isTaskRunning: true, motionEnabled: true)
         )
         XCTAssertFalse(
-            QuotaIndicatorMotion.shouldAnimate(isTaskRunning: false, reduceMotion: false)
+            QuotaIndicatorMotion.shouldAnimate(isTaskRunning: false, motionEnabled: true)
         )
         XCTAssertFalse(
-            QuotaIndicatorMotion.shouldAnimate(isTaskRunning: true, reduceMotion: true)
+            QuotaIndicatorMotion.shouldAnimate(isTaskRunning: true, motionEnabled: false)
+        )
+    }
+
+    func testContinuousQuotaMotionUsesLowPowerCadences() {
+        XCTAssertEqual(
+            QuotaIndicatorMotion.runningRingMinimumFrameInterval,
+            1.0 / 8.0,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            QuotaIndicatorMotion.waveBallMinimumFrameInterval,
+            1.0 / 8.0,
+            accuracy: 0.0001
+        )
+    }
+
+    func testCompletionFireworkStaysDisabledWhileStaticCompletionRemainsAvailable() {
+        XCTAssertFalse(
+            QuotaIndicatorMotion.shouldShowCompletionFirework(
+                activity: .completed,
+                motionEnabled: true
+            )
+        )
+        XCTAssertFalse(
+            QuotaIndicatorMotion.shouldShowCompletionFirework(
+                activity: .running,
+                motionEnabled: true
+            )
+        )
+    }
+
+    func testExpandedCardSurfaceTransitionsStayDisabled() {
+        XCTAssertFalse(
+            NotchPresentationMotion.shouldAnimateSurface(
+                changesSurface: true,
+                animationsEnabled: true
+            )
+        )
+        XCTAssertFalse(
+            NotchPresentationMotion.shouldAnimateSurface(
+                changesSurface: false,
+                animationsEnabled: true
+            )
         )
     }
 
@@ -283,7 +327,7 @@ final class QuotaDisplayStyleTests: XCTestCase {
             QuotaRingGradientMotion.flowingAngle - QuotaRingGradientMotion.restingAngle,
             360
         )
-        XCTAssertGreaterThan(QuotaRingGradientMotion.duration, 0)
+        XCTAssertEqual(QuotaRingGradientMotion.duration, 3.0)
     }
 
     func testRunningRingGradientChangesAngleAcrossAnimationTimeline() {
@@ -317,10 +361,23 @@ final class QuotaDisplayStyleTests: XCTestCase {
         )
     }
 
-    func testStoppedRingUsesSolidColorWhileRunningRingUsesGradient() {
-        XCTAssertEqual(QuotaRingAppearance.colorMode(for: .running), .gradient)
-        XCTAssertEqual(QuotaRingAppearance.colorMode(for: .idle), .solid)
-        XCTAssertEqual(QuotaRingAppearance.colorMode(for: .completed), .solid)
+    func testRunningRingUsesGradientOnlyWhileMotionIsEnabled() {
+        XCTAssertEqual(
+            QuotaRingAppearance.colorMode(for: .running, motionEnabled: true),
+            .gradient
+        )
+        XCTAssertEqual(
+            QuotaRingAppearance.colorMode(for: .running, motionEnabled: false),
+            .solid
+        )
+        XCTAssertEqual(
+            QuotaRingAppearance.colorMode(for: .idle, motionEnabled: true),
+            .solid
+        )
+        XCTAssertEqual(
+            QuotaRingAppearance.colorMode(for: .completed, motionEnabled: true),
+            .solid
+        )
     }
 
     func testRecentConversationLimitOffersZeroThroughFiveAndFallsBackToTwo() {

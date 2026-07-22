@@ -66,6 +66,7 @@ enum NotchCompactLayout {
     static let minimumWidth: CGFloat = 257
     static let height: CGFloat = 32
     static let indicatorDiameter: CGFloat = 22
+    static let quotaValueFontSize: CGFloat = 9.5
     static let quotaIndicatorOutwardOffset: CGFloat = 0
     static let appMarkSize: CGFloat = 18
     static let quotaRingLineWidth: CGFloat = 2.25

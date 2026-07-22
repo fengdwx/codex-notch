@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [NOTCH-MOTION-002]
 supersedes: []
-superseded_by: null
+superseded_by: 005-static-card-transitions-and-completion-cue
 owner: project-maintainer
 created_at: 2026-07-17
 last_verified_commit: 0d37196
@@ -17,6 +17,8 @@ Early versions continuously adjusted the `NSPanel` frame with timers and AppKit 
 ## Decision
 
 Before expansion, `NotchWindowController.prepare` allocates the final transparent canvas once. `NotchView` and `NotchPresentationMotion` then animate the visible island inside that canvas. After collapse, `settleFrame` reclaims the extra transparent canvas after a delay so it cannot intercept mouse events outside the compact notch.
+
+When the user disables animations, the same fixed-canvas boundary remains in place, but SwiftUI state changes and the final frame settlement happen immediately instead of waiting for an animation interval.
 
 ## Rejected Alternatives
 

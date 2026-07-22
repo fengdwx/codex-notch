@@ -46,7 +46,11 @@ final class NotchWindowController: NSWindowController {
     /// first, then let SwiftUI animate the visible island inside that stable
     /// canvas. Repeatedly resizing an NSPanel during a SwiftUI layout pass is
     /// both visually rough and prone to re-entrant layout crashes.
-    func prepare(layout: NotchLayout, state: NotchPresentationState) {
+    func prepare(
+        layout: NotchLayout,
+        state: NotchPresentationState,
+        animationsEnabled: Bool = AppAnimationPreference.defaultEnabled
+    ) {
         guard let panel = window as? NotchPanel else { return }
 
         if layout.mode == .menuBarFallback {
@@ -68,6 +72,9 @@ final class NotchWindowController: NSWindowController {
         panel.ignoresMouseEvents = false
         if wasVisible {
             panel.orderFrontRegardless()
+        } else if !animationsEnabled {
+            panel.alphaValue = 1
+            panel.orderFrontRegardless()
         } else {
             panel.alphaValue = 0
             panel.orderFrontRegardless()
@@ -81,7 +88,11 @@ final class NotchWindowController: NSWindowController {
 
     /// Once the SwiftUI surface has visibly collapsed, remove the unused clear
     /// canvas so it cannot intercept clicks outside the compact notch.
-    func settleFrame(layout: NotchLayout, state: NotchPresentationState) {
+    func settleFrame(
+        layout: NotchLayout,
+        state: NotchPresentationState,
+        animationsEnabled: Bool = AppAnimationPreference.defaultEnabled
+    ) {
         guard layout.mode == .notch,
               let panel = window as? NotchPanel else {
             return
@@ -89,6 +100,14 @@ final class NotchWindowController: NSWindowController {
 
         let targetFrame = layout.frame(for: state)
         guard shouldDeferFrameSettlement(from: panel.frame, to: targetFrame) else {
+            return
+        }
+
+        guard NotchPresentationMotion.shouldAnimateSurface(
+            changesSurface: true,
+            animationsEnabled: animationsEnabled
+        ) else {
+            panel.setFrame(targetFrame, display: true)
             return
         }
 

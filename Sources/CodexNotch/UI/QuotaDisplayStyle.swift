@@ -83,6 +83,8 @@ struct CompletionSparkSpec: Equatable {
 }
 
 enum QuotaIndicatorMotion {
+    static let runningRingMinimumFrameInterval: TimeInterval = 1.0 / 8.0
+    static let waveBallMinimumFrameInterval: TimeInterval = 1.0 / 8.0
     static let completionParticleTravelDuration: TimeInterval = 0.72
     static let completionIgnitionDuration: TimeInterval = 0.14
     static let completionSparkDuration: TimeInterval = 0.31
@@ -426,15 +428,22 @@ enum QuotaIndicatorMotion {
         )
     }
 
-    static func shouldAnimate(isTaskRunning: Bool, reduceMotion: Bool) -> Bool {
-        isTaskRunning && !reduceMotion
+    static func shouldAnimate(isTaskRunning: Bool, motionEnabled: Bool) -> Bool {
+        isTaskRunning && motionEnabled
+    }
+
+    static func shouldShowCompletionFirework(
+        activity _: QuotaRingActivity,
+        motionEnabled _: Bool
+    ) -> Bool {
+        false
     }
 }
 
 enum QuotaRingGradientMotion {
     static let restingAngle = -90.0
     static let flowingAngle = restingAngle + 360.0
-    static let duration = 1.8
+    static let duration = 3.0
 
     static func angle(at date: Date, isAnimating: Bool) -> Double {
         guard isAnimating else { return restingAngle }
@@ -459,8 +468,11 @@ enum QuotaRingColorMode: Equatable {
 }
 
 enum QuotaRingAppearance {
-    static func colorMode(for activity: QuotaRingActivity) -> QuotaRingColorMode {
-        activity == .running ? .gradient : .solid
+    static func colorMode(
+        for activity: QuotaRingActivity,
+        motionEnabled: Bool
+    ) -> QuotaRingColorMode {
+        activity == .running && motionEnabled ? .gradient : .solid
     }
 }
 

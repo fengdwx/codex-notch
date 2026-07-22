@@ -8,6 +8,7 @@ final class NotchViewModel: ObservableObject {
     @Published private(set) var compactWidth: CGFloat
     @Published private(set) var surfaceSize: CGSize
     @Published private(set) var isResetScheduleExpanded = false
+    @Published private(set) var animationsEnabled: Bool
 
     var onOpenThread: (String) -> Void
     var onActivateChatGPT: () -> Void
@@ -23,6 +24,7 @@ final class NotchViewModel: ObservableObject {
             width: NotchCompactLayout.minimumWidth,
             height: NotchCompactLayout.height
         ),
+        animationsEnabled: Bool = AppAnimationPreference.defaultEnabled,
         onOpenThread: @escaping (String) -> Void = { _ in },
         onActivateChatGPT: @escaping () -> Void = {},
         onHoverChanged: @escaping (Bool) -> Void = { _ in },
@@ -33,6 +35,7 @@ final class NotchViewModel: ObservableObject {
         self.cameraSafeAreaInset = cameraSafeAreaInset
         self.compactWidth = compactWidth
         self.surfaceSize = surfaceSize
+        self.animationsEnabled = animationsEnabled
         self.onOpenThread = onOpenThread
         self.onActivateChatGPT = onActivateChatGPT
         self.onHoverChanged = onHoverChanged
@@ -48,7 +51,8 @@ final class NotchViewModel: ObservableObject {
             width: NotchCompactLayout.minimumWidth,
             height: NotchCompactLayout.height
         ),
-        isResetScheduleExpanded: Bool = false
+        isResetScheduleExpanded: Bool = false,
+        animationsEnabled: Bool = AppAnimationPreference.defaultEnabled
     ) {
         let wasExpanded = Self.isExpanded(self.state)
         let willBeExpanded = Self.isExpanded(state)
@@ -64,13 +68,23 @@ final class NotchViewModel: ObservableObject {
             self.compactWidth = compactWidth
             self.surfaceSize = surfaceSize
             self.isResetScheduleExpanded = isResetScheduleExpanded
+            self.animationsEnabled = animationsEnabled
         }
 
-        if changesSurface {
+        if NotchPresentationMotion.shouldAnimateSurface(
+            changesSurface: changesSurface,
+            animationsEnabled: animationsEnabled
+        ) {
             let expands = surfaceSize.height > self.surfaceSize.height + 0.5
                 || surfaceSize.width > self.surfaceSize.width + 0.5
                 || (isResetScheduleExpanded && !self.isResetScheduleExpanded)
             withAnimation(NotchPresentationMotion.animation(forExpanding: expands)) {
+                applyUpdate()
+            }
+        } else if changesSurface || !animationsEnabled {
+            var transaction = Transaction(animation: nil)
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
                 applyUpdate()
             }
         } else {
@@ -86,6 +100,7 @@ final class NotchViewModel: ObservableObject {
 
 struct NotchView: View {
     @ObservedObject private var model: NotchViewModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(QuotaDisplayStyle.storageKey)
     private var quotaDisplayStyleRaw = QuotaDisplayStyle.defaultStyle.rawValue
     @AppStorage(AppLanguage.storageKey)
@@ -98,6 +113,13 @@ struct NotchView: View {
 
     private var appLanguage: AppLanguage {
         AppLanguage.fromStoredValue(appLanguageRaw)
+    }
+
+    private var motionEnabled: Bool {
+        AppAnimationPreference.allowsMotion(
+            animationsEnabled: model.animationsEnabled,
+            reduceMotion: reduceMotion
+        )
     }
 
     private var isExpanded: Bool {
@@ -246,7 +268,11 @@ struct NotchView: View {
             )
         }
         .onHover { hovering in
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+            withAnimation(
+                motionEnabled
+                    ? .spring(response: 0.28, dampingFraction: 0.84)
+                    : nil
+            ) {
                 isPointerInside = hovering
             }
             model.onHoverChanged(hovering)
@@ -261,6 +287,12 @@ struct NotchView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .environment(\.notchAppLanguage, appLanguage)
+        .environment(\.notchMotionEnabled, motionEnabled)
+        .transaction { transaction in
+            guard !motionEnabled else { return }
+            transaction.animation = nil
+            transaction.disablesAnimations = true
+        }
     }
 }
 
@@ -268,10 +300,19 @@ private struct NotchAppLanguageKey: EnvironmentKey {
     static let defaultValue = AppLanguage.defaultLanguage
 }
 
+private struct NotchMotionEnabledKey: EnvironmentKey {
+    static let defaultValue = true
+}
+
 private extension EnvironmentValues {
     var notchAppLanguage: AppLanguage {
         get { self[NotchAppLanguageKey.self] }
         set { self[NotchAppLanguageKey.self] = newValue }
+    }
+
+    var notchMotionEnabled: Bool {
+        get { self[NotchMotionEnabledKey.self] }
+        set { self[NotchMotionEnabledKey.self] = newValue }
     }
 }
 
@@ -457,20 +498,20 @@ private struct CompactQuotaView: View {
             activity: activity,
             diameter: NotchCompactLayout.indicatorDiameter,
             lineWidth: NotchCompactLayout.quotaIndicatorLineWidth(for: style),
-            fontSize: 10.5
+            fontSize: NotchCompactLayout.quotaValueFontSize
         )
     }
 }
 
 private struct CompletedChatGPTIcon: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.notchMotionEnabled) private var motionEnabled
     @State private var hasSettled = false
 
     let size: CGFloat
 
     var body: some View {
         ZStack {
-            if !reduceMotion {
+            if motionEnabled {
                 // Keep the acknowledgement tied to the actual ChatGPT mark,
                 // not a generic circular notification ring. It reads as a
                 // single completion echo from the left-side app icon.
@@ -495,11 +536,11 @@ private struct CompletedChatGPTIcon: View {
         }
         .frame(width: size, height: size)
         .onAppear {
-            guard !reduceMotion else { return }
+            guard motionEnabled else { return }
             hasSettled = true
         }
         .animation(
-            reduceMotion ? nil : .easeOut(duration: 0.48),
+            motionEnabled ? .easeOut(duration: 0.48) : nil,
             value: hasSettled
         )
     }
@@ -820,7 +861,7 @@ private struct QuotaWaveBall: View {
     let lineWidth: CGFloat
     let fontSize: CGFloat
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.notchMotionEnabled) private var motionEnabled
     @State private var displayedProgress: CGFloat = 0
 
     private var window: UsageWindow? {
@@ -850,7 +891,10 @@ private struct QuotaWaveBall: View {
             Circle()
                 .strokeBorder(NotchPalette.border, lineWidth: lineWidth)
 
-            if activity == .completed, !reduceMotion {
+            if QuotaIndicatorMotion.shouldShowCompletionFirework(
+                activity: activity,
+                motionEnabled: motionEnabled
+            ) {
                 QuotaCompletionParticles(
                     color: NotchPalette.success,
                     diameter: diameter
@@ -875,7 +919,7 @@ private struct QuotaWaveBall: View {
         .onChange(of: activity) { _, _ in
             updateActivityAnimation()
         }
-        .onChange(of: reduceMotion) { _, _ in
+        .onChange(of: motionEnabled) { _, _ in
             updateActivityAnimation()
         }
     }
@@ -884,9 +928,11 @@ private struct QuotaWaveBall: View {
     private var waveFill: some View {
         if QuotaIndicatorMotion.shouldAnimate(
             isTaskRunning: activity == .running,
-            reduceMotion: reduceMotion
+            motionEnabled: motionEnabled
         ) {
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+            TimelineView(.animation(
+                minimumInterval: QuotaIndicatorMotion.waveBallMinimumFrameInterval
+            )) { context in
                 waveShape(
                     phase: context.date.timeIntervalSinceReferenceDate * 2.0
                 )
@@ -906,7 +952,7 @@ private struct QuotaWaveBall: View {
     }
 
     private func updateProgress(forAppearance: Bool = false) {
-        if reduceMotion {
+        if !motionEnabled {
             displayedProgress = targetProgress
         } else if forAppearance, activity == .running {
             displayedProgress = 1
@@ -923,7 +969,7 @@ private struct QuotaWaveBall: View {
     }
 
     private func updateActivityAnimation() {
-        guard !reduceMotion else {
+        guard motionEnabled else {
             displayedProgress = targetProgress
             return
         }
@@ -982,7 +1028,7 @@ private struct WeeklyQuotaRing: View {
     let lineWidth: CGFloat
     let fontSize: CGFloat
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.notchMotionEnabled) private var motionEnabled
     @State private var displayedProgress: CGFloat = 0
 
     private var window: UsageWindow? {
@@ -1016,7 +1062,7 @@ private struct WeeklyQuotaRing: View {
     private var shouldAnimateGradient: Bool {
         QuotaIndicatorMotion.shouldAnimate(
             isTaskRunning: activity == .running,
-            reduceMotion: reduceMotion
+            motionEnabled: motionEnabled
         )
     }
 
@@ -1028,7 +1074,10 @@ private struct WeeklyQuotaRing: View {
             if window != nil {
                 quotaStroke
 
-                if activity == .completed, !reduceMotion {
+                if QuotaIndicatorMotion.shouldShowCompletionFirework(
+                    activity: activity,
+                    motionEnabled: motionEnabled
+                ) {
                     QuotaCompletionParticles(
                         color: NotchPalette.success,
                         diameter: diameter
@@ -1053,30 +1102,39 @@ private struct WeeklyQuotaRing: View {
         .onChange(of: activity) { _, _ in
             updateActivityAnimation()
         }
-        .onChange(of: reduceMotion) { _, _ in
+        .onChange(of: motionEnabled) { _, _ in
             updateActivityAnimation()
         }
     }
 
     @ViewBuilder
     private var quotaStroke: some View {
-        switch QuotaRingAppearance.colorMode(for: activity) {
+        switch QuotaRingAppearance.colorMode(
+            for: activity,
+            motionEnabled: motionEnabled
+        ) {
         case .solid:
             quotaArc(progressColor)
         case .gradient:
-            TimelineView(
-                .animation(
-                    minimumInterval: 1.0 / 60.0,
-                    paused: !shouldAnimateGradient
-                )
-            ) { context in
+            if shouldAnimateGradient {
+                TimelineView(.animation(
+                    minimumInterval: QuotaIndicatorMotion.runningRingMinimumFrameInterval
+                )) { context in
+                    quotaArc(
+                        QuotaRingGradient.gradient(
+                            progressColor: progressColor,
+                            angle: QuotaRingGradientMotion.angle(
+                                at: context.date,
+                                isAnimating: true
+                            )
+                        )
+                    )
+                }
+            } else {
                 quotaArc(
                     QuotaRingGradient.gradient(
                         progressColor: progressColor,
-                        angle: QuotaRingGradientMotion.angle(
-                            at: context.date,
-                            isAnimating: shouldAnimateGradient
-                        )
+                        angle: QuotaRingGradientMotion.restingAngle
                     )
                 )
             }
@@ -1099,7 +1157,7 @@ private struct WeeklyQuotaRing: View {
             displayedProgress = 0
             return
         }
-        if reduceMotion {
+        if !motionEnabled {
             displayedProgress = targetProgress
         } else if forAppearance, activity == .running {
             displayedProgress = 1
@@ -1116,7 +1174,7 @@ private struct WeeklyQuotaRing: View {
     }
 
     private func updateActivityAnimation() {
-        guard !reduceMotion else {
+        guard motionEnabled else {
             displayedProgress = targetProgress
             return
         }
@@ -1389,7 +1447,7 @@ private struct ConversationStatusView: View {
 }
 
 private struct RunningStatusDot: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.notchMotionEnabled) private var motionEnabled
     @State private var isPulsing = false
 
     var body: some View {
@@ -1399,13 +1457,16 @@ private struct RunningStatusDot: View {
             .scaleEffect(isPulsing ? 1.15 : 0.82)
             .opacity(isPulsing ? 0.62 : 1)
             .onAppear {
-                guard !reduceMotion else { return }
+                guard motionEnabled else { return }
                 isPulsing = true
             }
+            .onChange(of: motionEnabled) { _, enabled in
+                isPulsing = enabled
+            }
             .animation(
-                reduceMotion
-                    ? nil
-                    : .easeInOut(duration: 0.9).repeatForever(autoreverses: true),
+                motionEnabled
+                    ? .easeInOut(duration: 0.9).repeatForever(autoreverses: true)
+                    : nil,
                 value: isPulsing
             )
     }
