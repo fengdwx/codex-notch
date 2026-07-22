@@ -113,6 +113,14 @@ enum ActiveSessionReducer {
             case let .taskStarted(turnID):
                 let resolvedTurnID = turnID ?? "anonymous-turn-\(index)"
                 let timestamp = event.timestamp ?? .distantPast
+                // A rollout represents one serial Codex conversation. When
+                // the log starts another turn before an earlier one records a
+                // terminal event, that earlier turn was interrupted or lost
+                // its terminal event; it must not keep the compact notch in
+                // the running state for the store's six-hour stale window.
+                for key in active.keys.filter({ active[$0]?.threadID == threadID }) {
+                    active.removeValue(forKey: key)
+                }
                 active[resolvedTurnID] = SessionActivity(
                     threadID: threadID,
                     turnID: resolvedTurnID,
@@ -142,8 +150,10 @@ enum ActiveSessionReducer {
         for turnID: String?,
         active: [String: SessionActivity]
     ) -> String? {
-        if let turnID, active[turnID] != nil {
-            return turnID
+        if let turnID {
+            // A late terminal event for a turn that was superseded by a newer
+            // turn must not fall back to and finish the newer active turn.
+            return active[turnID] == nil ? nil : turnID
         }
         return active.max { $0.value.lastActivityAt < $1.value.lastActivityAt }?.key
     }

@@ -631,7 +631,7 @@ contracts:
 
   - id: ACTIVITY-STATE-003
     title: Active tasks take priority and completion remains visible
-    status: active
+    status: superseded
     statement: The compact notch shows the running state when any task is active; when no task is active but a recent completion exists, it shows the completion checkmark; when neither exists, it still shows quota; a new task must override an old completed state.
     rationale: Users need to distinguish running, just completed, and quota-only states without expanding the card.
     source: user-confirmed
@@ -648,8 +648,30 @@ contracts:
       - Tests/CodexNotchTests/ActiveSessionStoreTests.swift
       - "manual: observe compact completion state after a real task finishes"
     supersedes: []
-    superseded_by: null
+    superseded_by: ACTIVITY-STATE-004
     last_verified_commit: 0d37196
+
+  - id: ACTIVITY-STATE-004
+    title: Interrupted turns cannot leave the compact notch running
+    status: active
+    statement: A rollout records serial turns for one Codex thread. If a later task_started event appears for that thread before an earlier turn has a terminal event, the earlier turn is superseded and must no longer count as active or keep the compact quota indicator moving. A terminal event explicitly naming a superseded or unknown turn is ignored and must not finish the replacement turn. Active turns from separate rollout files retain their normal priority; when no active task remains, the most recent completion still shows the completion checkmark.
+    rationale: A missing terminal event previously left an orphan active turn in a continuously modified rollout file. Because active staleness used the file modification time, the orphan could hold the compact notch in its running animation for hours after the visible task completed.
+    source: user-reported-incident
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [compact-state, rollout-session-monitoring]
+      exclude: [task-termination, quota-warning-colors, physical-notch-geometry]
+    examples:
+      positive: An unfinished turn A followed by a started and completed turn B leaves no active session, so the compact notch uses the completion checkmark and the quota indicator is still.
+      negative: An unmatched task_started remains active until the six-hour rollout stale timeout after another turn in the same rollout completes, or a late terminal event for A incorrectly ends B.
+    guards:
+      - Tests/CodexNotchTests/ActiveSessionStoreTests.swift
+      - Tests/CodexNotchTests/NotchPresentationReducerTests.swift
+      - "manual: complete a real task after an interrupted turn and confirm the compact quota indicator stops"
+    supersedes: [ACTIVITY-STATE-003]
+    superseded_by: null
+    last_verified_commit: null
 
   - id: QUOTA-SEMANTICS-004
     title: Weekly quota is clearly expressed as a remaining percentage

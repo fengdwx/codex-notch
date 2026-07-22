@@ -36,6 +36,36 @@ final class ActiveSessionStoreTests: XCTestCase {
         XCTAssertEqual(result.map(\.turnID), ["turn-2"])
     }
 
+    func testNewTurnSupersedesAnUnfinishedTurnInTheSameThread() {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let events: [RolloutEvent] = [
+            RolloutEvent(timestamp: now, kind: .sessionMeta(threadID: "thread", cwd: nil, originator: nil)),
+            RolloutEvent(timestamp: now, kind: .taskStarted(turnID: "turn-1")),
+            RolloutEvent(timestamp: now.addingTimeInterval(1), kind: .taskStarted(turnID: "turn-2")),
+            RolloutEvent(timestamp: now.addingTimeInterval(2), kind: .taskCompleted(turnID: "turn-2"))
+        ]
+
+        let result = ActiveSessionReducer.reduce(events)
+
+        XCTAssertTrue(result.active.isEmpty)
+        XCTAssertEqual(result.completed.map(\.turnID), ["turn-2"])
+    }
+
+    func testLateTerminalEventForSupersededTurnDoesNotEndReplacementTurn() {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let events: [RolloutEvent] = [
+            RolloutEvent(timestamp: now, kind: .sessionMeta(threadID: "thread", cwd: nil, originator: nil)),
+            RolloutEvent(timestamp: now, kind: .taskStarted(turnID: "turn-1")),
+            RolloutEvent(timestamp: now.addingTimeInterval(1), kind: .taskStarted(turnID: "turn-2")),
+            RolloutEvent(timestamp: now.addingTimeInterval(2), kind: .taskCompleted(turnID: "turn-1"))
+        ]
+
+        let result = ActiveSessionReducer.reduce(events)
+
+        XCTAssertEqual(result.active.map(\.turnID), ["turn-2"])
+        XCTAssertTrue(result.completed.isEmpty)
+    }
+
     func testUnmatchedStartOlderThanStaleWindowIsRemoved() async {
         let now = Date(timeIntervalSince1970: 2_000_000_000)
         let stale = makeReduction(threadID: "stale-thread", turnID: "stale-turn", at: now)
