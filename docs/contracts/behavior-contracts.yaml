@@ -585,6 +585,27 @@ contracts:
     superseded_by: null
     last_verified_commit: null
 
+  - id: NOTCH-VISIBILITY-040
+    title: The notch panel remains visible after switching to another normal application
+    status: active
+    statement: When CodexNotch is using a valid notch screen, moving keyboard focus from Codex or ChatGPT to another ordinary foreground application must not remove the compact or expanded notch panel. If AppKit completes its accessory-app deactivation after the workspace activation notification, the next main-loop turn reasserts the requested notch panel above normal application windows. In menu-bar fallback mode, no notch panel may reappear; the fallback status item remains the only surface.
+    rationale: Feishu can make AppKit withdraw CodexNotch's nonactivating panel after its normal workspace activation callback already rendered it. The process remains alive and Feishu uses an ordinary window layer, so the correct fix is a generic post-deactivation panel-order guard rather than a Feishu-specific bundle-ID exception or a higher window level.
+    source: user-reported-incident-and-local-reproduction
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-window, compact-state, expanded-state, application-activation]
+      exclude: [menu-bar-fallback-content, quota-semantics, activity-state-machine, window-level]
+    examples:
+      positive: Switching from Codex to Feishu leaves the notch visible, and switching to any other ordinary application follows the same rule without recognizing that application's bundle identifier.
+      negative: Hiding the panel when Feishu becomes frontmost, adding a Feishu-only exception, raising the panel above system-level windows, or restoring a panel while the no-notch menu-bar fallback is active.
+    guards:
+      - Tests/CodexNotchTests/NotchPanelVisibilityPolicyTests.swift
+      - "manual: switch repeatedly between Codex, Feishu, and WeCom on physical-notch hardware; confirm compact and expanded panels remain visible while the menu-bar fallback remains panel-free"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null
+
   - id: EXPANDED-APPEARANCE-009
     title: The expanded card can switch live between system glass and pure black
     status: superseded

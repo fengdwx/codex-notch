@@ -1,5 +1,14 @@
 import AppKit
 
+enum NotchPanelVisibilityPolicy {
+    static func shouldRestoreAfterApplicationSwitch(
+        panelIsRequested: Bool,
+        layoutMode: NotchLayoutMode
+    ) -> Bool {
+        panelIsRequested && layoutMode == .notch
+    }
+}
+
 final class NotchPanel: NSPanel {
     init(contentRect: NSRect) {
         super.init(

@@ -162,7 +162,7 @@ final class NotchRuntimeCoordinator {
             now: nowProvider(),
             animationsEnabled: animationsEnabled
         )
-        windowController.window?.orderOut(nil)
+        windowController.hideNotchPanel()
     }
 
     deinit {
@@ -241,12 +241,16 @@ final class NotchRuntimeCoordinator {
     }
 
     private func setChatGPTFrontmost(_ isFrontmost: Bool) {
-        guard isChatGPTFrontmost != isFrontmost else { return }
-        isChatGPTFrontmost = isFrontmost
-        if isFrontmost {
-            refreshUsage()
+        if isChatGPTFrontmost != isFrontmost {
+            isChatGPTFrontmost = isFrontmost
+            if isFrontmost {
+                refreshUsage()
+            }
+            render()
         }
-        render()
+        // The monitor calls this for every app switch, including transitions
+        // between two non-Codex apps that both map to `false`.
+        windowController.reassertNotchPanelAfterApplicationSwitch()
     }
 
     private func setHovered(_ hovered: Bool) {
@@ -399,7 +403,7 @@ final class NotchRuntimeCoordinator {
         )
 
         guard let screen = preferredScreen() else {
-            windowController.window?.orderOut(nil)
+            windowController.hideNotchPanel()
             return
         }
         let metrics = NotchScreenMetrics(screen: screen)

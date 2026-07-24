@@ -12,6 +12,7 @@ final class NotchWindowController: NSWindowController {
     private var statusItem: NSStatusItem?
     private var deferredFrameWorkItem: DispatchWorkItem?
     private var deferredFrameIdentifier: UUID?
+    private var requestedLayoutMode: NotchLayoutMode = .menuBarFallback
 
     private var appLanguage: AppLanguage {
         AppLanguage.fromStoredValue(
@@ -54,13 +55,12 @@ final class NotchWindowController: NSWindowController {
         guard let panel = window as? NotchPanel else { return }
 
         if layout.mode == .menuBarFallback {
-            cancelDeferredFrameSettlement()
-            panel.ignoresMouseEvents = true
-            panel.orderOut(nil)
+            hideNotchPanel()
             showFallbackMenu(for: state)
             return
         }
 
+        requestedLayoutMode = .notch
         hideFallbackMenu()
         let frame = layout.frame(for: state)
         let wasVisible = panel.isVisible
@@ -158,6 +158,14 @@ final class NotchWindowController: NSWindowController {
         deferredFrameIdentifier = nil
     }
 
+    func hideNotchPanel() {
+        requestedLayoutMode = .menuBarFallback
+        cancelDeferredFrameSettlement()
+        guard let panel = window as? NotchPanel else { return }
+        panel.ignoresMouseEvents = true
+        panel.orderOut(nil)
+    }
+
     deinit {
         cancelDeferredFrameSettlement()
         if let screenObserver {
@@ -176,6 +184,27 @@ final class NotchWindowController: NSWindowController {
         ) { [weak self] _ in
             self?.onScreenParametersChanged?()
         }
+    }
+
+    func reassertNotchPanelAfterApplicationSwitch() {
+        // AppKit can finish applying an app switch after the workspace
+        // activation callback has already rendered the panel. Reassert on the
+        // next main-loop turn so an accessory panel remains above normal
+        // frontmost applications such as Feishu.
+        DispatchQueue.main.async { [weak self] in
+            self?.restoreNotchPanelAfterApplicationSwitch()
+        }
+    }
+
+    private func restoreNotchPanelAfterApplicationSwitch() {
+        guard NotchPanelVisibilityPolicy.shouldRestoreAfterApplicationSwitch(
+            panelIsRequested: requestedLayoutMode == .notch,
+            layoutMode: requestedLayoutMode
+        ), let panel = window as? NotchPanel else {
+            return
+        }
+        panel.ignoresMouseEvents = false
+        panel.orderFrontRegardless()
     }
 
     private func showFallbackMenu(for state: NotchPresentationState) {
