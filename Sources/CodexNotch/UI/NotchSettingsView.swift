@@ -58,7 +58,7 @@ struct NotchSettingsView: View {
                     .foregroundStyle(.secondary)
 
             } header: {
-                Text(appLanguage.localized(chinese: "刘海显示", english: "Notch display"))
+                Text(appLanguage.localized(chinese: "额度指示器", english: "Quota indicator"))
             }
 
             Section {

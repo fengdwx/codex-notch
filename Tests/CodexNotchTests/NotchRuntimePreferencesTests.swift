@@ -83,6 +83,25 @@ final class NotchRuntimePreferencesTests: XCTestCase {
         XCTAssertFalse(NotchRuntimePreferences.read(from: defaults).animationsEnabled)
     }
 
+    func testNotchDisplaySettingChangesRuntimePreferences() {
+        let suiteName = "NotchRuntimePreferencesTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        XCTAssertTrue(NotchRuntimePreferences.read(from: defaults).notchDisplayEnabled)
+
+        defaults.set(false, forKey: NotchDisplayPreference.storageKey)
+
+        XCTAssertFalse(NotchRuntimePreferences.read(from: defaults).notchDisplayEnabled)
+    }
+
+    func testNotchVisibilityToggleFlipsTheStoredDisplayState() {
+        XCTAssertFalse(NotchDisplayPreference.toggledValue(for: true))
+        XCTAssertTrue(NotchDisplayPreference.toggledValue(for: false))
+    }
+
     func testMotionRequiresBothTheAppSettingAndSystemPermission() {
         XCTAssertTrue(
             AppAnimationPreference.allowsMotion(
@@ -116,5 +135,6 @@ final class NotchRuntimePreferencesTests: XCTestCase {
             .two
         )
         XCTAssertTrue(NotchRuntimePreferences.read(from: defaults).animationsEnabled)
+        XCTAssertTrue(NotchRuntimePreferences.read(from: defaults).notchDisplayEnabled)
     }
 }

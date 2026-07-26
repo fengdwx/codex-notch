@@ -13,6 +13,7 @@ struct CodexHomeLocator {
 
 final class NotchRuntimeCoordinator {
     static let sessionPollInterval: TimeInterval = 0.5
+    static let fullScreenPollInterval: TimeInterval = 1
     static let rolloutRescanInterval: TimeInterval = 5
     static let usageRefreshInterval: TimeInterval = 60
     static let hoverExpandDelay: TimeInterval = 0.18
@@ -35,6 +36,7 @@ final class NotchRuntimeCoordinator {
     private var usageTask: Task<Void, Never>?
     private var started = false
     private var isChatGPTFrontmost = false
+    private var isFullScreenSuppressed = false
     private var isHovered = false
     private var isPointerInside = false
     private var isResetScheduleExpanded = false
@@ -42,11 +44,13 @@ final class NotchRuntimeCoordinator {
     private var recentCompletions: [CompletedSession] = []
     private var usage: UsageSnapshot?
     private var lastUsageRequestAt: Date?
+    private var lastFullScreenCheckAt: Date?
     private var usageRequestID: UUID?
     private var hoverExpandWorkItem: DispatchWorkItem?
     private var hoverCollapseWorkItem: DispatchWorkItem?
     private var preferencesObserver: NSObjectProtocol?
     private var lastObservedPreferences: NotchRuntimePreferences?
+    private var visibilityShortcut: NotchVisibilityShortcut?
 
     init(
         windowController: NotchWindowController = NotchWindowController(),
@@ -84,6 +88,9 @@ final class NotchRuntimeCoordinator {
         guard !started else { return }
         started = true
         observePreferenceChanges()
+        visibilityShortcut = NotchVisibilityShortcut { [weak self] in
+            self?.toggleNotchDisplay()
+        }
 
         viewModel.onOpenThread = { [weak self] threadID in
             self?.openThread(threadID)
@@ -132,6 +139,8 @@ final class NotchRuntimeCoordinator {
 
         refreshUsage()
         pollSessions()
+        _ = refreshFullScreenSuppression()
+        lastFullScreenCheckAt = nowProvider()
         render()
     }
 
@@ -146,14 +155,17 @@ final class NotchRuntimeCoordinator {
         usageTask?.cancel()
         usageTask = nil
         usageRequestID = nil
+        lastFullScreenCheckAt = nil
         hoverExpandWorkItem?.cancel()
         hoverExpandWorkItem = nil
         hoverCollapseWorkItem?.cancel()
         hoverCollapseWorkItem = nil
+        visibilityShortcut = nil
         stopObservingPreferenceChanges()
         isPointerInside = false
         isHovered = false
         isResetScheduleExpanded = false
+        isFullScreenSuppressed = false
 
         frontmostMonitor.stop()
         rolloutMonitor.stop()
@@ -171,14 +183,22 @@ final class NotchRuntimeCoordinator {
         usageTask?.cancel()
         hoverExpandWorkItem?.cancel()
         hoverCollapseWorkItem?.cancel()
+        visibilityShortcut = nil
         stopObservingPreferenceChanges()
         frontmostMonitor.stop()
         rolloutMonitor.stop()
     }
 
     private func handleTimerTick() {
-        pollSessions()
         let now = nowProvider()
+        if now.timeIntervalSince(lastFullScreenCheckAt ?? .distantPast)
+            >= Self.fullScreenPollInterval {
+            lastFullScreenCheckAt = now
+            if refreshFullScreenSuppression() {
+                render(now: now)
+            }
+        }
+        pollSessions()
         if now.timeIntervalSince(lastUsageRequestAt ?? .distantPast) >= Self.usageRefreshInterval {
             refreshUsage()
         }
@@ -241,16 +261,52 @@ final class NotchRuntimeCoordinator {
     }
 
     private func setChatGPTFrontmost(_ isFrontmost: Bool) {
+        let frontmostStateChanged = isChatGPTFrontmost != isFrontmost
         if isChatGPTFrontmost != isFrontmost {
             isChatGPTFrontmost = isFrontmost
             if isFrontmost {
                 refreshUsage()
             }
+        }
+        let suppressionChanged = refreshFullScreenSuppression()
+        lastFullScreenCheckAt = nowProvider()
+        if frontmostStateChanged || suppressionChanged {
             render()
         }
         // The monitor calls this for every app switch, including transitions
         // between two non-Codex apps that both map to `false`.
-        windowController.reassertNotchPanelAfterApplicationSwitch()
+        windowController.reassertNotchPanelAfterApplicationSwitch(
+            displayIsEnabled: runtimePreferences.notchDisplayEnabled
+        )
+    }
+
+    private func refreshFullScreenSuppression() -> Bool {
+        let shouldSuppress: Bool
+        if let screen = preferredScreen(),
+           screen.auxiliaryTopLeftArea != nil,
+           screen.auxiliaryTopRightArea != nil {
+            shouldSuppress = FrontmostFullScreenDetector
+                .isFrontmostApplicationFullScreen(on: screen)
+        } else {
+            shouldSuppress = false
+        }
+
+        guard shouldSuppress != isFullScreenSuppressed else { return false }
+        isFullScreenSuppressed = shouldSuppress
+        if shouldSuppress {
+            resetHoverState()
+        }
+        windowController.setFullScreenSuppressed(shouldSuppress)
+        return true
+    }
+
+    private func toggleNotchDisplay() {
+        userDefaults.set(
+            NotchDisplayPreference.toggledValue(
+                for: runtimePreferences.notchDisplayEnabled
+            ),
+            forKey: NotchDisplayPreference.storageKey
+        )
     }
 
     private func setHovered(_ hovered: Bool) {
@@ -393,6 +449,42 @@ final class NotchRuntimeCoordinator {
 
     private func render(now: Date? = nil) {
         let renderDate = now ?? nowProvider()
+        let preferences = runtimePreferences
+        guard let screen = preferredScreen() else {
+            resetHoverState()
+            windowController.hideNotchPanel()
+            return
+        }
+        if isFullScreenSuppressed {
+            resetHoverState()
+            windowController.setFullScreenSuppressed(true)
+            return
+        }
+        let metrics = NotchScreenMetrics(screen: screen)
+        let baseLayout = NotchGeometry.layout(metrics: metrics)
+
+        if baseLayout.mode == .menuBarFallback {
+            if !preferences.notchDisplayEnabled {
+                resetHoverState()
+                viewModel.update(
+                    state: .hidden,
+                    now: renderDate,
+                    animationsEnabled: false
+                )
+                windowController.showDisplayDisabledFallback()
+                return
+            }
+        } else if NotchPanelVisibilityPolicy.shouldKeepHiddenHoverSensor(
+            layoutMode: baseLayout.mode,
+            displayIsEnabled: preferences.notchDisplayEnabled
+        ), !isHovered {
+            return renderHiddenHoverSensor(
+                now: renderDate,
+                screen: screen,
+                metrics: metrics
+            )
+        }
+
         let input = NotchPresentationInput(
             now: renderDate,
             isChatGPTFrontmost: isChatGPTFrontmost,
@@ -402,12 +494,6 @@ final class NotchRuntimeCoordinator {
             isHovered: isHovered
         )
 
-        guard let screen = preferredScreen() else {
-            windowController.hideNotchPanel()
-            return
-        }
-        let metrics = NotchScreenMetrics(screen: screen)
-        let baseLayout = NotchGeometry.layout(metrics: metrics)
         let state = NotchPresentationReducer.reduce(input)
         let stateForWindow: NotchPresentationState
         if baseLayout.mode == .menuBarFallback {
@@ -467,6 +553,40 @@ final class NotchRuntimeCoordinator {
             layout: layout,
             state: displayState,
             animationsEnabled: animationsEnabled
+        )
+    }
+
+    private func renderHiddenHoverSensor(
+        now: Date,
+        screen: NSScreen,
+        metrics: NotchScreenMetrics
+    ) {
+        let layout = NotchGeometry.layout(metrics: metrics)
+        guard layout.mode == .notch else {
+            windowController.showDisplayDisabledFallback()
+            return
+        }
+
+        let hiddenState = NotchPresentationState.hidden
+        let targetFrame = layout.frame(for: hiddenState)
+        windowController.prepare(
+            layout: layout,
+            state: hiddenState,
+            animationsEnabled: false
+        )
+        viewModel.update(
+            state: hiddenState,
+            now: now,
+            cameraSafeAreaInset: max(0, screen.safeAreaInsets.top),
+            compactWidth: layout.compactFrame.width,
+            surfaceSize: targetFrame.size,
+            isResetScheduleExpanded: false,
+            animationsEnabled: false
+        )
+        windowController.settleFrame(
+            layout: layout,
+            state: hiddenState,
+            animationsEnabled: false
         )
     }
 

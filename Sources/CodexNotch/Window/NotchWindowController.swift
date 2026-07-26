@@ -13,6 +13,7 @@ final class NotchWindowController: NSWindowController {
     private var deferredFrameWorkItem: DispatchWorkItem?
     private var deferredFrameIdentifier: UUID?
     private var requestedLayoutMode: NotchLayoutMode = .menuBarFallback
+    private var isSuppressedByFullScreen = false
 
     private var appLanguage: AppLanguage {
         AppLanguage.fromStoredValue(
@@ -62,6 +63,11 @@ final class NotchWindowController: NSWindowController {
 
         requestedLayoutMode = .notch
         hideFallbackMenu()
+        guard !isSuppressedByFullScreen else {
+            panel.ignoresMouseEvents = true
+            panel.orderOut(nil)
+            return
+        }
         let frame = layout.frame(for: state)
         let wasVisible = panel.isVisible
         cancelDeferredFrameSettlement()
@@ -160,10 +166,22 @@ final class NotchWindowController: NSWindowController {
 
     func hideNotchPanel() {
         requestedLayoutMode = .menuBarFallback
+        isSuppressedByFullScreen = false
         cancelDeferredFrameSettlement()
         guard let panel = window as? NotchPanel else { return }
         panel.ignoresMouseEvents = true
         panel.orderOut(nil)
+    }
+
+    func setFullScreenSuppressed(_ isSuppressed: Bool) {
+        isSuppressedByFullScreen = isSuppressed
+        guard isSuppressed, let panel = window as? NotchPanel else { return }
+
+        cancelDeferredFrameSettlement()
+        panel.ignoresMouseEvents = true
+        if panel.isVisible {
+            panel.orderOut(nil)
+        }
     }
 
     deinit {
@@ -186,20 +204,29 @@ final class NotchWindowController: NSWindowController {
         }
     }
 
-    func reassertNotchPanelAfterApplicationSwitch() {
+    func reassertNotchPanelAfterApplicationSwitch(displayIsEnabled: Bool) {
         // AppKit can finish applying an app switch after the workspace
         // activation callback has already rendered the panel. Reassert on the
         // next main-loop turn so an accessory panel remains above normal
         // frontmost applications such as Feishu.
         DispatchQueue.main.async { [weak self] in
-            self?.restoreNotchPanelAfterApplicationSwitch()
+            self?.restoreNotchPanelAfterApplicationSwitch(
+                displayIsEnabled: displayIsEnabled
+            )
         }
     }
 
-    private func restoreNotchPanelAfterApplicationSwitch() {
+    func showDisplayDisabledFallback() {
+        hideNotchPanel()
+        showFallbackMenu(for: .hidden, includesShowNotchAction: true)
+    }
+
+    private func restoreNotchPanelAfterApplicationSwitch(displayIsEnabled: Bool) {
         guard NotchPanelVisibilityPolicy.shouldRestoreAfterApplicationSwitch(
             panelIsRequested: requestedLayoutMode == .notch,
-            layoutMode: requestedLayoutMode
+            layoutMode: requestedLayoutMode,
+            displayIsEnabled: displayIsEnabled,
+            isSuppressedByFullScreen: isSuppressedByFullScreen
         ), let panel = window as? NotchPanel else {
             return
         }
@@ -207,7 +234,10 @@ final class NotchWindowController: NSWindowController {
         panel.orderFrontRegardless()
     }
 
-    private func showFallbackMenu(for state: NotchPresentationState) {
+    private func showFallbackMenu(
+        for state: NotchPresentationState,
+        includesShowNotchAction: Bool = false
+    ) {
         let statusItem = statusItem ?? makeStatusItem()
         statusItem.isVisible = true
         statusItem.button?.title = "Codex"
@@ -217,7 +247,10 @@ final class NotchWindowController: NSWindowController {
         menu.autoenablesItems = false
         switch state {
         case .hidden:
-            menu.addItem(disabledItem(title: "CodexNotch"))
+            let title = includesShowNotchAction
+                ? appLanguage.localized(chinese: "CodexNotch 已隐藏", english: "CodexNotch hidden")
+                : "CodexNotch"
+            menu.addItem(disabledItem(title: title))
 
         case let .quotaCompact(usage):
             menu.addItem(disabledItem(title: "Codex · \(NotchText.quotaSubtitle(usage: usage, language: appLanguage))"))
@@ -352,6 +385,16 @@ final class NotchWindowController: NSWindowController {
                 ))
             }
         }
+        if includesShowNotchAction {
+            menu.addItem(NSMenuItem.separator())
+            menu.addItem(actionItem(
+                title: appLanguage.localized(
+                    chinese: "显示刘海 (⌥⌘N)",
+                    english: "Show notch (⌥⌘N)"
+                ),
+                representedObject: "__show_notch__"
+            ))
+        }
         statusItem.menu = menu
     }
 
@@ -384,7 +427,12 @@ final class NotchWindowController: NSWindowController {
 
     @objc private func handleStatusItemAction(_ sender: NSMenuItem) {
         guard let representedObject = sender.representedObject as? String else { return }
-        if representedObject == "__activate__" {
+        if representedObject == "__show_notch__" {
+            UserDefaults.standard.set(
+                true,
+                forKey: NotchDisplayPreference.storageKey
+            )
+        } else if representedObject == "__activate__" {
             onActivateChatGPT?()
         } else {
             onOpenThread?(representedObject)

@@ -3,7 +3,8 @@ import Foundation
 
 final class FrontmostAppMonitor {
     private let workspace: NSWorkspace
-    private var observer: NSObjectProtocol?
+    private var applicationObserver: NSObjectProtocol?
+    private var activeSpaceObserver: NSObjectProtocol?
 
     var onChange: ((Bool) -> Void)?
 
@@ -18,7 +19,7 @@ final class FrontmostAppMonitor {
     func start() {
         stop()
         emit(bundleIdentifier: workspace.frontmostApplication?.bundleIdentifier)
-        observer = workspace.notificationCenter.addObserver(
+        applicationObserver = workspace.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil,
             queue: .main
@@ -27,12 +28,26 @@ final class FrontmostAppMonitor {
                 as? NSRunningApplication
             self?.emit(bundleIdentifier: application?.bundleIdentifier)
         }
+        activeSpaceObserver = workspace.notificationCenter.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification,
+            object: workspace,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.emit(
+                bundleIdentifier: self.workspace.frontmostApplication?.bundleIdentifier
+            )
+        }
     }
 
     func stop() {
-        if let observer {
-            workspace.notificationCenter.removeObserver(observer)
-            self.observer = nil
+        if let applicationObserver {
+            workspace.notificationCenter.removeObserver(applicationObserver)
+            self.applicationObserver = nil
+        }
+        if let activeSpaceObserver {
+            workspace.notificationCenter.removeObserver(activeSpaceObserver)
+            self.activeSpaceObserver = nil
         }
     }
 

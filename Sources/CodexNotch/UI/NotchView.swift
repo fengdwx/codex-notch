@@ -105,6 +105,8 @@ struct NotchView: View {
     private var quotaDisplayStyleRaw = QuotaDisplayStyle.defaultStyle.rawValue
     @AppStorage(AppLanguage.storageKey)
     private var appLanguageRaw = AppLanguage.defaultLanguage.rawValue
+    @AppStorage(NotchDisplayPreference.storageKey)
+    private var notchDisplayEnabled = NotchDisplayPreference.defaultEnabled
     @State private var isPointerInside = false
 
     private var quotaDisplayStyle: QuotaDisplayStyle {
@@ -240,7 +242,9 @@ struct NotchView: View {
                     isResetScheduleExpanded: model.isResetScheduleExpanded,
                     onActivateChatGPT: model.onActivateChatGPT,
                     onOpenThread: model.onOpenThread,
-                    onResetScheduleExpandedChanged: model.onResetScheduleExpandedChanged
+                    onResetScheduleExpandedChanged: model.onResetScheduleExpandedChanged,
+                    notchDisplayEnabled: notchDisplayEnabled,
+                    onNotchDisplayEnabledChanged: { notchDisplayEnabled = $0 }
                 )
                 .transition(.opacity)
             }
@@ -278,6 +282,17 @@ struct NotchView: View {
             model.onHoverChanged(hovering)
         }
         .contextMenu {
+            Button {
+                notchDisplayEnabled = false
+            } label: {
+                Label(
+                    appLanguage.localized(chinese: "隐藏刘海", english: "Hide notch"),
+                    systemImage: "eye.slash"
+                )
+            }
+
+            Divider()
+
             SettingsLink {
                 Label(
                     appLanguage.localized(chinese: "设置…", english: "Settings…"),
@@ -1203,6 +1218,8 @@ private struct ExpandedNotchView: View {
     let onActivateChatGPT: () -> Void
     let onOpenThread: (String) -> Void
     let onResetScheduleExpandedChanged: (Bool) -> Void
+    let notchDisplayEnabled: Bool
+    let onNotchDisplayEnabledChanged: (Bool) -> Void
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -1280,8 +1297,68 @@ private struct ExpandedNotchView: View {
 
             Spacer(minLength: 6)
 
-            HStack {
+            HStack(spacing: 8) {
                 Spacer(minLength: 0)
+
+                Toggle(
+                    isOn: Binding(
+                        get: { notchDisplayEnabled },
+                        set: onNotchDisplayEnabledChanged
+                    )
+                ) {
+                    HStack(spacing: 6) {
+                        Image(
+                            systemName: notchDisplayEnabled
+                                ? "eye.fill"
+                                : "eye.slash.fill"
+                        )
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(
+                            notchDisplayEnabled
+                                ? NotchPalette.success
+                                : NotchPalette.secondaryText
+                        )
+
+                        Text(
+                            notchDisplayEnabled
+                                ? language.localized(chinese: "刘海开启", english: "Notch On")
+                                : language.localized(chinese: "刘海关闭", english: "Notch Off")
+                        )
+                        .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(
+                            notchDisplayEnabled
+                                ? NotchPalette.primaryText
+                                : NotchPalette.secondaryText
+                        )
+                    }
+                    .padding(.horizontal, 9)
+                    .frame(height: 24)
+                    .background(
+                        notchDisplayEnabled
+                            ? NotchPalette.success.opacity(0.12)
+                            : NotchPalette.row.opacity(0.82),
+                        in: Capsule()
+                    )
+                    .overlay {
+                        Capsule()
+                            .stroke(
+                                notchDisplayEnabled
+                                    ? NotchPalette.success.opacity(0.32)
+                                    : NotchPalette.border,
+                                lineWidth: 0.75
+                            )
+                    }
+                }
+                .toggleStyle(.button)
+                .buttonStyle(NotchButtonStyle())
+                .accessibilityLabel(
+                    language.localized(chinese: "显示刘海", english: "Show notch")
+                )
+                .accessibilityValue(
+                    notchDisplayEnabled
+                        ? language.localized(chinese: "开启", english: "On")
+                        : language.localized(chinese: "关闭", english: "Off")
+                )
 
                 SettingsLink {
                     Label(

@@ -586,22 +586,27 @@ contracts:
     last_verified_commit: null
 
   - id: NOTCH-VISIBILITY-040
-    title: The notch panel remains visible after switching to another normal application
+    title: The notch display is reversible and stays out of immersive full-screen content
     status: active
-    statement: When CodexNotch is using a valid notch screen, moving keyboard focus from Codex or ChatGPT to another ordinary foreground application must not remove the compact or expanded notch panel. If AppKit completes its accessory-app deactivation after the workspace activation notification, the next main-loop turn reasserts the requested notch panel above normal application windows. In menu-bar fallback mode, no notch panel may reappear; the fallback status item remains the only surface.
-    rationale: Feishu can make AppKit withdraw CodexNotch's nonactivating panel after its normal workspace activation callback already rendered it. The process remains alive and Feishu uses an ordinary window layer, so the correct fix is a generic post-deactivation panel-order guard rather than a Feishu-specific bundle-ID exception or a higher window level.
-    source: user-reported-incident-and-local-reproduction
+    statement: The expanded notch card and the notch context menu provide a persistent, clearly labeled and high-contrast notch-display switch, enabled by default, which applies immediately and shows whether the notch is currently shown or hidden. When enabled and CodexNotch is using a valid notch screen, moving keyboard focus from Codex or ChatGPT to another ordinary foreground application must not remove the compact or expanded notch panel. If AppKit completes its accessory-app deactivation after the workspace activation notification, the next main-loop turn reasserts the requested notch panel above normal application windows. When disabled, the visible surface and compact indicators must disappear, but a fully transparent hover sensor remains anchored to the physical notch; moving the pointer into that sensor reopens the expanded card even while the preference is off, so the same in-card switch can turn the notch back on. The system-wide ⌥⌘N hot key toggles the visibility state and the menu bar also provides a Show notch action. The panel explicitly opts out of native full-screen participation. When the frontmost application's layer-zero content window covers the complete notch display, CodexNotch must order out both the visible panel and the transparent hover sensor whether the application uses a native full-screen Space or a borderless game window; application activation, active-Space changes, and a low-frequency window-boundary check update this suppression, and leaving full screen automatically restores the previously requested notch mode. In automatic menu-bar fallback mode, no notch panel or hover sensor may reappear; the fallback status item remains the only surface.
+    rationale: >-
+      Feishu can make AppKit withdraw CodexNotch's nonactivating panel after its normal workspace activation callback already rendered it. The process remains alive and Feishu uses an ordinary window layer, so the correct fix is a generic post-deactivation panel-order guard rather than a Feishu-specific bundle-ID exception or a higher window level. Hiding the visible notch must not destroy the user's intuitive recovery location: a transparent notch-anchored sensor keeps the entry point discoverable without displaying quota or task data, and hovering it exposes the same card switch that restores the display. A registered system hot key and menu-bar action remain secondary recovery paths. Conversely, full-screen video, presentation, and game content is intentionally immersive. Native Space flags do not identify borderless games, so the runtime also needs a privacy-preserving geometric check that reads only frontmost window ownership, layer, and bounds and never captures or logs screen content.
+    source: user-reported-incidents-and-local-reproduction
     owner: project-maintainer
     risk: medium
     scope:
-      include: [notch-window, compact-state, expanded-state, application-activation]
+      include: [notch-window, compact-state, expanded-state, settings, application-activation, full-screen-spaces, borderless-full-screen-games]
       exclude: [menu-bar-fallback-content, quota-semantics, activity-state-machine, window-level]
     examples:
-      positive: Switching from Codex to Feishu leaves the notch visible, and switching to any other ordinary application follows the same rule without recognizing that application's bundle identifier.
-      negative: Hiding the panel when Feishu becomes frontmost, adding a Feishu-only exception, raising the panel above system-level windows, or restoring a panel while the no-notch menu-bar fallback is active.
+      positive: With the notch enabled, switching from Codex to Feishu leaves it visible and switching to any other ordinary desktop application follows the same rule without recognizing that application's bundle identifier; the expanded card exposes a prominent labeled switch with an obvious shown/hidden state, turning it off hides the visible surface but leaves a transparent sensor at the physical notch, hovering that area reopens the card, and turning the same switch on restores the compact notch; ⌥⌘N and the menu bar remain available as secondary recovery paths; a browser in native full screen and a borderless full-screen game both remain completely uncovered, and leaving either mode restores the notch.
+      negative: Hiding the enabled panel when Feishu becomes frontmost, destroying the notch hover sensor during ordinary desktop use so the card cannot be recovered from the user's expected location, exposing quota or task content while hidden and not hovered, adding a Feishu-only or game-bundle exception, hiding without an available recovery path, leaving the visible panel or transparent sensor over an entire-screen frontmost game window, raising the panel above system-level windows, or restoring a visible panel while full-screen suppression or the no-notch menu-bar fallback is active.
     guards:
       - Tests/CodexNotchTests/NotchPanelVisibilityPolicyTests.swift
-      - "manual: switch repeatedly between Codex, Feishu, and WeCom on physical-notch hardware; confirm compact and expanded panels remain visible while the menu-bar fallback remains panel-free"
+      - Tests/CodexNotchTests/FrontmostFullScreenDetectorTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePreferencesTests.swift
+      - Tests/CodexNotchTests/SmokeTests.swift
+      - docs/decisions/007-suppress-notch-over-full-screen-content.md
+      - "manual: confirm ordinary app switches retain the notch; then enter a native full-screen window and a borderless full-screen game on the notch display, confirm both the visible panel and hidden hover sensor stay absent, exit full screen and confirm the requested notch mode restores, and verify the automatic menu-bar fallback remains panel-free"
     supersedes: []
     superseded_by: null
     last_verified_commit: null

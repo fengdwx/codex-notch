@@ -6,7 +6,20 @@ final class NotchPanelVisibilityPolicyTests: XCTestCase {
         XCTAssertTrue(
             NotchPanelVisibilityPolicy.shouldRestoreAfterApplicationSwitch(
                 panelIsRequested: true,
-                layoutMode: .notch
+                layoutMode: .notch,
+                displayIsEnabled: true,
+                isSuppressedByFullScreen: false
+            )
+        )
+    }
+
+    func testFullScreenSuppressionPreventsApplicationSwitchFromRestoringThePanel() {
+        XCTAssertFalse(
+            NotchPanelVisibilityPolicy.shouldRestoreAfterApplicationSwitch(
+                panelIsRequested: true,
+                layoutMode: .notch,
+                displayIsEnabled: true,
+                isSuppressedByFullScreen: true
             )
         )
     }
@@ -15,7 +28,8 @@ final class NotchPanelVisibilityPolicyTests: XCTestCase {
         XCTAssertFalse(
             NotchPanelVisibilityPolicy.shouldRestoreAfterApplicationSwitch(
                 panelIsRequested: true,
-                layoutMode: .menuBarFallback
+                layoutMode: .menuBarFallback,
+                displayIsEnabled: true
             )
         )
     }
@@ -24,8 +38,47 @@ final class NotchPanelVisibilityPolicyTests: XCTestCase {
         XCTAssertFalse(
             NotchPanelVisibilityPolicy.shouldRestoreAfterApplicationSwitch(
                 panelIsRequested: false,
-                layoutMode: .notch
+                layoutMode: .notch,
+                displayIsEnabled: true
             )
         )
+    }
+
+    func testHiddenRecoverySensorRestoresAfterAnAppSwitch() {
+        XCTAssertTrue(
+            NotchPanelVisibilityPolicy.shouldRestoreAfterApplicationSwitch(
+                panelIsRequested: true,
+                layoutMode: .notch,
+                displayIsEnabled: false
+            )
+        )
+    }
+
+    func testHiddenDisplayKeepsOnlyTheNotchHoverSensor() {
+        XCTAssertTrue(
+            NotchPanelVisibilityPolicy.shouldKeepHiddenHoverSensor(
+                layoutMode: .notch,
+                displayIsEnabled: false
+            )
+        )
+        XCTAssertFalse(
+            NotchPanelVisibilityPolicy.shouldKeepHiddenHoverSensor(
+                layoutMode: .menuBarFallback,
+                displayIsEnabled: false
+            )
+        )
+        XCTAssertFalse(
+            NotchPanelVisibilityPolicy.shouldKeepHiddenHoverSensor(
+                layoutMode: .notch,
+                displayIsEnabled: true
+            )
+        )
+    }
+
+    func testNotchPanelDoesNotJoinAnotherAppsFullScreenSpace() {
+        let panel = NotchPanel(contentRect: .zero)
+
+        XCTAssertFalse(panel.collectionBehavior.contains(.fullScreenAuxiliary))
+        XCTAssertTrue(panel.collectionBehavior.contains(.fullScreenNone))
     }
 }
