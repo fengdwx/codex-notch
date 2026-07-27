@@ -2,7 +2,6 @@ import Foundation
 
 enum RolloutEventKind: Equatable, Sendable {
     case sessionMeta(threadID: String, cwd: String?, originator: String?)
-    case userMessage(message: String)
     case taskStarted(turnID: String?)
     case taskCompleted(turnID: String?)
     case turnAborted(turnID: String?)
@@ -44,7 +43,6 @@ struct SessionActivity: Equatable, Identifiable, Sendable {
 
     func updating(
         threadID: String = "",
-        title: String? = nil,
         cwd: String? = nil,
         originator: String? = nil,
         lastActivityAt: Date? = nil
@@ -52,28 +50,24 @@ struct SessionActivity: Equatable, Identifiable, Sendable {
         SessionActivity(
             threadID: threadID.isEmpty ? self.threadID : threadID,
             turnID: turnID,
-            title: title ?? self.title,
+            title: title,
             cwd: cwd ?? self.cwd,
             originator: originator ?? self.originator,
             startedAt: startedAt,
             lastActivityAt: lastActivityAt ?? self.lastActivityAt
         )
     }
-}
 
-enum ConversationTitle {
-    static let maximumLength = 96
-
-    static func normalized(_ rawValue: String) -> String? {
-        let collapsed = rawValue
-            .split(whereSeparator: { $0.isWhitespace })
-            .joined(separator: " ")
-        guard !collapsed.isEmpty else { return nil }
-        guard !collapsed.hasPrefix("# Response annotations:"),
-              !collapsed.hasPrefix("# Files mentioned by the user:") else {
-            return nil
-        }
-        return String(collapsed.prefix(maximumLength))
+    func withTitle(_ title: String?) -> SessionActivity {
+        SessionActivity(
+            threadID: threadID,
+            turnID: turnID,
+            title: title,
+            cwd: cwd,
+            originator: originator,
+            startedAt: startedAt,
+            lastActivityAt: lastActivityAt
+        )
     }
 }
 
@@ -87,7 +81,6 @@ enum ActiveSessionReducer {
         var threadID = "unknown-thread"
         var cwd: String?
         var originator: String?
-        var latestTitle: String?
         var active: [String: SessionActivity] = [:]
         var completed: [SessionActivity] = []
 
@@ -100,15 +93,6 @@ enum ActiveSessionReducer {
                 active = active.mapValues {
                     $0.updating(threadID: threadID, cwd: cwd, originator: originator)
                 }
-
-            case let .userMessage(message):
-                guard let title = ConversationTitle.normalized(message) else { continue }
-                latestTitle = title
-                guard let key = matchingKey(for: nil, active: active),
-                      let session = active[key] else {
-                    continue
-                }
-                active[key] = session.updating(title: title, lastActivityAt: event.timestamp)
 
             case let .taskStarted(turnID):
                 let resolvedTurnID = turnID ?? "anonymous-turn-\(index)"
@@ -124,7 +108,7 @@ enum ActiveSessionReducer {
                 active[resolvedTurnID] = SessionActivity(
                     threadID: threadID,
                     turnID: resolvedTurnID,
-                    title: latestTitle,
+                    title: nil,
                     cwd: cwd,
                     originator: originator,
                     startedAt: timestamp,

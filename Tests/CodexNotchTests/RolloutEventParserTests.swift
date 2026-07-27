@@ -51,7 +51,7 @@ final class RolloutEventParserTests: XCTestCase {
         )
     }
 
-    func testUserMessageBecomesCompletedConversationTitle() {
+    func testUserMessageNeverBecomesCompletedConversationTitle() {
         let data = Data(
             """
             {"timestamp":"2026-07-16T09:00:00Z","type":"session_meta","payload":{"id":"thread-title","cwd":"/tmp/project"}}
@@ -61,20 +61,11 @@ final class RolloutEventParserTests: XCTestCase {
             """.utf8
         )
 
-        let result = ActiveSessionReducer.reduce(RolloutEventParser.parse(data: data))
+        let events = RolloutEventParser.parse(data: data)
+        let result = ActiveSessionReducer.reduce(events)
 
-        XCTAssertEqual(result.completed.first?.title, "修复 登录页 阴影")
-    }
-
-    func testConversationTitleIsBoundedInMemory() {
-        let title = ConversationTitle.normalized(String(repeating: "a", count: 120))
-
-        XCTAssertEqual(title?.count, 96)
-    }
-
-    func testInternalRolloutWrappersAreNotConversationTitles() {
-        XCTAssertNil(ConversationTitle.normalized("# Response annotations: internal metadata"))
-        XCTAssertNil(ConversationTitle.normalized("# Files mentioned by the user: image.png"))
+        XCTAssertEqual(events.count, 3)
+        XCTAssertNil(result.completed.first?.title)
     }
 
     private func fixtureData(_ name: String) throws -> Data {

@@ -111,7 +111,8 @@ Macs without a notch automatically use a menu-bar fallback.
 - The authentication token is read only from `CODEX_HOME/auth.json` and remains in process memory. CodexNotch never writes it to a cache or log.
 - Quota and reset-credit details come from ChatGPT's read-only usage and reset-credit endpoints.
 - Task state is parsed only from rollout JSONL files in `CODEX_HOME/sessions`.
-- CodexNotch never records Authorization headers, complete usage responses, or user-message bodies.
+- Recent-conversation labels are joined by thread ID to Codex's short `threads.title` summary in read-only `CODEX_HOME/state_5.sqlite`; rollout message bodies, `first_user_message`, and `preview` are ignored.
+- CodexNotch never records Authorization headers, complete usage responses, user-message bodies, or conversation-title caches.
 
 The usage endpoint is an internal ChatGPT endpoint and its fields may change. If it fails, CodexNotch keeps the last successful quota while task monitoring continues.
 

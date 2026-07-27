@@ -1,5 +1,9 @@
 # Persistent Quota and Recent Conversations Design
 
+> **Superseded title-source note (2026-07-26):** Recent-row titles no longer
+> come from rollout user messages. The active rule is
+> [decision 008](../decisions/008-local-thread-summary-titles.md).
+
 ## Goal
 
 Keep CodexNotch visible as a calm quota indicator at all times, make running and just-completed work visually distinct, and turn the expanded notch into a useful two-item recent-conversation launcher.

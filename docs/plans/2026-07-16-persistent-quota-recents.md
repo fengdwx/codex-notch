@@ -1,5 +1,10 @@
 # Persistent Quota and Recent Conversations Implementation Plan
 
+> **Superseded title-source note (2026-07-26):** Conversation labels now come
+> only from Codex's read-only `threads.title` summary. See
+> [decision 008](../decisions/008-local-thread-summary-titles.md); this
+> historical plan's rollout-message-title steps must not be restored.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Keep the quota notch visible, add truthful running/completed animation states, and show the two most recent real Codex conversations in the expanded panel.

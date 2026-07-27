@@ -111,7 +111,8 @@ CodexNotch 默认读取 `~/.codex`。如果你的 Codex 使用其他目录，可
 - 认证令牌只从 `CODEX_HOME/auth.json` 读取并保存在进程内存，不写入 CodexNotch 缓存或日志。
 - 额度与可用重置额度明细分别请求 ChatGPT 的只读 usage 和重置额度接口。
 - 任务状态只解析本地 `CODEX_HOME/sessions` 中的 rollout JSONL 文件。
-- 不记录 Authorization header、完整 usage 响应或用户消息正文。
+- 最近对话按 thread ID 只读匹配 `CODEX_HOME/state_5.sqlite` 中 Codex 维护的简短 `threads.title`；不读取 rollout 消息正文、`first_user_message` 或 `preview`。
+- 不记录 Authorization header、完整 usage 响应、用户消息正文或对话标题缓存。
 
 usage 接口属于 ChatGPT 内部接口，字段未来可能变化。接口异常时会保留最后一次成功额度，任务监听仍会继续工作。
 
