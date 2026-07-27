@@ -1,6 +1,8 @@
 import Foundation
 
 final class RolloutActivityMonitor {
+    static let eventScanCoalescingInterval: TimeInterval = 0.5
+
     private let rootURL: URL
     private let store: ActiveSessionStore
     private let reader = IncrementalJSONLReader()
@@ -10,15 +12,14 @@ final class RolloutActivityMonitor {
 
     private var cursors: [URL: FileCursor] = [:]
     private var eventsByFile: [URL: [RolloutEvent]] = [:]
+    private var pendingScan: DispatchWorkItem?
 
     init(rootURL: URL, store: ActiveSessionStore = ActiveSessionStore()) {
         self.rootURL = rootURL
         self.store = store
         self.changeSource = FSEventChangeSource(rootURL: rootURL)
         self.changeSource.onChange = { [weak self] _ in
-            self?.scanQueue.async { [weak self] in
-                self?.scanRecentRollouts()
-            }
+            self?.scheduleScan(after: Self.eventScanCoalescingInterval)
         }
     }
 
@@ -27,20 +28,37 @@ final class RolloutActivityMonitor {
         // installation. Do not block the main thread before the quota badge
         // has a chance to render; the serial scan queue also preserves the
         // ordering relative to later FSEvents callbacks.
-        scanQueue.async { [weak self] in
-            self?.scanRecentRollouts()
-        }
+        scheduleScan(after: 0)
         changeSource.start()
     }
 
     func rescan() {
-        scanQueue.async { [weak self] in
-            self?.scanRecentRollouts()
-        }
+        scheduleScan(after: Self.eventScanCoalescingInterval)
     }
 
     func stop() {
         changeSource.stop()
+        scanQueue.async { [weak self] in
+            self?.pendingScan?.cancel()
+            self?.pendingScan = nil
+        }
+    }
+
+    private func scheduleScan(after delay: TimeInterval) {
+        scanQueue.async { [weak self] in
+            guard let self, self.pendingScan == nil else { return }
+            let workItem = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                self.pendingScan = nil
+                self.scanRecentRollouts()
+            }
+            self.pendingScan = workItem
+            if delay == 0 {
+                self.scanQueue.async(execute: workItem)
+            } else {
+                self.scanQueue.asyncAfter(deadline: .now() + delay, execute: workItem)
+            }
+        }
     }
 
     private func scanRecentRollouts() {

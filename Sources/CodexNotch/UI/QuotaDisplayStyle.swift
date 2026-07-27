@@ -83,8 +83,13 @@ struct CompletionSparkSpec: Equatable {
 }
 
 enum QuotaIndicatorMotion {
-    static let runningRingMinimumFrameInterval: TimeInterval = 1.0 / 8.0
-    static let waveBallMinimumFrameInterval: TimeInterval = 1.0 / 8.0
+    // The physical-notch review confirmed that 8 FPS is the lowest cadence
+    // that still reads as smooth at 22pt. Core Animation owns those frames so
+    // SwiftUI no longer rebuilds the indicator on every visual step.
+    static let runningRingMinimumFrameInterval: TimeInterval =
+        1.0 / Double(QuotaLayerAnimationPolicy.preferredFramesPerSecond)
+    static let waveBallMinimumFrameInterval: TimeInterval =
+        1.0 / Double(QuotaLayerAnimationPolicy.preferredFramesPerSecond)
     static let completionParticleTravelDuration: TimeInterval = 0.72
     static let completionIgnitionDuration: TimeInterval = 0.14
     static let completionSparkDuration: TimeInterval = 0.31
@@ -437,6 +442,17 @@ enum QuotaIndicatorMotion {
         motionEnabled _: Bool
     ) -> Bool {
         false
+    }
+}
+
+enum QuotaLayerAnimationPolicy {
+    static let preferredFramesPerSecond: Float = 8
+
+    static func shouldRun(
+        requested: Bool,
+        surfaceIsVisible: Bool
+    ) -> Bool {
+        requested && surfaceIsVisible
     }
 }
 

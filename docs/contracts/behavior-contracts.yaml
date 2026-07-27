@@ -893,8 +893,8 @@ contracts:
 
   - id: QUOTA-SEMANTICS-014
     title: Weekly quota keeps three warning tiers in a lighter compact indicator
-    status: active
-    statement: The right side prioritizes the weekly quota's remaining percentage; the number stays readable at 9.5pt inside a 22pt ring or wave ball; the ring gap starts at 12 o'clock and progresses clockwise. The compact ring stroke remains 2.25pt and the wave-ball edge remains 1.75pt. Remaining quota above 20% is green, above 10% and up to 20% is yellow, and 10% or less is deep red; hue does not change continuously with the percentage. While a task is running, app animations are enabled, and Reduce Motion is disabled, the ring uses a gently flowing monochrome light-to-dark gradient for the current tier without a white highlight. Its continuous timeline requests no more than 8 frames per second and completes a gradient cycle in 3 seconds. When app animations are disabled or Reduce Motion is enabled, a running ring immediately uses the same full-brightness solid tier color as idle and completed states; it does not retain a dim static gradient or independently rotating highlight arc. The wave ball uses the same three tiers and rises and falls only while a task is running, app animations are enabled, and Reduce Motion is disabled; its continuous timeline requests no more than 8 frames per second. Idle, completed, user-disabled-animation, and Reduce Motion states keep a still liquid level. Expanded quota, reset, and recent-conversation text retain their readable sizes and matching line heights; the quota bar is followed first by the current weekly reset timestamp and a second-level countdown; the full “N reset credits available” row remains clickable, and the card expands only downward to list each `rate-limit-reset-credits` item with `status=available`, its exact expiry time, and a second-level countdown without repeating the reset-credit name. The real notch in Settings remains the live preview, with no duplicate static preview card; the lower-right of the expanded panel continues to provide a Settings entry.
+    status: superseded
+    statement: The right side prioritizes the weekly quota's remaining percentage; the number stays readable at 9.5pt inside a 22pt ring or wave ball; the ring gap starts at 12 o'clock and progresses clockwise. The compact ring stroke remains 2.25pt and the wave-ball edge remains 1.75pt. Remaining quota above 20% is green, above 10% and up to 20% is yellow, and 10% or less is deep red; hue does not change continuously with the percentage. While a task is running, app animations are enabled, and Reduce Motion is disabled, the ring uses a gently flowing monochrome light-to-dark gradient for the current tier without a white highlight. Its continuous timeline requests 4 frames per second and completes a gradient cycle in 3 seconds. When app animations are disabled or Reduce Motion is enabled, a running ring immediately uses the same full-brightness solid tier color as idle and completed states; it does not retain a dim static gradient or independently rotating highlight arc. The wave ball uses the same three tiers and rises and falls only while a task is running, app animations are enabled, and Reduce Motion is disabled; its continuous timeline requests 4 frames per second. Idle, completed, user-disabled-animation, and Reduce Motion states keep a still liquid level. Expanded quota, reset, and recent-conversation text retain their readable sizes and matching line heights; the quota bar is followed first by the current weekly reset timestamp and a second-level countdown; the full “N reset credits available” row remains clickable, and the card expands only downward to list each `rate-limit-reset-credits` item with `status=available`, its exact expiry time, and a second-level countdown without repeating the reset-credit name. The real notch in Settings remains the live preview, with no duplicate static preview card; the lower-right of the expanded panel continues to provide a Settings entry.
     rationale: Keeping most available quota a stable green reduces visual noise; yellow begins at 20% as a warning, while deep red begins at 10% as a strong alert. Physical-notch review found the previous 24pt quota indicator visually heavier than the 18pt ChatGPT mark, then found the 10.5pt internal number slightly too large after the indicator moved to 22pt. A 22pt outer diameter with a 9.5pt number reduces both sources of visual weight while retaining the 2.25pt ring weight, the 1.75pt wave-ball edge, and readable internal percentage text.
     source: user-confirmed-physical-notch-feedback
     owner: project-maintainer
@@ -913,25 +913,50 @@ contracts:
       - "manual: inspect the running monochrome gradient with motion enabled and the full-brightness solid running ring with motion disabled"
       - "manual: confirm the 3-second 8fps ring and 8fps wave remain visually acceptable on physical-notch hardware"
     supersedes: [QUOTA-SEMANTICS-013]
+    superseded_by: QUOTA-SEMANTICS-043
+    last_verified_commit: null
+
+  - id: QUOTA-SEMANTICS-043
+    title: Weekly quota uses visible-only layer-backed motion at eight frames per second
+    status: active
+    statement: The right side prioritizes the weekly quota's remaining percentage; the number stays readable at 9.5pt inside a 22pt ring or wave ball; the ring gap starts at 12 o'clock and progresses clockwise. The compact ring stroke remains 2.25pt and the wave-ball edge remains 1.75pt. Remaining quota above 20% is green, above 10% and up to 20% is yellow, and 10% or less is deep red; hue does not change continuously with the percentage. While a task is running, app animations are enabled, Reduce Motion is disabled, and the notch surface is visible, the ring uses a gently flowing monochrome light-to-dark conic gradient for the current tier without a white highlight. Core Animation rotates that gradient at a preferred 8 frames per second and completes a cycle in 3 seconds; SwiftUI must not rebuild the ring from a continuous TimelineView. Under the same conditions, the wave ball uses a precomputed repeated wave path and Core Animation translates it horizontally at a preferred 8 frames per second; its path is rebuilt only when geometry, liquid level, or color changes. When the surface is detached or no longer visible, the task stops, app animations are disabled, or Reduce Motion is enabled, the corresponding layer animations are removed. Idle, completed, user-disabled-animation, and Reduce Motion states keep a full-brightness solid ring or still liquid level. Expanded quota, reset, and recent-conversation text retain their readable sizes and matching line heights; the quota bar is followed first by the current weekly reset timestamp and a second-level countdown; the full “N reset credits available” row remains clickable, and the card expands only downward to list each `rate-limit-reset-credits` item with `status=available`, its exact expiry time, and a second-level countdown without repeating the reset-credit name. The real notch in Settings remains the live preview, with no duplicate static preview card; the lower-right of the expanded panel continues to provide a Settings entry.
+    rationale: Physical-notch review found 4 FPS visibly rough while 8 FPS remained acceptable. Moving the persistent motion into Core Animation preserves that cadence without requiring SwiftUI to rebuild gradient stops or a sampled wave path eight times each second. Explicit visibility and lifecycle gates prevent detached or hidden indicators from continuing animation work.
+    source: user-confirmed-physical-notch-feedback-and-performance-investigation
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [compact-state, quota-expanded-state, settings, quota-animation]
+      exclude: [cost-estimation, window-geometry, completion-animation]
+    examples:
+      positive: The compact quota visual remains 22pt with a centered 9.5pt number; a visible running ring and wave ball move at the user-confirmed 8 FPS cadence through Core Animation, both stop and remove their layer animations as soon as motion is disallowed or the surface disappears, and stopped states remain bright and readable.
+      negative: Restoring the 4 FPS cadence, driving either persistent effect with a SwiftUI TimelineView, rebuilding the wave path every visual frame, leaving a layer animation running after the surface disappears, changing warning thresholds or indicator geometry, or continuing motion while idle, completed, Reduce Motion is enabled, or app animations are disabled.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchTextTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - docs/decisions/010-layer-backed-quota-motion.md
+      - "manual: on a physical notch, inspect the 3-second 8fps ring and wave, then stop the task and toggle both app animations and Reduce Motion to confirm immediate static cues"
+    supersedes: [QUOTA-SEMANTICS-014]
     superseded_by: null
     last_verified_commit: null
 
   - id: PRIVACY-BOUNDARY-005
     title: Local authentication and conversation content must not be persisted or exposed
     status: active
-    statement: Authentication tokens are used only in process memory; they must not be written to the repository, app cache, or logs; user-message bodies must not be displayed or recorded; the no-notch fallback must not broaden content exposure.
+    statement: Authentication tokens are used only in process memory; they must not be written to the repository, app cache, or logs; user-message bodies must not be displayed or recorded; recent rows may use only Codex's short `threads.title` summary from a read-only local-state lookup; the no-notch fallback must not broaden content exposure.
     rationale: The app reads local ChatGPT/Codex login state and session logs, so minimizing exposure is a non-negotiable boundary.
     source: technical-constraint
     owner: project-maintainer
     risk: critical
     scope:
-      include: [auth-reader, usage-client, rollout-monitor, logs, fallback-menu]
+      include: [auth-reader, usage-client, rollout-monitor, thread-title-reader, logs, fallback-menu]
       exclude: [user-provided project names and thread identifiers needed for navigation]
     examples:
-      positive: The Authorization header from a usage request does not enter logs; the expanded list shows only summary titles and project names.
-      negative: Committing auth.json, printing a token, caching the complete usage response, or displaying a user-message body.
+      positive: The Authorization header from a usage request does not enter logs; the expanded list shows only read-only Codex summary titles and project names.
+      negative: Committing auth.json, printing a token, caching the complete usage response, querying `first_user_message`, or displaying a user-message body.
     guards:
       - Tests/CodexNotchTests/CodexAuthReaderTests.swift
+      - Tests/CodexNotchTests/CodexThreadTitleReaderTests.swift
       - "manual: sensitive-diff and runtime-log review until a dedicated secret scanner exists"
     supersedes: []
     superseded_by: null

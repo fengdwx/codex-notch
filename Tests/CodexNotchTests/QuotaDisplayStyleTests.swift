@@ -75,7 +75,7 @@ final class QuotaDisplayStyleTests: XCTestCase {
         )
     }
 
-    func testContinuousQuotaMotionUsesLowPowerCadences() {
+    func testContinuousQuotaMotionUsesEightFramePerSecondCadences() {
         XCTAssertEqual(
             QuotaIndicatorMotion.runningRingMinimumFrameInterval,
             1.0 / 8.0,
@@ -85,6 +85,31 @@ final class QuotaDisplayStyleTests: XCTestCase {
             QuotaIndicatorMotion.waveBallMinimumFrameInterval,
             1.0 / 8.0,
             accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            QuotaLayerAnimationPolicy.preferredFramesPerSecond,
+            8
+        )
+    }
+
+    func testLayerAnimationStopsWhenItIsNotRequestedOrVisible() {
+        XCTAssertTrue(
+            QuotaLayerAnimationPolicy.shouldRun(
+                requested: true,
+                surfaceIsVisible: true
+            )
+        )
+        XCTAssertFalse(
+            QuotaLayerAnimationPolicy.shouldRun(
+                requested: false,
+                surfaceIsVisible: true
+            )
+        )
+        XCTAssertFalse(
+            QuotaLayerAnimationPolicy.shouldRun(
+                requested: true,
+                surfaceIsVisible: false
+            )
         )
     }
 

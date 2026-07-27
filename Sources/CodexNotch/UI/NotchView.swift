@@ -54,6 +54,16 @@ final class NotchViewModel: ObservableObject {
         isResetScheduleExpanded: Bool = false,
         animationsEnabled: Bool = AppAnimationPreference.defaultEnabled
     ) {
+        let resolvedNow = Self.secondPrecision(now)
+        let changesModel = self.state != state
+            || self.now != resolvedNow
+            || self.cameraSafeAreaInset != cameraSafeAreaInset
+            || self.compactWidth != compactWidth
+            || self.surfaceSize != surfaceSize
+            || self.isResetScheduleExpanded != isResetScheduleExpanded
+            || self.animationsEnabled != animationsEnabled
+        guard changesModel else { return }
+
         let wasExpanded = Self.isExpanded(self.state)
         let willBeExpanded = Self.isExpanded(state)
         let changesSurface = wasExpanded != willBeExpanded
@@ -62,13 +72,19 @@ final class NotchViewModel: ObservableObject {
             || self.isResetScheduleExpanded != isResetScheduleExpanded
 
         let applyUpdate = {
-            self.state = state
-            self.now = now
-            self.cameraSafeAreaInset = cameraSafeAreaInset
-            self.compactWidth = compactWidth
-            self.surfaceSize = surfaceSize
-            self.isResetScheduleExpanded = isResetScheduleExpanded
-            self.animationsEnabled = animationsEnabled
+            if self.state != state { self.state = state }
+            if self.now != resolvedNow { self.now = resolvedNow }
+            if self.cameraSafeAreaInset != cameraSafeAreaInset {
+                self.cameraSafeAreaInset = cameraSafeAreaInset
+            }
+            if self.compactWidth != compactWidth { self.compactWidth = compactWidth }
+            if self.surfaceSize != surfaceSize { self.surfaceSize = surfaceSize }
+            if self.isResetScheduleExpanded != isResetScheduleExpanded {
+                self.isResetScheduleExpanded = isResetScheduleExpanded
+            }
+            if self.animationsEnabled != animationsEnabled {
+                self.animationsEnabled = animationsEnabled
+            }
         }
 
         if NotchPresentationMotion.shouldAnimateSurface(
@@ -92,9 +108,19 @@ final class NotchViewModel: ObservableObject {
         }
     }
 
+    func updateClock(now: Date) {
+        let resolvedNow = Self.secondPrecision(now)
+        guard self.now != resolvedNow else { return }
+        self.now = resolvedNow
+    }
+
     private static func isExpanded(_ state: NotchPresentationState) -> Bool {
         if case .expanded = state { return true }
         return false
+    }
+
+    private static func secondPrecision(_ date: Date) -> Date {
+        Date(timeIntervalSince1970: date.timeIntervalSince1970.rounded(.down))
     }
 }
 
@@ -876,6 +902,10 @@ private struct QuotaWaveBall: View {
         return QuotaColorScale.color(for: remainingPercent)
     }
 
+    private var progressColorComponents: QuotaColorScale.RGB {
+        QuotaColorScale.components(for: remainingPercent)
+    }
+
     var body: some View {
         ZStack {
             Circle()
@@ -921,28 +951,15 @@ private struct QuotaWaveBall: View {
 
     @ViewBuilder
     private var waveFill: some View {
-        if QuotaIndicatorMotion.shouldAnimate(
-            isTaskRunning: activity == .running,
-            motionEnabled: motionEnabled
-        ) {
-            TimelineView(.animation(
-                minimumInterval: QuotaIndicatorMotion.waveBallMinimumFrameInterval
-            )) { context in
-                waveShape(
-                    phase: context.date.timeIntervalSinceReferenceDate * 2.0
-                )
-            }
-        } else {
-            waveShape(phase: 0)
-        }
-    }
-
-    private func waveShape(phase: Double) -> some View {
-        QuotaWaveShape(
+        QuotaWaveLayer(
+            color: progressColorComponents,
             fillProgress: displayedProgress,
-            phase: phase
+            isAnimating: QuotaIndicatorMotion.shouldAnimate(
+                isTaskRunning: activity == .running,
+                motionEnabled: motionEnabled
+            ),
+            progressAnimationEnabled: motionEnabled
         )
-        .fill(progressColor)
         .clipShape(Circle())
     }
 
@@ -978,43 +995,6 @@ private struct QuotaWaveBall: View {
     }
 }
 
-private struct QuotaWaveShape: Shape {
-    var fillProgress: CGFloat
-    var phase: Double
-
-    var animatableData: AnimatablePair<CGFloat, Double> {
-        get { AnimatablePair(fillProgress, phase) }
-        set {
-            fillProgress = newValue.first
-            phase = newValue.second
-        }
-    }
-
-    func path(in rect: CGRect) -> Path {
-        let progress = min(max(fillProgress, 0), 1)
-        let level = rect.maxY - rect.height * progress
-        let amplitude = max(0.8, rect.height * 0.075)
-        let samples = 28
-        let cycles = 1.35
-
-        var path = Path()
-        path.move(to: CGPoint(x: rect.minX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.minX, y: level))
-
-        for index in 0...samples {
-            let fraction = CGFloat(index) / CGFloat(samples)
-            let x = rect.minX + rect.width * fraction
-            let angle = fraction * CGFloat(cycles * Double.pi * 2) + CGFloat(phase)
-            let y = level + sin(angle) * amplitude
-            path.addLine(to: CGPoint(x: x, y: y))
-        }
-
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
-        path.closeSubpath()
-        return path
-    }
-}
-
 private struct WeeklyQuotaRing: View {
     let style: QuotaDisplayStyle
     let usage: UsageSnapshot?
@@ -1043,6 +1023,10 @@ private struct WeeklyQuotaRing: View {
         return QuotaColorScale.color(for: remainingPercent)
     }
 
+    private var progressColorComponents: QuotaColorScale.RGB {
+        QuotaColorScale.components(for: remainingPercent)
+    }
+
     private var progressTrim: (from: CGFloat, to: CGFloat) {
         switch style {
         case .clockwiseRing:
@@ -1052,13 +1036,6 @@ private struct WeeklyQuotaRing: View {
         case .waveBall:
             return (0, displayedProgress)
         }
-    }
-
-    private var shouldAnimateGradient: Bool {
-        QuotaIndicatorMotion.shouldAnimate(
-            isTaskRunning: activity == .running,
-            motionEnabled: motionEnabled
-        )
     }
 
     var body: some View {
@@ -1111,27 +1088,12 @@ private struct WeeklyQuotaRing: View {
         case .solid:
             quotaArc(progressColor)
         case .gradient:
-            if shouldAnimateGradient {
-                TimelineView(.animation(
-                    minimumInterval: QuotaIndicatorMotion.runningRingMinimumFrameInterval
-                )) { context in
-                    quotaArc(
-                        QuotaRingGradient.gradient(
-                            progressColor: progressColor,
-                            angle: QuotaRingGradientMotion.angle(
-                                at: context.date,
-                                isAnimating: true
-                            )
-                        )
-                    )
-                }
-            } else {
-                quotaArc(
-                    QuotaRingGradient.gradient(
-                        progressColor: progressColor,
-                        angle: QuotaRingGradientMotion.restingAngle
-                    )
-                )
+            QuotaGradientLayer(
+                color: progressColorComponents,
+                isAnimating: true
+            )
+            .mask {
+                quotaArc(Color.white)
             }
         }
     }
@@ -1185,25 +1147,6 @@ private struct WeeklyQuotaRing: View {
         case .completed:
             displayedProgress = targetProgress
         }
-    }
-}
-
-private enum QuotaRingGradient {
-    static func gradient(progressColor: Color, angle: Double) -> AngularGradient {
-        AngularGradient(
-            gradient: Gradient(stops: [
-                .init(color: progressColor.opacity(0.24), location: 0),
-                .init(color: progressColor.opacity(0.42), location: 0.18),
-                .init(color: progressColor.opacity(0.78), location: 0.36),
-                .init(color: progressColor, location: 0.52),
-                .init(color: progressColor.opacity(0.82), location: 0.66),
-                .init(color: progressColor.opacity(0.46), location: 0.82),
-                .init(color: progressColor.opacity(0.24), location: 1)
-            ]),
-            center: .center,
-            startAngle: .degrees(angle),
-            endAngle: .degrees(angle + 360)
-        )
     }
 }
 
