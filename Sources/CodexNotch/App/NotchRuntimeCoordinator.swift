@@ -12,10 +12,14 @@ struct CodexHomeLocator {
 }
 
 final class NotchRuntimeCoordinator {
-    static let sessionPollInterval: TimeInterval = 0.5
-    static let fullScreenPollInterval: TimeInterval = 1
-    static let rolloutRescanInterval: TimeInterval = 5
+    // Session durations and countdowns display whole seconds. Polling faster
+    // than once a second only redraws the same visible value.
+    static let sessionPollInterval: TimeInterval = 1
+    // FSEvents handles normal live updates. This is only a recovery sweep for
+    // dropped/coalesced filesystem events, so it must not be a frequent wakeup.
+    static let rolloutRescanInterval: TimeInterval = 15
     static let usageRefreshInterval: TimeInterval = 60
+    static let titleRefreshInterval: TimeInterval = 15
     static let hoverExpandDelay: TimeInterval = 0.18
     static let hoverCollapseDelay: TimeInterval = 0.12
 
@@ -24,27 +28,34 @@ final class NotchRuntimeCoordinator {
     private let threadNavigator: CodexThreadNavigator
     private let authReader: CodexAuthReader
     private let sessionStore: ActiveSessionStore
+    private let threadTitleReader: ThreadTitleReading
     private let rolloutMonitor: RolloutActivityMonitor
     private let urlSession: URLSession
     private let usageEndpoint: URL
     private let nowProvider: () -> Date
     private let userDefaults: UserDefaults
     private let viewModel: NotchViewModel
+    private let titleReadQueue = DispatchQueue(
+        label: "com.david.codexnotch.thread-title-read",
+        qos: .utility
+    )
 
     private var sessionTimer: Timer?
     private var rolloutRescanTimer: Timer?
     private var usageTask: Task<Void, Never>?
     private var started = false
     private var isChatGPTFrontmost = false
-    private var isFullScreenSuppressed = false
     private var isHovered = false
     private var isPointerInside = false
     private var isResetScheduleExpanded = false
     private var activeSessions: [SessionActivity] = []
     private var recentCompletions: [CompletedSession] = []
+    private var lastSessionSnapshot: ActiveSessionStoreSnapshot?
+    private var threadTitles: [String: String] = [:]
+    private var lastTitleRefreshAt: Date?
+    private var titleRefreshInFlight = false
     private var usage: UsageSnapshot?
     private var lastUsageRequestAt: Date?
-    private var lastFullScreenCheckAt: Date?
     private var usageRequestID: UUID?
     private var hoverExpandWorkItem: DispatchWorkItem?
     private var hoverCollapseWorkItem: DispatchWorkItem?
@@ -58,6 +69,7 @@ final class NotchRuntimeCoordinator {
         threadNavigator: CodexThreadNavigator = CodexThreadNavigator(),
         authReader: CodexAuthReader = CodexAuthReader(),
         sessionStore: ActiveSessionStore = ActiveSessionStore(),
+        threadTitleReader: ThreadTitleReading? = nil,
         urlSession: URLSession = .shared,
         usageEndpoint: URL = CodexUsageClient.defaultEndpoint,
         nowProvider: @escaping () -> Date = { .now },
@@ -78,6 +90,7 @@ final class NotchRuntimeCoordinator {
             environment: authReader.environment,
             homeDirectory: authReader.homeDirectory
         )
+        self.threadTitleReader = threadTitleReader ?? CodexThreadTitleReader(codexHomeURL: codexHome)
         self.rolloutMonitor = RolloutActivityMonitor(
             rootURL: codexHome.appendingPathComponent("sessions", isDirectory: true),
             store: sessionStore
@@ -139,8 +152,6 @@ final class NotchRuntimeCoordinator {
 
         refreshUsage()
         pollSessions()
-        _ = refreshFullScreenSuppression()
-        lastFullScreenCheckAt = nowProvider()
         render()
     }
 
@@ -155,7 +166,6 @@ final class NotchRuntimeCoordinator {
         usageTask?.cancel()
         usageTask = nil
         usageRequestID = nil
-        lastFullScreenCheckAt = nil
         hoverExpandWorkItem?.cancel()
         hoverExpandWorkItem = nil
         hoverCollapseWorkItem?.cancel()
@@ -165,7 +175,6 @@ final class NotchRuntimeCoordinator {
         isPointerInside = false
         isHovered = false
         isResetScheduleExpanded = false
-        isFullScreenSuppressed = false
 
         frontmostMonitor.stop()
         rolloutMonitor.stop()
@@ -191,13 +200,6 @@ final class NotchRuntimeCoordinator {
 
     private func handleTimerTick() {
         let now = nowProvider()
-        if now.timeIntervalSince(lastFullScreenCheckAt ?? .distantPast)
-            >= Self.fullScreenPollInterval {
-            lastFullScreenCheckAt = now
-            if refreshFullScreenSuppression() {
-                render(now: now)
-            }
-        }
         pollSessions()
         if now.timeIntervalSince(lastUsageRequestAt ?? .distantPast) >= Self.usageRefreshInterval {
             refreshUsage()
@@ -216,13 +218,89 @@ final class NotchRuntimeCoordinator {
     }
 
     private func apply(snapshot: ActiveSessionStoreSnapshot, now: Date) {
+        guard started else { return }
+        guard snapshot != lastSessionSnapshot else {
+            viewModel.updateClock(now: now)
+            refreshTitlesIfNeeded(now: now)
+            return
+        }
+
+        lastSessionSnapshot = snapshot
         let hadActiveSessions = !activeSessions.isEmpty
-        activeSessions = snapshot.activeSessions
+        activeSessions = snapshot.activeSessions.map {
+            $0.withTitle(threadTitles[$0.threadID])
+        }
         if hadActiveSessions, activeSessions.isEmpty {
             resetHoverState()
         }
-        recentCompletions = snapshot.recentCompletions
+        recentCompletions = snapshot.recentCompletions.map { completion in
+            CompletedSession(
+                session: completion.session.withTitle(threadTitles[completion.session.threadID]),
+                completedAt: completion.completedAt
+            )
+        }
+        refreshTitlesIfNeeded(now: now)
         render(now: now)
+    }
+
+    private func refreshTitlesIfNeeded(now: Date) {
+        guard !titleRefreshInFlight,
+              now.timeIntervalSince(lastTitleRefreshAt ?? .distantPast) >= Self.titleRefreshInterval else {
+            return
+        }
+
+        let threadIDs = visibleThreadIDs
+        guard !threadIDs.isEmpty else { return }
+
+        titleRefreshInFlight = true
+        lastTitleRefreshAt = now
+        let reader = threadTitleReader
+        titleReadQueue.async { [weak self] in
+            let titles = reader.titles(for: threadIDs)
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.titleRefreshInFlight = false
+                guard self.started else { return }
+                self.applyResolvedTitles(titles)
+            }
+        }
+    }
+
+    private var visibleThreadIDs: [String] {
+        Array(
+            Set(
+                activeSessions.map(\.threadID)
+                    + recentCompletions.map(\.session.threadID)
+            )
+        ).sorted()
+    }
+
+    private func applyResolvedTitles(_ titles: [String: String]) {
+        let visibleIDs = Set(visibleThreadIDs)
+        let visibleTitles = titles.filter { visibleIDs.contains($0.key) }
+        guard !visibleTitles.isEmpty else { return }
+
+        var resolvedTitles = threadTitles
+        resolvedTitles.merge(visibleTitles) { _, newer in newer }
+        guard resolvedTitles != threadTitles else { return }
+        threadTitles = resolvedTitles
+
+        let resolvedActiveSessions = activeSessions.map {
+            $0.withTitle(threadTitles[$0.threadID])
+        }
+        let resolvedRecentCompletions = recentCompletions.map { completion in
+            CompletedSession(
+                session: completion.session.withTitle(threadTitles[completion.session.threadID]),
+                completedAt: completion.completedAt
+            )
+        }
+        guard resolvedActiveSessions != activeSessions
+            || resolvedRecentCompletions != recentCompletions else {
+            return
+        }
+        activeSessions = resolvedActiveSessions
+        recentCompletions = resolvedRecentCompletions
+        render()
     }
 
     private func refreshUsage() {
@@ -268,9 +346,7 @@ final class NotchRuntimeCoordinator {
                 refreshUsage()
             }
         }
-        let suppressionChanged = refreshFullScreenSuppression()
-        lastFullScreenCheckAt = nowProvider()
-        if frontmostStateChanged || suppressionChanged {
+        if frontmostStateChanged {
             render()
         }
         // The monitor calls this for every app switch, including transitions
@@ -278,26 +354,6 @@ final class NotchRuntimeCoordinator {
         windowController.reassertNotchPanelAfterApplicationSwitch(
             displayIsEnabled: runtimePreferences.notchDisplayEnabled
         )
-    }
-
-    private func refreshFullScreenSuppression() -> Bool {
-        let shouldSuppress: Bool
-        if let screen = preferredScreen(),
-           screen.auxiliaryTopLeftArea != nil,
-           screen.auxiliaryTopRightArea != nil {
-            shouldSuppress = FrontmostFullScreenDetector
-                .isFrontmostApplicationFullScreen(on: screen)
-        } else {
-            shouldSuppress = false
-        }
-
-        guard shouldSuppress != isFullScreenSuppressed else { return false }
-        isFullScreenSuppressed = shouldSuppress
-        if shouldSuppress {
-            resetHoverState()
-        }
-        windowController.setFullScreenSuppressed(shouldSuppress)
-        return true
     }
 
     private func toggleNotchDisplay() {
@@ -453,11 +509,6 @@ final class NotchRuntimeCoordinator {
         guard let screen = preferredScreen() else {
             resetHoverState()
             windowController.hideNotchPanel()
-            return
-        }
-        if isFullScreenSuppressed {
-            resetHoverState()
-            windowController.setFullScreenSuppressed(true)
             return
         }
         let metrics = NotchScreenMetrics(screen: screen)

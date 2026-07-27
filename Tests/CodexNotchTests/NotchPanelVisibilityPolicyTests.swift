@@ -7,19 +7,17 @@ final class NotchPanelVisibilityPolicyTests: XCTestCase {
             NotchPanelVisibilityPolicy.shouldRestoreAfterApplicationSwitch(
                 panelIsRequested: true,
                 layoutMode: .notch,
-                displayIsEnabled: true,
-                isSuppressedByFullScreen: false
+                displayIsEnabled: true
             )
         )
     }
 
-    func testFullScreenSuppressionPreventsApplicationSwitchFromRestoringThePanel() {
-        XCTAssertFalse(
+    func testFullScreenAppSwitchStillRestoresTheRequestedPanel() {
+        XCTAssertTrue(
             NotchPanelVisibilityPolicy.shouldRestoreAfterApplicationSwitch(
                 panelIsRequested: true,
                 layoutMode: .notch,
-                displayIsEnabled: true,
-                isSuppressedByFullScreen: true
+                displayIsEnabled: true
             )
         )
     }
@@ -75,10 +73,10 @@ final class NotchPanelVisibilityPolicyTests: XCTestCase {
         )
     }
 
-    func testNotchPanelDoesNotJoinAnotherAppsFullScreenSpace() {
+    func testNotchPanelJoinsAnotherAppsFullScreenSpace() {
         let panel = NotchPanel(contentRect: .zero)
 
-        XCTAssertFalse(panel.collectionBehavior.contains(.fullScreenAuxiliary))
-        XCTAssertTrue(panel.collectionBehavior.contains(.fullScreenNone))
+        XCTAssertTrue(panel.collectionBehavior.contains(.fullScreenAuxiliary))
+        XCTAssertFalse(panel.collectionBehavior.contains(.fullScreenNone))
     }
 }

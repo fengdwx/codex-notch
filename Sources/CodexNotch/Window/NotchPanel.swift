@@ -11,12 +11,10 @@ enum NotchPanelVisibilityPolicy {
     static func shouldRestoreAfterApplicationSwitch(
         panelIsRequested: Bool,
         layoutMode: NotchLayoutMode,
-        displayIsEnabled: Bool,
-        isSuppressedByFullScreen: Bool = false
+        displayIsEnabled: Bool
     ) -> Bool {
         guard panelIsRequested,
-              layoutMode == .notch,
-              !isSuppressedByFullScreen else {
+              layoutMode == .notch else {
             return false
         }
         // A hidden notch keeps a transparent sensor at the physical notch so
@@ -41,10 +39,9 @@ final class NotchPanel: NSPanel {
         backgroundColor = .clear
         hasShadow = false
         level = .popUpMenu
-        // Keep the panel across ordinary desktop spaces, but do not make it an
-        // auxiliary surface in another app's native full-screen space. Video
-        // and browser full-screen content should remain unobstructed.
-        collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenNone]
+        // The notch is a persistent status surface. Keep it available when the
+        // frontmost app enters its own native full-screen Space.
+        collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         hidesOnDeactivate = false
     }
 

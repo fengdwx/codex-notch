@@ -587,7 +587,7 @@ contracts:
 
   - id: NOTCH-VISIBILITY-040
     title: The notch display is reversible and stays out of immersive full-screen content
-    status: active
+    status: superseded
     statement: The expanded notch card and the notch context menu provide a persistent, clearly labeled and high-contrast notch-display switch, enabled by default, which applies immediately and shows whether the notch is currently shown or hidden. When enabled and CodexNotch is using a valid notch screen, moving keyboard focus from Codex or ChatGPT to another ordinary foreground application must not remove the compact or expanded notch panel. If AppKit completes its accessory-app deactivation after the workspace activation notification, the next main-loop turn reasserts the requested notch panel above normal application windows. When disabled, the visible surface and compact indicators must disappear, but a fully transparent hover sensor remains anchored to the physical notch; moving the pointer into that sensor reopens the expanded card even while the preference is off, so the same in-card switch can turn the notch back on. The system-wide ⌥⌘N hot key toggles the visibility state and the menu bar also provides a Show notch action. The panel explicitly opts out of native full-screen participation. When the frontmost application's layer-zero content window covers the complete notch display, CodexNotch must order out both the visible panel and the transparent hover sensor whether the application uses a native full-screen Space or a borderless game window; application activation, active-Space changes, and a low-frequency window-boundary check update this suppression, and leaving full screen automatically restores the previously requested notch mode. In automatic menu-bar fallback mode, no notch panel or hover sensor may reappear; the fallback status item remains the only surface.
     rationale: >-
       Feishu can make AppKit withdraw CodexNotch's nonactivating panel after its normal workspace activation callback already rendered it. The process remains alive and Feishu uses an ordinary window layer, so the correct fix is a generic post-deactivation panel-order guard rather than a Feishu-specific bundle-ID exception or a higher window level. Hiding the visible notch must not destroy the user's intuitive recovery location: a transparent notch-anchored sensor keeps the entry point discoverable without displaying quota or task data, and hovering it exposes the same card switch that restores the display. A registered system hot key and menu-bar action remain secondary recovery paths. Conversely, full-screen video, presentation, and game content is intentionally immersive. Native Space flags do not identify borderless games, so the runtime also needs a privacy-preserving geometric check that reads only frontmost window ownership, layer, and bounds and never captures or logs screen content.
@@ -608,6 +608,31 @@ contracts:
       - docs/decisions/007-suppress-notch-over-full-screen-content.md
       - "manual: confirm ordinary app switches retain the notch; then enter a native full-screen window and a borderless full-screen game on the notch display, confirm both the visible panel and hidden hover sensor stay absent, exit full screen and confirm the requested notch mode restores, and verify the automatic menu-bar fallback remains panel-free"
     supersedes: []
+    superseded_by: NOTCH-VISIBILITY-042
+    last_verified_commit: null
+
+  - id: NOTCH-VISIBILITY-042
+    title: The requested notch display remains available across full-screen applications
+    status: active
+    statement: The expanded notch card and the notch context menu provide a persistent, clearly labeled and high-contrast notch-display switch, enabled by default, which applies immediately and shows whether the notch is currently shown or hidden. When enabled and CodexNotch is using a valid notch screen, the compact or expanded notch panel remains available above ordinary applications, native full-screen Spaces, and borderless full-screen windows, including after the frontmost application changes. The panel joins all Spaces as a full-screen auxiliary window and must not be suppressed based on frontmost-window geometry. If AppKit completes its accessory-app deactivation after the workspace activation notification, the next main-loop turn reasserts the requested notch panel. When disabled, the visible surface and compact indicators disappear, but a fully transparent hover sensor remains anchored to the physical notch so hovering can reopen the expanded card and restore the display from the same in-card switch. The system-wide ⌥⌘N hot key and menu-bar Show notch action remain secondary recovery paths. In automatic menu-bar fallback mode, no notch panel or hover sensor may reappear.
+    rationale: The notch is a persistent status surface, and users need quota and task state while working in full-screen applications such as Feishu and Edge. Treating every full-screen window as immersive content made the notch disappear from the workflows where it is still expected. Window Space participation and the existing application-switch reassertion are sufficient; polling frontmost window geometry adds complexity and overrides the user's explicit display preference.
+    source: user-reported-current-regression
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-window, compact-state, expanded-state, settings, application-activation, full-screen-spaces, borderless-full-screen-applications]
+      exclude: [menu-bar-fallback-content, quota-semantics, activity-state-machine, window-level]
+    examples:
+      positive: With the notch enabled, switching to a native full-screen Feishu or Edge Space keeps the compact notch visible and hover still opens the card; a borderless full-screen window also leaves the requested notch visible; turning the display switch off hides the visible surface while retaining the transparent physical-notch recovery sensor; automatic menu-bar fallback stays panel-free.
+      negative: Declaring the panel fullScreenNone, ordering it out because a frontmost window covers the screen, polling window geometry to override the display preference, losing the notch after an ordinary or full-screen app switch, showing compact content after the user turns the display off, or restoring a panel in automatic menu-bar fallback mode.
+    guards:
+      - Tests/CodexNotchTests/NotchPanelVisibilityPolicyTests.swift
+      - Tests/CodexNotchTests/FrontmostFullScreenDetectorTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePreferencesTests.swift
+      - Tests/CodexNotchTests/SmokeTests.swift
+      - docs/decisions/009-keep-notch-visible-across-full-screen-apps.md
+      - "manual: on a physical-notch Mac, enter native full screen in Feishu and Edge and confirm the compact notch remains visible, hover expansion stays anchored downward, collapse reclaims the transparent canvas, the disabled-display hover sensor still recovers the card, and automatic menu-bar fallback remains panel-free"
+    supersedes: [NOTCH-VISIBILITY-040]
     superseded_by: null
     last_verified_commit: null
 
@@ -745,6 +770,29 @@ contracts:
     superseded_by: null
     last_verified_commit: null
 
+  - id: CONVERSATION-TITLE-041
+    title: Recent conversations use Codex thread summaries, never rollout message bodies
+    status: active
+    statement: Recent and active conversation rows resolve their title by joining the immutable rollout thread ID to the matching `threads.title` value in `CODEX_HOME/state_5.sqlite`. CodexNotch opens that database read-only, caches only the short normalized summary for the current process, and ignores every rollout `user_message` payload. If the database is unavailable, locked, or lacks the thread, the row falls back to its project-name label without retaining a substitute title.
+    rationale: A thread may contain several user turns. Treating the newest rollout message as its title overwrote the intended conversation label and exposed message bodies in the UI.
+    source: user-reported-incident
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [rollout-session-monitoring, recent-conversations, active-task-rows, local-state-database]
+      exclude: [thread-navigation, task-termination, quota-semantics]
+    examples:
+      positive: A completed thread keeps its Codex-maintained short summary after later follow-up turns; when no matching summary exists, its row still opens the correct thread and shows the project name.
+      negative: A later `user_message` replaces a row title, CodexNotch reads `first_user_message` or `preview`, or the app writes to the Codex state database.
+    guards:
+      - Tests/CodexNotchTests/CodexThreadTitleReaderTests.swift
+      - Tests/CodexNotchTests/RolloutEventParserTests.swift
+      - Tests/CodexNotchTests/ActiveSessionStoreTests.swift
+      - "manual: complete a multi-turn real Codex thread and confirm its expanded-card title matches Codex, not the last follow-up"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null
+
   - id: QUOTA-SEMANTICS-004
     title: Weekly quota is clearly expressed as a remaining percentage
     status: superseded
@@ -855,8 +903,8 @@ contracts:
       include: [compact-state, quota-expanded-state, settings]
       exclude: [cost-estimation]
     examples:
-      positive: The compact quota visual is 22pt with a centered 9.5pt number and a 2.25pt ring or 1.75pt wave-ball edge; 35% is green, 20% is yellow, and 10% is deep red; a running ring completes a 3-second flow while requesting at most 8 frames per second, the wave ball also requests at most 8 frames per second, and both become still when motion is disabled.
-      negative: Leaving the quota visual at the heavier 24pt size, leaving the internal number at 10.5pt or shrinking it until it is unreadable, changing the warning thresholds, thickening the wave-ball edge, adding a white running highlight, running either persistent timeline above its frame budget, leaving a dim static gradient when motion is disabled, or continuing motion while idle, completed, Reduce Motion is enabled, or app animations are disabled.
+      positive: The compact quota visual is 22pt with a centered 9.5pt number and a 2.25pt ring or 1.75pt wave-ball edge; 35% is green, 20% is yellow, and 10% is deep red; a running ring completes a 3-second flow while requesting 4 frames per second, the wave ball also requests 4 frames per second, and both become still when motion is disabled.
+      negative: Leaving the quota visual at the heavier 24pt size, leaving the internal number at 10.5pt or shrinking it until it is unreadable, changing the warning thresholds, thickening the wave-ball edge, adding a white running highlight, running either persistent timeline above the 4 FPS budget, leaving a dim static gradient when motion is disabled, or continuing motion while idle, completed, Reduce Motion is enabled, or app animations are disabled.
     guards:
       - Tests/CodexNotchTests/NotchTextTests.swift
       - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift

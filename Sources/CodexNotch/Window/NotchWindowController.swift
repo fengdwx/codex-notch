@@ -13,7 +13,6 @@ final class NotchWindowController: NSWindowController {
     private var deferredFrameWorkItem: DispatchWorkItem?
     private var deferredFrameIdentifier: UUID?
     private var requestedLayoutMode: NotchLayoutMode = .menuBarFallback
-    private var isSuppressedByFullScreen = false
 
     private var appLanguage: AppLanguage {
         AppLanguage.fromStoredValue(
@@ -63,21 +62,28 @@ final class NotchWindowController: NSWindowController {
 
         requestedLayoutMode = .notch
         hideFallbackMenu()
-        guard !isSuppressedByFullScreen else {
-            panel.ignoresMouseEvents = true
-            panel.orderOut(nil)
-            return
-        }
         let frame = layout.frame(for: state)
         let wasVisible = panel.isVisible
+        let wasIgnoringMouseEvents = panel.ignoresMouseEvents
         cancelDeferredFrameSettlement()
 
-        if shouldSetFrameImmediately(from: panel.frame, to: frame, wasVisible: wasVisible) {
+        let setsFrameImmediately = shouldSetFrameImmediately(
+            from: panel.frame,
+            to: frame,
+            wasVisible: wasVisible
+        )
+        if setsFrameImmediately {
             panel.setFrame(frame, display: true)
         }
         panel.ignoresMouseEvents = false
         if wasVisible {
-            panel.orderFrontRegardless()
+            // A periodic clock update does not need to reorder a panel that is
+            // already visible. Workspace changes use the dedicated reassertion
+            // path below, so preserving the z-order no longer wakes
+            // WindowServer once per tick.
+            if setsFrameImmediately || wasIgnoringMouseEvents {
+                panel.orderFrontRegardless()
+            }
         } else if !animationsEnabled {
             panel.alphaValue = 1
             panel.orderFrontRegardless()
@@ -166,22 +172,10 @@ final class NotchWindowController: NSWindowController {
 
     func hideNotchPanel() {
         requestedLayoutMode = .menuBarFallback
-        isSuppressedByFullScreen = false
         cancelDeferredFrameSettlement()
         guard let panel = window as? NotchPanel else { return }
         panel.ignoresMouseEvents = true
         panel.orderOut(nil)
-    }
-
-    func setFullScreenSuppressed(_ isSuppressed: Bool) {
-        isSuppressedByFullScreen = isSuppressed
-        guard isSuppressed, let panel = window as? NotchPanel else { return }
-
-        cancelDeferredFrameSettlement()
-        panel.ignoresMouseEvents = true
-        if panel.isVisible {
-            panel.orderOut(nil)
-        }
     }
 
     deinit {
@@ -225,8 +219,7 @@ final class NotchWindowController: NSWindowController {
         guard NotchPanelVisibilityPolicy.shouldRestoreAfterApplicationSwitch(
             panelIsRequested: requestedLayoutMode == .notch,
             layoutMode: requestedLayoutMode,
-            displayIsEnabled: displayIsEnabled,
-            isSuppressedByFullScreen: isSuppressedByFullScreen
+            displayIsEnabled: displayIsEnabled
         ), let panel = window as? NotchPanel else {
             return
         }
