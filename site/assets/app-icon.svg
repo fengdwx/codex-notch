@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="sparkle-gradient" x1="710" y1="404" x2="886" y2="610" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#92e755"/>
+      <stop offset="1" stop-color="#35b85f"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" fill="#f7f7f7"/>
+
+  <!-- Match the supplied app identity: a black, horizontal camera-notch shell. -->
+  <rect id="notch-shell" x="64" y="300" width="896" height="438" rx="142" fill="#080808"/>
+  <circle cx="512" cy="300" r="102" fill="#f7f7f7"/>
+
+  <!-- The white command prompt is intentionally simple and legible at Finder sizes. -->
+  <path id="prompt-mark" d="m264 454 88 74-88 74" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="30"/>
+  <path d="M400 614h82" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="30"/>
+
+  <!-- Four-point green spark from the supplied icon, separate from the command prompt. -->
+  <path id="sparkle" d="M790 410c14 62 42 90 104 104-62 14-90 42-104 104-14-62-42-90-104-104 62-14 90-42 104-104Z" fill="url(#sparkle-gradient)"/>
+</svg>
