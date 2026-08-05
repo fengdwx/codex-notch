@@ -13,5 +13,6 @@ Record decisions here only when they affect active behavior contracts, could be 
 | [009-keep-notch-visible-across-full-screen-apps](009-keep-notch-visible-across-full-screen-apps.md) | active | `NOTCH-VISIBILITY-042` | Keep the requested notch surface available in native and borderless full-screen applications |
 | [010-layer-backed-quota-motion](010-layer-backed-quota-motion.md) | active | `QUOTA-SEMANTICS-043` | Keep 8 FPS visual motion while moving persistent ring and wave frames out of SwiftUI |
 | [011-ignore-subagent-rollouts](011-ignore-subagent-rollouts.md) | active | `ACTIVITY-STATE-005`, `CONVERSATION-TITLE-041` | Ignore child-agent rollouts in notch activity and conversation history |
+| [012-manual-release-update-check](012-manual-release-update-check.md) | active | `APP-UPDATE-001` | Check the latest public stable release manually from Settings |
 
 New decisions must include `status`, `contract_ids`, rejected alternatives, and consequences. When a decision changes, retain the old document and point to the new one with `superseded_by`.

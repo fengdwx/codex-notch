@@ -90,6 +90,7 @@ CodexNotch 默认读取 `~/.codex`。如果你的 Codex 使用其他目录，可
 - 在顺时针额度圆环与波浪球之间切换
 - 选择中文或英文界面（默认英文）
 - 设置展开卡片显示的最近对话数量（0–5，设置为 0 可隐藏最近对话）
+- 手动检查最新正式版本，并打开 GitHub 下载页
 - 修改后立即生效，并保存在本机
 - 开启 Reduce Motion 后保留静态状态，减少动态效果
 
@@ -113,6 +114,7 @@ CodexNotch 默认读取 `~/.codex`。如果你的 Codex 使用其他目录，可
 - 任务状态只解析本地 `CODEX_HOME/sessions` 中的 rollout JSONL 文件。
 - 最近对话按 thread ID 只读匹配 `CODEX_HOME/state_5.sqlite` 中 Codex 维护的简短 `threads.title`；不读取 rollout 消息正文、`first_user_message` 或 `preview`。
 - 不记录 Authorization header、完整 usage 响应、用户消息正文或对话标题缓存。
+- 手动检查更新只读取 GitHub 的公开 Release 元数据，不发送 Codex 凭据、额度数据、任务数据或用户内容。
 
 usage 接口属于 ChatGPT 内部接口，字段未来可能变化。接口异常时会保留最后一次成功额度，任务监听仍会继续工作。
 
@@ -143,7 +145,7 @@ SIGN_IDENTITY=none ./scripts/build_app.sh
 
 ## 当前边界
 
-CodexNotch 目前是 v1 preview，不提供终止 Codex 任务、成本统计、云同步、远程通知、宠物动画或 Mac App Store 分发。ChatGPT Classic 不属于监听目标。
+CodexNotch 目前是 v1 preview，不提供终止 Codex 任务、成本统计、云同步、远程通知、自动下载安装、宠物动画或 Mac App Store 分发。ChatGPT Classic 不属于监听目标。
 
 ## 开源许可
 

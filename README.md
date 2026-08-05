@@ -90,6 +90,7 @@ Hover over the physical notch and use **Settings** at the lower-right of the exp
 - Switch between the clockwise quota ring and wave ball
 - Choose Chinese or English for the app interface (English by default)
 - Show 0–5 recent conversations in the expanded card
+- Manually check the latest stable release and open its GitHub download page
 - Apply changes immediately and save them locally
 - Respect Reduce Motion while preserving static status cues
 
@@ -113,6 +114,7 @@ Macs without a notch automatically use a menu-bar fallback.
 - Task state is parsed only from rollout JSONL files in `CODEX_HOME/sessions`.
 - Recent-conversation labels are joined by thread ID to Codex's short `threads.title` summary in read-only `CODEX_HOME/state_5.sqlite`; rollout message bodies, `first_user_message`, and `preview` are ignored.
 - CodexNotch never records Authorization headers, complete usage responses, user-message bodies, or conversation-title caches.
+- The manual update check reads only public GitHub release metadata; it sends no Codex credentials, quota data, task data, or user content.
 
 The usage endpoint is an internal ChatGPT endpoint and its fields may change. If it fails, CodexNotch keeps the last successful quota while task monitoring continues.
 
@@ -143,7 +145,7 @@ SIGN_IDENTITY=none ./scripts/build_app.sh
 
 ## Current boundaries
 
-CodexNotch is currently a v1 preview. It does not terminate Codex tasks, estimate cost, sync to the cloud, send remote notifications, animate a pet, or support Mac App Store distribution. ChatGPT Classic is not a monitored target.
+CodexNotch is currently a v1 preview. It does not terminate Codex tasks, estimate cost, sync to the cloud, send remote notifications, automatically download or install updates, animate a pet, or support Mac App Store distribution. ChatGPT Classic is not a monitored target.
 
 ## License
 

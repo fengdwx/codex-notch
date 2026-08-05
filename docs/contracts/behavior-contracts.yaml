@@ -726,6 +726,34 @@ contracts:
     superseded_by: null
     last_verified_commit: null
 
+  - id: APP-UPDATE-001
+    title: Settings can manually check the latest stable release without private data
+    status: active
+    statement: >-
+      Settings must provide a manual update-check action that reads only the
+      public GitHub latest-release metadata endpoint with an unauthenticated
+      GET request, compares its normalized semantic version with the bundled
+      app version, and shows one of three outcomes: the app is up to date, a
+      newer stable release is available with a link to its release page, or the
+      check failed. The check must not download, install, or alter the app and
+      must not affect quota, task, or conversation state.
+    rationale: Users need a direct way to learn whether a newer distributable exists, while CodexNotch must not add an updater, send login data to GitHub, or let an unavailable network change the notch runtime.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [settings, update-check, public-network-metadata]
+      exclude: [automatic-download, automatic-install, authentication, quota-fetching, task-monitoring]
+    examples:
+      positive: Clicking Check for Updates sends only a public metadata GET, reports v0.1.11 as current when it matches the latest stable release, offers the GitHub release page when a newer tag exists, and leaves the notch state unchanged on failure.
+      negative: Sending auth.json or an Authorization header to GitHub, treating a draft or prerelease as the stable update, downloading an archive automatically, or hiding quota/activity data after a network error.
+    guards:
+      - Tests/CodexNotchTests/AppUpdateCheckerTests.swift
+      - "manual: open Settings, click Check for Updates, and verify the current release result and download link"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null
+
   - id: ACTIVITY-STATE-003
     title: Active tasks take priority and completion remains visible
     status: superseded
