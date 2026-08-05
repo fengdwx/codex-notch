@@ -148,6 +148,37 @@ final class ActiveSessionStoreTests: XCTestCase {
         XCTAssertEqual(snapshot.recentCompletions.first?.session.turnID, "turn-a-new")
     }
 
+    func testSubagentReductionDoesNotEnterStoreSnapshot() async {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let reduction = ActiveSessionReducer.reduce([
+            RolloutEvent(
+                timestamp: now,
+                kind: .subagentSessionMeta(
+                    threadID: "child-thread",
+                    cwd: "/tmp/project",
+                    originator: "Codex Desktop"
+                )
+            ),
+            RolloutEvent(timestamp: now, kind: .taskStarted(turnID: "child-turn")),
+            RolloutEvent(
+                timestamp: now.addingTimeInterval(1),
+                kind: .taskCompleted(turnID: "child-turn")
+            )
+        ])
+        let store = ActiveSessionStore()
+
+        await store.replace(
+            rolloutID: "child-rollout",
+            reduction: reduction,
+            lastModifiedAt: now
+        )
+
+        let snapshot = await store.snapshot(now: now)
+
+        XCTAssertTrue(snapshot.activeSessions.isEmpty)
+        XCTAssertTrue(snapshot.recentCompletions.isEmpty)
+    }
+
     func testCompletedHistoryOutlivesActiveSessionStaleness() async {
         let now = Date(timeIntervalSince1970: 2_000_000_000)
         let eightHoursAgo = now.addingTimeInterval(-(8 * 60 * 60))

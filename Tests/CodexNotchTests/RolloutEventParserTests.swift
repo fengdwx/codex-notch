@@ -68,6 +68,48 @@ final class RolloutEventParserTests: XCTestCase {
         XCTAssertNil(result.completed.first?.title)
     }
 
+    func testSubagentRolloutDoesNotCreateActiveOrCompletedConversation() {
+        let data = Data(
+            """
+            {"timestamp":"2026-07-16T09:00:00Z","type":"session_meta","payload":{"id":"child-thread","cwd":"/tmp/project","source":{"subagent":{"thread_spawn":{"parent_thread_id":"parent-thread"}}},"parent_thread_id":"parent-thread"}}
+            {"timestamp":"2026-07-16T09:00:01Z","type":"event_msg","payload":{"type":"task_started","turn_id":"child-turn"}}
+            {"timestamp":"2026-07-16T09:00:02Z","type":"event_msg","payload":{"type":"task_complete","turn_id":"child-turn"}}
+            """.utf8
+        )
+
+        let result = ActiveSessionReducer.reduce(RolloutEventParser.parse(data: data))
+
+        XCTAssertTrue(result.active.isEmpty)
+        XCTAssertTrue(result.completed.isEmpty)
+    }
+
+    func testParentThreadMarkerAloneExcludesSubagentRollout() {
+        let data = Data(
+            """
+            {"timestamp":"2026-07-16T09:00:00Z","type":"session_meta","payload":{"id":"child-thread","cwd":"/tmp/project","parent_thread_id":"parent-thread"}}
+            {"timestamp":"2026-07-16T09:00:01Z","type":"event_msg","payload":{"type":"task_started","turn_id":"child-turn"}}
+            """.utf8
+        )
+
+        let result = ActiveSessionReducer.reduce(RolloutEventParser.parse(data: data))
+
+        XCTAssertTrue(result.active.isEmpty)
+        XCTAssertTrue(result.completed.isEmpty)
+    }
+
+    func testDirectVscodeSourceStillCreatesAnActiveConversation() {
+        let data = Data(
+            """
+            {"timestamp":"2026-07-16T09:00:00Z","type":"session_meta","payload":{"id":"direct-thread","cwd":"/tmp/project","source":"vscode"}}
+            {"timestamp":"2026-07-16T09:00:01Z","type":"event_msg","payload":{"type":"task_started","turn_id":"direct-turn"}}
+            """.utf8
+        )
+
+        let result = ActiveSessionReducer.reduce(RolloutEventParser.parse(data: data))
+
+        XCTAssertEqual(result.active.map(\.threadID), ["direct-thread"])
+    }
+
     private func fixtureData(_ name: String) throws -> Data {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

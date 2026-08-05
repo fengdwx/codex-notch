@@ -29,12 +29,23 @@ enum RolloutEventParser {
         switch type {
         case "session_meta":
             guard let threadID = envelope.payload?.id, !threadID.isEmpty else { return nil }
+            let payload = envelope.payload
+            if payload?.isSubagent == true {
+                return RolloutEvent(
+                    timestamp: timestamp,
+                    kind: .subagentSessionMeta(
+                        threadID: threadID,
+                        cwd: payload?.cwd,
+                        originator: payload?.originator
+                    )
+                )
+            }
             return RolloutEvent(
                 timestamp: timestamp,
                 kind: .sessionMeta(
                     threadID: threadID,
-                    cwd: envelope.payload?.cwd,
-                    originator: envelope.payload?.originator
+                    cwd: payload?.cwd,
+                    originator: payload?.originator
                 )
             )
 
@@ -70,6 +81,13 @@ private struct PayloadDTO: Decodable {
     let turnID: String?
     let cwd: String?
     let originator: String?
+    let parentThreadID: String?
+    let source: SourceDTO?
+
+    var isSubagent: Bool {
+        source?.containsSubagentThreadSpawn == true
+            || !(parentThreadID?.isEmpty ?? true)
+    }
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -77,5 +95,43 @@ private struct PayloadDTO: Decodable {
         case turnID = "turn_id"
         case cwd
         case originator
+        case parentThreadID = "parent_thread_id"
+        case source
+    }
+}
+
+private struct SourceDTO: Decodable {
+    let containsSubagentThreadSpawn: Bool
+
+    init(from decoder: Decoder) throws {
+        guard let container = try? decoder.container(keyedBy: CodingKeys.self) else {
+            containsSubagentThreadSpawn = false
+            return
+        }
+
+        containsSubagentThreadSpawn =
+            (try? container.decode(SubagentSourceDTO.self, forKey: .subagent))?.threadSpawn != nil
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case subagent
+    }
+}
+
+private struct SubagentSourceDTO: Decodable {
+    let threadSpawn: ThreadSpawnDTO?
+
+    enum CodingKeys: String, CodingKey {
+        case threadSpawn = "thread_spawn"
+    }
+}
+
+private struct ThreadSpawnDTO: Decodable {
+    init(from decoder: Decoder) throws {
+        _ = try decoder.container(keyedBy: EmptyCodingKeys.self)
+    }
+
+    private enum EmptyCodingKeys: String, CodingKey {
+        case none
     }
 }

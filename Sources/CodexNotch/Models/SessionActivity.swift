@@ -2,6 +2,7 @@ import Foundation
 
 enum RolloutEventKind: Equatable, Sendable {
     case sessionMeta(threadID: String, cwd: String?, originator: String?)
+    case subagentSessionMeta(threadID: String, cwd: String?, originator: String?)
     case taskStarted(turnID: String?)
     case taskCompleted(turnID: String?)
     case turnAborted(turnID: String?)
@@ -83,10 +84,12 @@ enum ActiveSessionReducer {
         var originator: String?
         var active: [String: SessionActivity] = [:]
         var completed: [SessionActivity] = []
+        var isSubagentRollout = false
 
         for (index, event) in events.enumerated() {
             switch event.kind {
             case let .sessionMeta(newThreadID, newCWD, newOriginator):
+                isSubagentRollout = false
                 threadID = newThreadID
                 cwd = newCWD
                 originator = newOriginator
@@ -94,7 +97,12 @@ enum ActiveSessionReducer {
                     $0.updating(threadID: threadID, cwd: cwd, originator: originator)
                 }
 
+            case .subagentSessionMeta:
+                isSubagentRollout = true
+                active.removeAll()
+
             case let .taskStarted(turnID):
+                guard !isSubagentRollout else { continue }
                 let resolvedTurnID = turnID ?? "anonymous-turn-\(index)"
                 let timestamp = event.timestamp ?? .distantPast
                 // A rollout represents one serial Codex conversation. When
@@ -116,6 +124,7 @@ enum ActiveSessionReducer {
                 )
 
             case let .taskCompleted(turnID), let .turnAborted(turnID):
+                guard !isSubagentRollout else { continue }
                 guard let key = matchingKey(for: turnID, active: active),
                       let item = active.removeValue(forKey: key) else {
                     continue
