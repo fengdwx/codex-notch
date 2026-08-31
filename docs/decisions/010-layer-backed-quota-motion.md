@@ -1,6 +1,6 @@
 ---
 status: active
-contract_ids: [QUOTA-SEMANTICS-043]
+contract_ids: [QUOTA-SEMANTICS-046]
 supersedes: []
 superseded_by: null
 owner: project-maintainer

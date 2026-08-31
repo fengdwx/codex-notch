@@ -478,13 +478,15 @@ final class NotchRuntimeCoordinator {
             return NotchExpandedLayout.taskContentSize(
                 conversationCount: 2,
                 isResetScheduleExpanded: isResetScheduleExpanded,
-                resetCreditCount: resetCreditCount(in: state)
+                resetCreditCount: resetCreditCount(in: state),
+                hasFiveHourWindow: hasFiveHourWindow(in: state)
             )
         }
         return NotchExpandedLayout.taskContentSize(
             conversationCount: content.conversations.count,
             isResetScheduleExpanded: isResetScheduleExpanded,
-            resetCreditCount: content.usage?.resetCredits.count ?? 0
+            resetCreditCount: content.usage?.resetCredits.count ?? 0,
+            hasFiveHourWindow: content.usage?.fiveHourWindow != nil
         )
     }
 
@@ -494,13 +496,19 @@ final class NotchRuntimeCoordinator {
     ) -> NSSize {
         NotchExpandedLayout.quotaContentSize(
             isResetScheduleExpanded: isResetScheduleExpanded,
-            resetCreditCount: resetCreditCount(in: state)
+            resetCreditCount: resetCreditCount(in: state),
+            hasFiveHourWindow: hasFiveHourWindow(in: state)
         )
     }
 
     private func resetCreditCount(in state: NotchPresentationState) -> Int {
         guard case let .expanded(content) = state else { return 0 }
         return content.usage?.resetCredits.count ?? 0
+    }
+
+    private func hasFiveHourWindow(in state: NotchPresentationState) -> Bool {
+        guard case let .expanded(content) = state else { return false }
+        return content.usage?.fiveHourWindow != nil
     }
 
     private func render(now: Date? = nil) {
@@ -514,18 +522,31 @@ final class NotchRuntimeCoordinator {
         let metrics = NotchScreenMetrics(screen: screen)
         let baseLayout = NotchGeometry.layout(metrics: metrics)
 
-        if baseLayout.mode == .menuBarFallback {
-            if !preferences.notchDisplayEnabled {
-                resetHoverState()
-                viewModel.update(
-                    state: .hidden,
-                    now: renderDate,
-                    animationsEnabled: false
-                )
-                windowController.showDisplayDisabledFallback()
-                return
-            }
-        } else if NotchPanelVisibilityPolicy.shouldKeepHiddenHoverSensor(
+        if NotchPanelVisibilityPolicy.shouldUseMenuBarFallback(
+            layoutMode: baseLayout.mode,
+            displayIsEnabled: preferences.notchDisplayEnabled
+        ) {
+            resetHoverState()
+            viewModel.update(
+                state: .hidden,
+                now: renderDate,
+                layoutMode: baseLayout.mode,
+                animationsEnabled: false
+            )
+            windowController.showDisplayDisabledFallback()
+            return
+        }
+
+        if NotchDisplayRouting.shouldSuppressFloatingIsland(
+            layoutMode: baseLayout.mode,
+            displayIsInHardwareMirrorSet: NotchDisplayRouting.isInHardwareMirrorSet(
+                screen: screen
+            )
+        ) {
+            return renderHardwareMirrorFallback(now: renderDate)
+        }
+
+        if NotchPanelVisibilityPolicy.shouldKeepHiddenHoverSensor(
             layoutMode: baseLayout.mode,
             displayIsEnabled: preferences.notchDisplayEnabled
         ), !isHovered {
@@ -594,8 +615,12 @@ final class NotchRuntimeCoordinator {
         viewModel.update(
             state: displayState,
             now: renderDate,
-            cameraSafeAreaInset: max(0, screen.safeAreaInsets.top),
+            layoutMode: layout.mode,
+            cameraSafeAreaInset: layout.mode == .notch
+                ? max(0, screen.safeAreaInsets.top)
+                : 0,
             compactWidth: layout.compactFrame.width,
+            compactHeight: layout.compactFrame.height,
             surfaceSize: targetFrame.size,
             isResetScheduleExpanded: isResetScheduleExpanded,
             animationsEnabled: animationsEnabled
@@ -605,6 +630,31 @@ final class NotchRuntimeCoordinator {
             state: displayState,
             animationsEnabled: animationsEnabled
         )
+    }
+
+    private func renderHardwareMirrorFallback(now: Date) {
+        resetHoverState()
+        let displayState = NotchPresentationReducer.reduce(
+            NotchPresentationInput(
+                now: now,
+                isChatGPTFrontmost: isChatGPTFrontmost,
+                activeSessions: activeSessions,
+                recentCompletions: recentCompletions,
+                usage: usage,
+                isHovered: false
+            )
+        ).limitingRecentConversations(to: recentConversationLimit)
+
+        viewModel.update(
+            state: displayState,
+            now: now,
+            layoutMode: .menuBarFallback,
+            compactWidth: 0,
+            compactHeight: 0,
+            surfaceSize: .zero,
+            animationsEnabled: false
+        )
+        windowController.showMenuBarFallback(for: displayState)
     }
 
     private func renderHiddenHoverSensor(
@@ -628,8 +678,10 @@ final class NotchRuntimeCoordinator {
         viewModel.update(
             state: hiddenState,
             now: now,
+            layoutMode: layout.mode,
             cameraSafeAreaInset: max(0, screen.safeAreaInsets.top),
             compactWidth: layout.compactFrame.width,
+            compactHeight: layout.compactFrame.height,
             surfaceSize: targetFrame.size,
             isResetScheduleExpanded: false,
             animationsEnabled: false
@@ -657,8 +709,12 @@ final class NotchRuntimeCoordinator {
         viewModel.update(
             state: displayState,
             now: now,
-            cameraSafeAreaInset: max(0, screen.safeAreaInsets.top),
+            layoutMode: layout.mode,
+            cameraSafeAreaInset: layout.mode == .notch
+                ? max(0, screen.safeAreaInsets.top)
+                : 0,
             compactWidth: layout.compactFrame.width,
+            compactHeight: layout.compactFrame.height,
             surfaceSize: targetFrame.size,
             isResetScheduleExpanded: false,
             animationsEnabled: animationsEnabled

@@ -613,7 +613,7 @@ contracts:
 
   - id: NOTCH-VISIBILITY-042
     title: The requested notch display remains available across full-screen applications
-    status: active
+    status: superseded
     statement: The expanded notch card and the notch context menu provide a persistent, clearly labeled and high-contrast notch-display switch, enabled by default, which applies immediately and shows whether the notch is currently shown or hidden. When enabled and CodexNotch is using a valid notch screen, the compact or expanded notch panel remains available above ordinary applications, native full-screen Spaces, and borderless full-screen windows, including after the frontmost application changes. The panel joins all Spaces as a full-screen auxiliary window and must not be suppressed based on frontmost-window geometry. If AppKit completes its accessory-app deactivation after the workspace activation notification, the next main-loop turn reasserts the requested notch panel. When disabled, the visible surface and compact indicators disappear, but a fully transparent hover sensor remains anchored to the physical notch so hovering can reopen the expanded card and restore the display from the same in-card switch. The system-wide ⌥⌘N hot key and menu-bar Show notch action remain secondary recovery paths. In automatic menu-bar fallback mode, no notch panel or hover sensor may reappear.
     rationale: The notch is a persistent status surface, and users need quota and task state while working in full-screen applications such as Feishu and Edge. Treating every full-screen window as immersive content made the notch disappear from the workflows where it is still expected. Window Space participation and the existing application-switch reassertion are sufficient; polling frontmost window geometry adds complexity and overrides the user's explicit display preference.
     source: user-reported-current-regression
@@ -633,6 +633,222 @@ contracts:
       - docs/decisions/009-keep-notch-visible-across-full-screen-apps.md
       - "manual: on a physical-notch Mac, enter native full screen in Feishu and Edge and confirm the compact notch remains visible, hover expansion stays anchored downward, collapse reclaims the transparent canvas, the disabled-display hover sensor still recovers the card, and automatic menu-bar fallback remains panel-free"
     supersedes: [NOTCH-VISIBILITY-040]
+    superseded_by: NOTCH-VISIBILITY-044
+    last_verified_commit: null
+
+  - id: NOTCH-VISIBILITY-044
+    title: No-notch displays use a top-center floating status bar
+    status: superseded
+    statement: >-
+      On any display whose NSScreen does not expose valid auxiliary top-left and
+      top-right notch areas, CodexNotch must render its compact quota, running,
+      and completed states in a non-activating floating bar centered at the top
+      of the visible display, below the menu bar when one is present. Hovering
+      the bar expands the same quota and recent-conversation card downward from
+      that fixed top anchor; the outer panel must not resize frame by frame or
+      expand upward. The floating bar keeps the existing task navigation, quota
+      semantics, privacy boundary, full-screen Space participation, and panel
+      z-order. It must use a rounded floating surface rather than pretending
+      that a physical camera cutout exists, and it must not create a hidden
+      notch hover sensor. Turning the display preference off hides the floating
+      panel and leaves the menu-bar recovery action available. On a valid notch
+      display, the physical-notch layout and hidden-notch recovery behavior
+      remain unchanged.
+    rationale: >-
+      Mac mini, older Mac, and external-display users do not have NSScreen
+      auxiliary areas, so the former menu-bar-only branch made the app's primary
+      quota and task surface disappear. A top-center floating bar follows the
+      established Dynamic Island interaction without inventing a camera opening,
+      while retaining the menu bar only as an explicit disabled-display recovery
+      path.
+    source: user-request-and-vibe-island-reference
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [non-notch-screens, external-displays, floating-bar, compact-state, expanded-state, full-screen-spaces]
+      exclude: [physical-notch-geometry, menu-bar-fallback-content, quota-semantics, activity-state-machine]
+    examples:
+      positive: A Mac mini display with no auxiliary areas shows a compact centered floating bar below the menu bar, hover expands the existing card downward, and turning the display off removes the bar while retaining the menu-bar Show action.
+      negative: Returning to a status-item-only surface on a no-notch display, placing the bar under the menu bar, expanding above the bar, creating an invisible no-notch sensor, changing quota or task content, or changing the physical-notch path.
+    guards:
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/NotchPanelVisibilityPolicyTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePerformanceTests.swift
+      - docs/decisions/013-no-notch-floating-bar.md
+      - "manual: launch the built app on a Mac mini or external display, confirm the top-center bar and downward expansion, then toggle display off and verify the menu-bar recovery action"
+    supersedes: [NOTCH-VISIBILITY-042]
+    superseded_by: NOTCH-VISIBILITY-045
+    last_verified_commit: null
+
+  - id: NOTCH-VISIBILITY-045
+    title: No-notch displays use a top-attached compact activity island
+    status: superseded
+    statement: >-
+      On a display without valid auxiliary notch areas, CodexNotch renders a
+      compact non-activating activity island centered against the physical top
+      edge of the screen, including the menu-bar region, with no vertical gap.
+      The no-notch compact width is independent of the physical camera-gap
+      minimum and its center is filled by a small original pixel battle scene:
+      idle shows a stable warrior and slime face-off, running shows an 8 FPS
+      four-frame sword-and-slime loop only while app motion is allowed, and
+      completed shows a stable victory frame with the slime gone. Reduce Motion
+      or disabled app animations keep a static readable frame and must not leave
+      a TimelineView running. The left Codex state mark and right weekly quota
+      remain visible and clickable around the scene. Hover expansion stays
+      attached to the same top edge, grows only downward, reserves the compact
+      attachment height before detail content, and reclaims its transparent
+      canvas after collapse. Disabling this no-notch island removes the panel
+      and retains the menu-bar recovery action. Valid physical-notch geometry,
+      camera-safe indicators, hidden-notch hover recovery, quota semantics,
+      task navigation, privacy boundaries, full-screen Space participation, and
+      panel z-order remain unchanged.
+    rationale: >-
+      The first fallback reused the 257pt physical-notch camera gap and placed
+      it below the menu bar plus an extra gap, producing an oversized empty bar
+      detached from the top edge. A dedicated compact width, top attachment,
+      and state-driven center scene provide useful status density in the visual
+      language demonstrated by Vibe Island without copying its assets.
+    source: user-rejected-first-visual-and-approved-state-driven-pixel-battle
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [non-notch-screens, external-displays, compact-activity-island, pixel-battle, expanded-state, full-screen-spaces]
+      exclude: [physical-notch-geometry, quota-semantics, activity-state-machine, external-assets]
+    examples:
+      positive: A Mac mini shows a compact content-filled island flush with the screen top; a running task animates the warrior at 8 FPS; completion settles into a victory frame; hover grows downward and collapse releases the larger hit area.
+      negative: Reusing the 257pt camera-gap width, positioning below the menu bar, leaving the center empty, animating while idle or Reduce Motion is active, copying Vibe Island artwork, expanding upward, or changing the physical-notch path.
+    guards:
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/PixelBattleMotionTests.swift
+      - Tests/CodexNotchTests/NotchPanelVisibilityPolicyTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePerformanceTests.swift
+      - docs/decisions/014-top-attached-no-notch-activity-island.md
+      - "manual: launch the built app on a no-notch Mac, confirm the compact island touches the screen top and is content-filled, inspect idle/running/completed battle states, hover and collapse it, then confirm the menu-bar recovery action after disabling the island"
+    supersedes: [NOTCH-VISIBILITY-044]
+    superseded_by: NOTCH-VISIBILITY-046
+    last_verified_commit: null
+
+  - id: NOTCH-VISIBILITY-046
+    title: No-notch displays use a menu-bar-height task status island
+    status: superseded
+    statement: >-
+      On a display without valid auxiliary notch areas, CodexNotch renders a
+      non-activating task status island centered against the physical screen
+      top. When the menu bar reserves at least 24pt, the compact island height
+      must not exceed that measured menu-bar height and is capped at 30pt; when
+      the menu bar is auto-hidden, a 28pt fallback remains top-attached. The
+      island uses a 212pt content-filled layout with 8pt outer safety insets:
+      the left lane keeps the existing Codex idle, running, or completed mark,
+      the middle lane shows one truncated line using the resolved task title
+      with a localized state fallback, and the right lane keeps the weekly
+      quota indicator. The two indicator centers are symmetric around the island
+      center; the title is optically centered in the middle lane with equal
+      visual gaps and remains neutral white in running and completed states, so
+      completion green is limited to the status check and quota. No warrior,
+      slime, pixel battle, or related TimelineView is rendered. Content must
+      remain inside the lower-corner envelope rather than touching or crossing
+      its curved boundary. Hover expansion grows only
+      downward from the same top edge, reserves the measured compact height
+      before detail content, and reclaims the transparent canvas after collapse.
+      Display-off recovery stays in the menu bar. Valid physical-notch geometry,
+      camera-safe indicators, hidden-notch recovery, quota semantics, task
+      navigation, privacy boundaries, full-screen Space participation, and panel
+      z-order remain unchanged.
+    rationale: >-
+      Real-machine review rejected the pixel battle as visually crude and showed
+      that filling a rectangular width ignored the narrower usable envelope near
+      the island's lower corners. A Vibe Island-style status row makes the center
+      useful with real task information, while measured height and explicit
+      outer insets prevent the no-notch surface from crossing the menu-bar or
+      corner boundaries.
+    source: user-selected-option-c-after-real-machine-review
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [non-notch-screens, external-displays, menu-bar-height, compact-task-title, expanded-state, full-screen-spaces]
+      exclude: [physical-notch-geometry, quota-semantics, activity-state-machine, decorative-battle-animation]
+    examples:
+      positive: A 30pt Mac mini menu bar contains a 30pt top-attached island whose left status mark and right quota are symmetric, whose centered neutral task title has equal visual gaps, and whose content remains clear of the rounded lower corners.
+      negative: Rendering a 32pt surface through a 30pt menu bar, left-aligning the variable-width title between otherwise symmetric indicators, coloring the full completed title green, placing indicators into the curved corner envelope, keeping the pixel battle, hiding a resolved task title, or changing the physical-notch layout.
+    guards:
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/NotchTextTests.swift
+      - Tests/CodexNotchTests/NotchPanelVisibilityPolicyTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePerformanceTests.swift
+      - docs/decisions/015-no-notch-task-status-island.md
+      - "manual: launch the built app on a no-notch Mac, verify the island stays within the real menu-bar boundary, inspect long-title truncation and idle/running/completed marks, then hover, collapse, and test display-off recovery"
+    supersedes: [NOTCH-VISIBILITY-045]
+    superseded_by: NOTCH-VISIBILITY-047
+    last_verified_commit: null
+
+  - id: NOTCH-VISIBILITY-047
+    title: No-notch displays use the Sword Wanderer endless battle island
+    status: active
+    statement: >-
+      On a display without valid auxiliary notch areas, CodexNotch renders a
+      non-activating activity island centered against the physical screen top,
+      except when CoreGraphics reports that the active coordinate space is a
+      hardware mirror set. A mirrored no-notch coordinate space uses the
+      menu-bar fallback so an island cannot cover ordinary mirrored app
+      content; leaving the mirror set restores the live NSScreen-derived
+      physical-notch or ordinary no-notch route without a saved resolution.
+      When the menu bar reserves at least 24pt, the compact island height must
+      not exceed that measured menu-bar height and is capped at 30pt; when the
+      menu bar is auto-hidden, a 28pt fallback remains top-attached. The island
+      keeps its 212pt width, 8pt outer safety insets, 30pt left Codex-status
+      lane, 136pt center animation lane, and 30pt right weekly-quota lane. The
+      center lane renders the bundled, validated v2 Sword Wanderer pet without
+      redrawing its face, hair, clothing, palette, or proportions. While app
+      animations are enabled and Reduce Motion is disabled, green slimes
+      continuously jump in from the right, the wanderer draws and swings a
+      sword at the impact point, each defeated slime compresses into a small
+      amber hit spark and raises a clear +1, and the next slime enters before
+      the previous score disappears. The
+      wanderer keeps a focused forward gaze throughout the loop while a small
+      set of right-facing full-body key poses shows the sheath, weight shift,
+      step-through, and return into the strike. The short sword remains visible
+      in hand, rises vertically with a brief hold, then crosses in one fast
+      strike and leaves one short follow-through; sword timing, body weight
+      shift, and a restrained horizontal lunge carry the attack without turning
+      the head or changing the gaze direction. The low-pixel loop samples at no
+      more than 12 frames per second and relies on clear pose holds plus one
+      compact impact spark rather than continuous trails or dense frame changes.
+      Disabled app animations
+      or Reduce Motion show one readable static encounter and must not leave a
+      TimelineView running. The resolved task title remains in the button's
+      accessibility label but is not rendered in the compact center lane.
+      Content stays inside the lower-corner envelope. Hover expansion grows
+      only downward from the same top edge, reserves the measured compact
+      height, and reclaims the transparent canvas after collapse. Display-off
+      recovery remains in the menu bar. Valid physical-notch geometry,
+      camera-safe indicators, hidden-notch recovery, quota semantics, task
+      navigation, privacy boundaries, full-screen Space participation, and
+      panel z-order remain unchanged.
+    rationale: >-
+      The task-title option fit the menu bar but looked visually unbalanced,
+      while the original code-drawn pixel warrior lacked character quality.
+      Reusing the user's existing Sword Wanderer pet preserves an already
+      approved identity and gives the center lane a continuous, readable action
+      loop without changing the proven top attachment or indicator geometry.
+    source: user-request-after-real-machine-review
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [non-notch-screens, external-displays, hardware-mirroring, menu-bar-height, sword-wanderer, battle-animation, expanded-state, full-screen-spaces]
+      exclude: [physical-notch-geometry, quota-semantics, activity-state-machine, pet-package-mutation]
+    examples:
+      positive: A no-notch Mac shows the original Sword Wanderer at the left of the center lane, the head stays focused forward while four readable low-pixel poses crouch, step through, strike, and recover, crisp pixel slimes squash before jumping and on landing, a short warm sword meets each slime with one fast amber hit spark, +1 rises as the next slime enters, and the entire island remains within the measured menu-bar boundary. A mirrored external display with no valid auxiliary areas leaves the panel hidden and exposes the current state through the menu bar; removing mirroring automatically restores the route selected from the current NSScreen areas.
+      negative: Showing the 212pt island over ordinary mirrored app content, redrawing the wanderer's face, showing the former bald pixel knight, turning the head away from the incoming slimes or using a rear-facing head frame, using a long cyan sword or large slash arc, using smooth glossy vector slimes, making the sword disappear between strikes, skipping the vertical raise before the forward strike, waiting for the whole kill effect to end before spawning the next slime, omitting +1, running a timeline under Reduce Motion, crossing the rounded lower corners, or changing the physical-notch path.
+    guards:
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/NotchDisplayRoutingTests.swift
+      - Tests/CodexNotchTests/SwordWandererBattleMotionTests.swift
+      - Tests/CodexNotchTests/NotchPanelVisibilityPolicyTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePerformanceTests.swift
+      - docs/decisions/016-sword-wanderer-battle-island.md
+      - docs/decisions/017-mirrored-display-menu-bar-fallback.md
+      - "manual: launch the built app on a no-notch Mac, confirm the original Sword Wanderer identity, repeated jumping slimes, visible sword contact and +1 overlap with the next spawn, menu-bar containment, downward hover expansion, collapse reclamation, and a static Reduce Motion state; then enable hardware display mirroring and confirm the panel is absent over ordinary apps while the menu bar exposes the current state, and disable mirroring to confirm live geometry recovery"
+    supersedes: [NOTCH-VISIBILITY-046]
     superseded_by: null
     last_verified_commit: null
 
@@ -979,26 +1195,126 @@ contracts:
     last_verified_commit: null
 
   - id: QUOTA-SEMANTICS-043
-    title: Weekly quota uses visible-only layer-backed motion at eight frames per second
-    status: active
-    statement: The right side prioritizes the weekly quota's remaining percentage; the number stays readable at 9.5pt inside a 22pt ring or wave ball; the ring gap starts at 12 o'clock and progresses clockwise. The compact ring stroke remains 2.25pt and the wave-ball edge remains 1.75pt. Remaining quota above 20% is green, above 10% and up to 20% is yellow, and 10% or less is deep red; hue does not change continuously with the percentage. While a task is running, app animations are enabled, Reduce Motion is disabled, and the notch surface is visible, the ring uses a gently flowing monochrome light-to-dark conic gradient for the current tier without a white highlight. Core Animation rotates that gradient at a preferred 8 frames per second and completes a cycle in 3 seconds; SwiftUI must not rebuild the ring from a continuous TimelineView. Under the same conditions, the wave ball uses a precomputed repeated wave path and Core Animation translates it horizontally at a preferred 8 frames per second; its path is rebuilt only when geometry, liquid level, or color changes. When the surface is detached or no longer visible, the task stops, app animations are disabled, or Reduce Motion is enabled, the corresponding layer animations are removed. Idle, completed, user-disabled-animation, and Reduce Motion states keep a full-brightness solid ring or still liquid level. Expanded quota, reset, and recent-conversation text retain their readable sizes and matching line heights; the quota bar is followed first by the current weekly reset timestamp and a second-level countdown; the full “N reset credits available” row remains clickable, and the card expands only downward to list each `rate-limit-reset-credits` item with `status=available`, its exact expiry time, and a second-level countdown without repeating the reset-credit name. The real notch in Settings remains the live preview, with no duplicate static preview card; the lower-right of the expanded panel continues to provide a Settings entry.
-    rationale: Physical-notch review found 4 FPS visibly rough while 8 FPS remained acceptable. Moving the persistent motion into Core Animation preserves that cadence without requiring SwiftUI to rebuild gradient stops or a sampled wave path eight times each second. Explicit visibility and lifecycle gates prevent detached or hidden indicators from continuing animation work.
+    title: Physical-notch five-hour quota and running marquee use visible-only layer-backed motion at eight frames per second
+    status: superseded
+    statement: >-
+      On the physical-notch layout, the compact left lane shows the returned five-hour quota's remaining percentage and no adjacent Codex status mark; when the API omits the five-hour rolling window, that lane stays empty. The compact right side continues to prioritize the weekly quota's remaining percentage. The separate no-notch floating-bar layout keeps its existing status lane. A returned five-hour rolling window (`limit_window_seconds=18000`) appears in the expanded quota section as the first quota row, above weekly, with its own remaining percentage, readable progress bar, exact reset timestamp, and second-level countdown. The weekly compact number stays readable at 9.5pt inside a 22pt ring or wave ball; the ring gap starts at 12 o'clock and progresses clockwise. The compact ring stroke remains 2.25pt and the wave-ball edge remains 1.75pt. Remaining quota above 20% is green, above 10% and up to 20% is yellow, and 10% or less is deep red; hue does not change continuously with the percentage. While a task is running, app animations are enabled, Reduce Motion is disabled, and the visible physical-notch compact surface is present, the quota indicator uses a gently flowing monochrome light-to-dark conic gradient for its current tier without a white highlight, and a single blue comet-like marquee runs on the compact island's outside contour: a small bright core leads a very short, progressively softer tail and a restrained halo, without a continuously lit full outline. Core Animation owns the ring gradient and marquee layers at a preferred 8 frames per second; the ring completes a cycle in 3 seconds and the marquee uses a 2.8-second loop. SwiftUI must not rebuild either persistent effect from a continuous TimelineView. Under the same conditions, the wave ball uses a precomputed repeated wave path and Core Animation translates it horizontally at a preferred 8 frames per second; its path is rebuilt only when geometry, liquid level, or color changes. When the surface is detached or no longer visible, the task stops, the card is expanded, app animations are disabled, or Reduce Motion is enabled, the corresponding layer animations are removed. Idle, completed, user-disabled-animation, and Reduce Motion states keep a full-brightness solid ring or still liquid level with no marquee, halo, or edge trace. Expanded quota, reset, and recent-conversation text retain their readable sizes and matching line heights. The full “N reset credits available” row remains clickable, and the card expands only downward to list each `rate-limit-reset-credits` item with `status=available`, its exact expiry time, and a second-level countdown without repeating the reset-credit name. The real notch in Settings remains the live preview, with no duplicate static preview card; the lower-right of the expanded panel continues to provide a Settings entry.
+    rationale: >-
+      The user clarified that the physical-notch left Codex mark is unnecessary, while the returned five-hour number must remain visible there. Keeping weekly on the right preserves its existing primary lane; leaving the left lane empty when five-hour data is absent avoids inventing data. The expanded card puts the shorter-window signal first so the two quota rows match the requested priority. The no-notch floating bar remains a separate layout with its own status lane. The first preview's isolated short dash and diffuse halo did not read clearly enough, so the running cue was refined into a longer edge light, then moved to the outer contour at the user's request. The user found that full-edge version still unattractive, so the current cue is a short comet-like light with a bright core and progressively softer trailing layers; it removes the constantly lit outline while retaining the outer-contour path. The stroke is centered just inside the fixed panel boundary so its visible half reads as an outside-edge light without being clipped, and the panel frame and hit area remain unchanged. Physical-notch review found 4 FPS visibly rough while 8 FPS remained acceptable. Moving the persistent motion into Core Animation preserves that cadence without requiring SwiftUI to rebuild gradient stops, a sampled wave path, or marquee geometry eight times each second. Explicit visibility, state, and lifecycle gates prevent detached, expanded, or stopped surfaces from continuing animation work.
     source: user-confirmed-physical-notch-feedback-and-performance-investigation
     owner: project-maintainer
     risk: medium
     scope:
-      include: [compact-state, quota-expanded-state, settings, quota-animation]
+      include: [compact-state, quota-expanded-state, settings, quota-animation, five-hour-window, running-marquee]
       exclude: [cost-estimation, window-geometry, completion-animation]
     examples:
-      positive: The compact quota visual remains 22pt with a centered 9.5pt number; a visible running ring and wave ball move at the user-confirmed 8 FPS cadence through Core Animation, both stop and remove their layer animations as soon as motion is disallowed or the surface disappears, and stopped states remain bright and readable.
-      negative: Restoring the 4 FPS cadence, driving either persistent effect with a SwiftUI TimelineView, rebuilding the wave path every visual frame, leaving a layer animation running after the surface disappears, changing warning thresholds or indicator geometry, or continuing motion while idle, completed, Reduce Motion is enabled, or app animations are disabled.
+      positive: A response containing both windows keeps the five-hour remaining number in the physical-notch left compact lane without a neighboring Codex mark and the weekly remaining number in the right lane; the expanded card lists five-hour first and weekly second with independent reset details, while the visible running quota layers and tapered blue outer-edge comet move through Core Animation at the user-confirmed 8 FPS preference and stopped states remain bright and readable.
+      negative: Restoring the physical-notch left Codex mark, hiding the returned five-hour number there, rendering a five-hour indicator when that window is absent, hiding a returned five-hour row from the expanded card, placing weekly on the left or above five-hour, removing the no-notch floating-bar status lane, restoring the 4 FPS cadence, driving the persistent effect with a SwiftUI TimelineView, rebuilding the wave path or marquee geometry every visual frame, changing warning thresholds or indicator geometry, leaving a layer animation running after the surface disappears or the card expands, or continuing motion while idle, completed, Reduce Motion is enabled, or app animations are disabled.
     guards:
       - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
       - Tests/CodexNotchTests/NotchTextTests.swift
       - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/CompactLeftIndicatorPolicyTests.swift
+      - Tests/CodexNotchTests/NotchMarqueeMotionTests.swift
+      - Tests/CodexNotchTests/CodexUsageClientTests.swift
+      - Tests/CodexNotchTests/UsageWindowClassifierTests.swift
       - docs/decisions/010-layer-backed-quota-motion.md
-      - "manual: on a physical notch, inspect the 3-second 8fps ring and wave, then stop the task and toggle both app animations and Reduce Motion to confirm immediate static cues"
+      - docs/decisions/018-running-notch-marquee.md
+      - "manual: on a physical notch with both windows returned, confirm the left lane shows only 5h, the right lane shows weekly, the expanded card puts 5h above weekly, and the running marquee stops when the card expands or motion is disabled"
     supersedes: [QUOTA-SEMANTICS-014]
+    superseded_by: QUOTA-SEMANTICS-044
+    last_verified_commit: null
+
+  - id: QUOTA-SEMANTICS-044
+    title: Physical-notch five-hour quota and low-cadence temporal-trail marquee use visible-only layer-backed motion
+    status: superseded
+    statement: >-
+      On the physical-notch layout, the compact left lane shows the returned five-hour quota's remaining percentage and no adjacent Codex status mark; when the API omits the five-hour rolling window, that lane stays empty. The compact right side continues to prioritize the weekly quota's remaining percentage. The separate no-notch floating-bar layout keeps its existing status lane. A returned five-hour rolling window (`limit_window_seconds=18000`) appears in the expanded quota section as the first quota row, above weekly, with its own remaining percentage, readable progress bar, exact reset timestamp, and second-level countdown. The weekly compact number stays readable at 9.5pt inside a 22pt ring or wave ball; the ring gap starts at 12 o'clock and progresses clockwise. The compact ring stroke remains 2.25pt and the wave-ball edge remains 1.75pt. Remaining quota above 20% is green, above 10% and up to 20% is yellow, and 10% or less is deep red; hue does not change continuously with the percentage. While a task is running, app animations are enabled, Reduce Motion is disabled, and the visible physical-notch compact surface is present, the quota indicator uses a gently flowing monochrome light-to-dark conic gradient for its current tier without a white highlight. The running cue uses a single blue short-core marquee on the compact island's outside contour without a continuously lit full outline. Core Animation owns the ring gradient, wave path, and marquee at the existing preferred 8 frames per second. To prevent the low-cadence marquee from reading as discrete jumps, its bright core is rendered through a `CAReplicatorLayer` with delayed, progressively fading temporal copies; SwiftUI must not rebuild the persistent effects from a continuous `TimelineView`. The ring completes a cycle in 3 seconds, the marquee uses a 2.8-second loop, and the wave ball uses its precomputed repeated wave path. When the surface is detached or no longer visible, the task stops, the card is expanded, app animations are disabled, or Reduce Motion is enabled, the corresponding layer animations are removed. Idle, completed, user-disabled-animation, and Reduce Motion states keep a full-brightness solid ring or still liquid level with no marquee, halo, or edge trace. Expanded quota, reset, and recent-conversation text retain their readable sizes and matching line heights. The full “N reset credits available” row remains clickable, and the card expands only downward to list each `rate-limit-reset-credits` item with `status=available`, its exact expiry time, and a second-level countdown without repeating the reset-credit name. The real notch in Settings remains the live preview, with no duplicate static preview card; the lower-right of the expanded panel continues to provide a Settings entry.
+    rationale: >-
+      The user reported that the 8 FPS marquee still looked visibly rough and explicitly rejected increasing its frame rate. The measured path is about 560pt over a 2.8-second loop, so a single 8 FPS dash can advance roughly 24pt between visible updates. A temporal trail keeps the source cadence and lifecycle gates unchanged while four delayed, lower-alpha copies overlap those phase positions, reducing the perceived jump without adding a timer, a SwiftUI redraw loop, or a continuously lit outline. The five-hour and weekly quota lanes, fixed canvas, expanded ordering, and no-notch fallback remain unchanged.
+    source: user-confirmed-low-cadence-feedback-and-Core-Animation-investigation
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [compact-state, quota-expanded-state, settings, quota-animation, five-hour-window, running-marquee]
+      exclude: [cost-estimation, window-geometry, completion-animation]
+    examples:
+      positive: A response containing both windows keeps five-hour on the physical-notch left and weekly on the right, lists five-hour first when expanded, and shows the running outer-edge blue core with delayed fading copies while every persistent layer remains at the existing 8 FPS cadence.
+      negative: Raising the marquee frame-rate budget, restoring a full bright outline, using a SwiftUI TimelineView for the persistent effect, leaving temporal copies visible while idle or expanded, restoring the physical-notch Codex mark, or hiding a returned five-hour window.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchTextTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/CompactLeftIndicatorPolicyTests.swift
+      - Tests/CodexNotchTests/NotchMarqueeMotionTests.swift
+      - Tests/CodexNotchTests/CodexUsageClientTests.swift
+      - Tests/CodexNotchTests/UsageWindowClassifierTests.swift
+      - docs/decisions/010-layer-backed-quota-motion.md
+      - docs/decisions/019-low-cadence-notch-marquee.md
+      - "manual: on a physical notch with both windows returned, confirm the left lane shows only 5h, the right lane shows weekly, the expanded card puts 5h above weekly, the temporal trail reads as one moving outer-edge cue, and the cue stops when the card expands or motion is disabled"
+    supersedes: [QUOTA-SEMANTICS-043]
+    superseded_by: QUOTA-SEMANTICS-045
+    last_verified_commit: null
+
+  - id: QUOTA-SEMANTICS-045
+    title: Physical-notch five-hour quota and centered breathing running light use visible-only layer-backed motion
+    status: superseded
+    statement: >-
+      On the physical-notch layout, the compact left lane shows the returned five-hour quota's remaining percentage and no adjacent Codex status mark; when the API omits the five-hour rolling window, that lane stays empty. The compact right side continues to show the weekly quota's remaining percentage, and the no-notch floating-bar layout keeps its separate status lane. A returned five-hour rolling window (`limit_window_seconds=18000`) remains the first quota row in the expanded card, above weekly, with its own remaining percentage, readable progress bar, exact reset timestamp, and second-level countdown. The weekly compact number stays readable at 9.5pt inside a 22pt ring or wave ball; existing ring geometry, warning bands, reset-credit rows, recent-conversation rows, downward-only expansion, and fixed-canvas behavior remain unchanged. While a task is running, app animations are enabled, Reduce Motion is disabled, and the visible physical-notch compact surface is present, Core Animation owns the quota ring, wave path, and running cue at the existing preferred 8 frames per second. The running cue is a single small blue light centered in the black compact notch surface; it uses a slow ease-in-ease-out breathing cycle that changes only opacity, scale, and soft halo, without x/y translation, marquee travel, a full bright outline, or SwiftUI's continuous `TimelineView`. When the surface is detached or no longer visible, the task stops, the card is expanded, app animations are disabled, or Reduce Motion is enabled, the corresponding layer animations are removed. Idle, completed, user-disabled-animation, and Reduce Motion states keep a readable static surface with no running light. The real notch in Settings remains the live preview, with no duplicate static preview card; the lower-right of the expanded panel continues to provide a Settings entry.
+    rationale: >-
+      The user rejected increasing the animation frame rate and then clarified that the replacement need not be a marquee. Apple Human Interface Guidelines recommend purposeful, unobtrusive motion and replacing spatial movement with fades when motion should be reduced. Apple's SF Symbols guidance describes a Breathe animation as changing presence and size to signal ongoing activity. A small centered pulse keeps the running state visible while eliminating the long spatial jump that made the outer-edge marquee look rough at 8 FPS. Core Animation interpolates scalar opacity, scale, and shadow properties on the layer; the compact layout, quota data, lifecycle gates, and frame-rate budget remain unchanged.
+    source: user-confirmed-breathing-light-preview-and-Apple-motion-research
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [compact-state, quota-expanded-state, settings, quota-animation, five-hour-window, running-pulse]
+      exclude: [cost-estimation, window-geometry, completion-animation, no-notch-running-cue]
+    examples:
+      positive: A response containing both windows keeps five-hour on the physical-notch left and weekly on the right, lists five-hour first when expanded, and shows one small centered blue light breathing softly while a task runs; the ring, wave, and pulse stop when the surface expands or motion is disabled.
+      negative: Raising the frame-rate budget, moving a bright point around the edge, restoring the Codex mark in the physical-notch left lane, showing a returned five-hour window nowhere, using a full bright outline, running a SwiftUI TimelineView for the cue, or leaving the pulse active while idle, completed, expanded, hidden, or reduced-motion.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchTextTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/CompactLeftIndicatorPolicyTests.swift
+      - Tests/CodexNotchTests/NotchRunningPulseMotionTests.swift
+      - Tests/CodexNotchTests/CodexUsageClientTests.swift
+      - Tests/CodexNotchTests/UsageWindowClassifierTests.swift
+      - docs/decisions/010-layer-backed-quota-motion.md
+      - docs/decisions/020-running-notch-breathing-light.md
+      - "manual: on a physical notch with both windows returned, confirm the left lane shows only 5h, the right lane shows weekly, the expanded card puts 5h above weekly, the centered light reads as a restrained breathing status cue, and the cue stops when the card expands or motion is disabled"
+    supersedes: [QUOTA-SEMANTICS-044]
+    superseded_by: QUOTA-SEMANTICS-046
+    last_verified_commit: null
+
+  - id: QUOTA-SEMANTICS-046
+    title: Physical-notch quota halos put the running cue in real visible side lanes
+    status: active
+    statement: >-
+      On the physical-notch layout, the compact left lane shows the returned five-hour quota's remaining percentage and no adjacent Codex status mark; when the API omits the five-hour rolling window, that lane stays empty. The compact right side continues to show the weekly quota's remaining percentage, and the no-notch floating-bar layout keeps its separate status lane. A returned five-hour rolling window (`limit_window_seconds=18000`) remains the first quota row in the expanded card, above weekly, with its own remaining percentage, readable progress bar, exact reset timestamp, and second-level countdown. The weekly compact number stays readable at 9.5pt inside a 22pt ring or wave ball; existing ring geometry, warning bands, reset-credit rows, recent-conversation rows, downward-only expansion, and fixed-canvas behavior remain unchanged. While a task is running, app animations are enabled, Reduce Motion is disabled, and the visible physical-notch compact surface is present, Core Animation owns the quota ring, wave path, and a slow blue breathing halo at the existing preferred 8 frames per second. Each halo sits behind its actual returned compact quota indicator in the left or right 46pt indicator lane, has a 24pt visible diameter inside the indicator's 2pt camera-side clearance, and never draws a cue in the physical camera cutout at the center. The halo changes only opacity and scale, without x/y translation, marquee travel, a full bright outline, or SwiftUI's continuous `TimelineView`. When a window is absent, its lane remains halo-free; the floating-bar layout never shows this physical-notch halo. When the surface is detached or no longer visible, the task stops, the card is expanded, app animations are disabled, or Reduce Motion is enabled, the corresponding layer animations are removed. Idle, completed, user-disabled-animation, and Reduce Motion states keep a readable static surface with no running halo. The real notch in Settings remains the live preview, with no duplicate static preview card; the lower-right of the expanded panel continues to provide a Settings entry.
+    rationale: >-
+      The centered breathing light was visible in a software-composited screenshot but lies under the real MacBook camera cutout and therefore cannot be a useful physical-screen cue. The user explicitly identified that mismatch. Reusing the two known displayable quota locations gives the running state a visible low-amplitude signal without changing the eight-frame budget, restoring a Codex mark, or placing animated pixels in inaccessible hardware space. Core Animation continues to interpolate only scalar opacity and scale while the quota layout, semantics, and lifecycle gates remain unchanged.
+    source: user-confirmed-physical-notch-feedback
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [compact-state, quota-expanded-state, settings, quota-animation, five-hour-window, running-quota-halo]
+      exclude: [cost-estimation, window-geometry, completion-animation, no-notch-running-cue]
+    examples:
+      positive: A response containing both windows keeps five-hour on the physical-notch left and weekly on the right, lists five-hour first when expanded, and breathes a restrained blue halo behind each returned visible quota indicator while a task runs; no light is drawn in the center camera cutout, and ring, wave, and halos stop when the card expands or motion is disabled.
+      negative: Raising the frame-rate budget, moving a bright point around the edge, drawing a cue in the camera cutout, restoring the Codex mark in the physical-notch left lane, showing a returned five-hour window nowhere, using a full bright outline, running a SwiftUI TimelineView for the cue, showing a halo in the floating bar, or leaving a halo active while idle, completed, expanded, hidden, or reduced-motion.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchTextTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/CompactLeftIndicatorPolicyTests.swift
+      - Tests/CodexNotchTests/QuotaRunningHaloMotionTests.swift
+      - Tests/CodexNotchTests/CodexUsageClientTests.swift
+      - Tests/CodexNotchTests/UsageWindowClassifierTests.swift
+      - docs/decisions/010-layer-backed-quota-motion.md
+      - docs/decisions/021-visible-quota-halo-running-cue.md
+      - "manual: on a physical notch with both windows returned, confirm the left lane shows only 5h, the right lane shows weekly, the expanded card puts 5h above weekly, the blue halo is visible only around the two real displayable indicator locations and never under the camera cutout, and the halos stop when the card expands or motion is disabled"
+    supersedes: [QUOTA-SEMANTICS-045]
     superseded_by: null
     last_verified_commit: null
 

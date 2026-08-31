@@ -6,7 +6,7 @@
 
 ### Your Codex quota—always in sight.
 
-**Weekly quota, exact reset times, and task status stay beside your MacBook notch.**<br>
+**Weekly quota, five-hour details, exact reset times, and task status stay beside your MacBook notch.**<br>
 Your browser, IDE, or any other app can be frontmost—your quota remains visible.
 
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-111111?logo=apple)](https://github.com/fengdwx/codex-notch/releases/latest)
@@ -27,7 +27,7 @@ Your browser, IDE, or any other app can be frontmost—your quota remains visibl
 
 Codex quota is easy to lose behind other windows. CodexNotch keeps the answers that matter beside your MacBook notch, wherever you work:
 
-- **How much weekly quota is left?**
+- **How much weekly quota is left, and what is the five-hour detail?**
 - **Exactly when does it reset?**
 - **Is the task still running?**
 
@@ -39,7 +39,7 @@ They remain beside the physical notch while you code, browse, write, or work in 
 
 | What you want to know | What CodexNotch shows |
 | --- | --- |
-| **How much quota remains?** | A persistent weekly-quota ring or wave ball beside the notch, with the number inside the indicator. |
+| **How much quota remains?** | On a physical notch, a returned five-hour ring or wave ball sits on the left and weekly stays on the right; the expanded card lists five-hour first, then weekly. |
 | **When will quota reset?** | The exact reset timestamp plus a second-by-second countdown in the expanded card. |
 | **When does each reset credit expire?** | Click **N reset credits available** to reveal every precise expiry time and countdown. |
 | **What happens when I switch apps?** | Nothing disappears. Quota and status stay visible while another app is frontmost. |
@@ -49,18 +49,18 @@ They remain beside the physical notch while you code, browse, write, or work in 
 
 ### Quota at a glance, in every app
 
-The weekly-quota indicator stays beside the physical notch even when no task is active. Switch to your browser, IDE, or another app and the remaining percentage stays visible.
+On a physical notch, the returned five-hour indicator stays on the left and the weekly-quota indicator stays on the right even when no task is active. If the five-hour window is absent, the left lane remains empty rather than showing a duplicate status mark. The expanded card puts the five-hour detail above weekly. Switch to your browser, IDE, or another app and the quota remains visible.
 
 ### Exact reset timing, not just a percentage
 
 Hover over the notch to reveal:
 
-- Weekly quota and a horizontal progress bar
+- The returned five-hour quota first, followed by weekly quota, with horizontal progress bars
 - The exact reset timestamp and live countdown
 - The precise expiry time of every available reset credit
 - Active tasks and recent conversations
 
-Quota windows are identified from the returned `limit_window_seconds`; CodexNotch does not hard-code a five-hour assumption.
+Quota windows are identified from the returned `limit_window_seconds`; on a physical notch, the weekly window remains in the compact right lane and a returned five-hour window appears in the compact left lane and first in the expanded card. The no-notch floating bar keeps its separate status lane.
 
 ### Your quota follows you across apps
 
@@ -68,7 +68,7 @@ CodexNotch is a standalone native macOS app. It does not depend on Atoll, CodexI
 
 ### Task status in the same place
 
-While Codex works, a blue activity echo shows that the task is still running; completion switches to a clear green check. Click a task in the expanded card to open `codex://threads/<thread-id>` instead of searching for the conversation again.
+While Codex works, a blue activity echo and restrained halos behind the real visible quota indicators show that the task is still running; completion switches to a clear green check. Click a task in the expanded card to open `codex://threads/<thread-id>` instead of searching for the conversation again.
 
 ## Install
 

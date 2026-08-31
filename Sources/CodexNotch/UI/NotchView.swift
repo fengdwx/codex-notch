@@ -4,8 +4,10 @@ import SwiftUI
 final class NotchViewModel: ObservableObject {
     @Published private(set) var state: NotchPresentationState
     @Published private(set) var now: Date
+    @Published private(set) var layoutMode: NotchLayoutMode
     @Published private(set) var cameraSafeAreaInset: CGFloat
     @Published private(set) var compactWidth: CGFloat
+    @Published private(set) var compactHeight: CGFloat
     @Published private(set) var surfaceSize: CGSize
     @Published private(set) var isResetScheduleExpanded = false
     @Published private(set) var animationsEnabled: Bool
@@ -18,8 +20,10 @@ final class NotchViewModel: ObservableObject {
     init(
         state: NotchPresentationState = .hidden,
         now: Date = .now,
+        layoutMode: NotchLayoutMode = .notch,
         cameraSafeAreaInset: CGFloat = 0,
         compactWidth: CGFloat = NotchCompactLayout.minimumWidth,
+        compactHeight: CGFloat = NotchCompactLayout.height,
         surfaceSize: CGSize = CGSize(
             width: NotchCompactLayout.minimumWidth,
             height: NotchCompactLayout.height
@@ -32,8 +36,10 @@ final class NotchViewModel: ObservableObject {
     ) {
         self.state = state
         self.now = now
+        self.layoutMode = layoutMode
         self.cameraSafeAreaInset = cameraSafeAreaInset
         self.compactWidth = compactWidth
+        self.compactHeight = compactHeight
         self.surfaceSize = surfaceSize
         self.animationsEnabled = animationsEnabled
         self.onOpenThread = onOpenThread
@@ -45,8 +51,10 @@ final class NotchViewModel: ObservableObject {
     func update(
         state: NotchPresentationState,
         now: Date,
+        layoutMode: NotchLayoutMode = .notch,
         cameraSafeAreaInset: CGFloat = 0,
         compactWidth: CGFloat = NotchCompactLayout.minimumWidth,
+        compactHeight: CGFloat = NotchCompactLayout.height,
         surfaceSize: CGSize = CGSize(
             width: NotchCompactLayout.minimumWidth,
             height: NotchCompactLayout.height
@@ -57,8 +65,10 @@ final class NotchViewModel: ObservableObject {
         let resolvedNow = Self.secondPrecision(now)
         let changesModel = self.state != state
             || self.now != resolvedNow
+            || self.layoutMode != layoutMode
             || self.cameraSafeAreaInset != cameraSafeAreaInset
             || self.compactWidth != compactWidth
+            || self.compactHeight != compactHeight
             || self.surfaceSize != surfaceSize
             || self.isResetScheduleExpanded != isResetScheduleExpanded
             || self.animationsEnabled != animationsEnabled
@@ -67,17 +77,21 @@ final class NotchViewModel: ObservableObject {
         let wasExpanded = Self.isExpanded(self.state)
         let willBeExpanded = Self.isExpanded(state)
         let changesSurface = wasExpanded != willBeExpanded
+            || self.layoutMode != layoutMode
             || self.surfaceSize != surfaceSize
             || self.compactWidth != compactWidth
+            || self.compactHeight != compactHeight
             || self.isResetScheduleExpanded != isResetScheduleExpanded
 
         let applyUpdate = {
             if self.state != state { self.state = state }
             if self.now != resolvedNow { self.now = resolvedNow }
+            if self.layoutMode != layoutMode { self.layoutMode = layoutMode }
             if self.cameraSafeAreaInset != cameraSafeAreaInset {
                 self.cameraSafeAreaInset = cameraSafeAreaInset
             }
             if self.compactWidth != compactWidth { self.compactWidth = compactWidth }
+            if self.compactHeight != compactHeight { self.compactHeight = compactHeight }
             if self.surfaceSize != surfaceSize { self.surfaceSize = surfaceSize }
             if self.isResetScheduleExpanded != isResetScheduleExpanded {
                 self.isResetScheduleExpanded = isResetScheduleExpanded
@@ -155,6 +169,17 @@ struct NotchView: View {
         return false
     }
 
+    private var isTaskRunning: Bool {
+        switch model.state {
+        case .workingCompact:
+            return true
+        case let .expanded(content):
+            return !content.sessions.isEmpty
+        case .hidden, .quotaCompact, .completedCompact:
+            return false
+        }
+    }
+
     private var isHidden: Bool {
         model.state == .hidden
     }
@@ -178,12 +203,13 @@ struct NotchView: View {
         }
         return CGSize(
             width: model.compactWidth,
-            height: NotchCompactLayout.height
+            height: model.compactHeight
         )
     }
 
-    private var surfaceShape: NotchAttachedShape {
-        NotchAttachedShape(
+    private var surfaceShape: NotchSurfaceShape {
+        NotchSurfaceShape(
+            layoutMode: model.layoutMode,
             shoulderDepth: 6,
             bottomRadius: isExpanded ? 22 : 14
         )
@@ -218,8 +244,13 @@ struct NotchView: View {
                 Color.clear
             case let .quotaCompact(usage):
                 CompactNotchView(
+                    layoutMode: model.layoutMode,
+                    compactHeight: model.compactHeight,
                     icon: .quota,
-                    title: "Codex",
+                    title: appLanguage.localized(
+                        chinese: "Codex 就绪",
+                        english: "Codex ready"
+                    ),
                     subtitle: NotchText.quotaSubtitle(usage: usage, language: appLanguage),
                     usage: usage,
                     quotaDisplayStyle: quotaDisplayStyle,
@@ -227,10 +258,15 @@ struct NotchView: View {
                 )
             case let .workingCompact(primary, count, usage):
                 CompactNotchView(
+                    layoutMode: model.layoutMode,
+                    compactHeight: model.compactHeight,
                     icon: .working,
-                    title: appLanguage.localized(
-                        chinese: "Codex 运行中",
-                        english: "Codex running"
+                    title: NotchText.compactActivityTitle(
+                        primary.title,
+                        fallback: appLanguage.localized(
+                            chinese: "Codex 运行中",
+                            english: "Codex running"
+                        )
                     ),
                     subtitle: count > 1
                         ? appLanguage.localized(
@@ -247,10 +283,15 @@ struct NotchView: View {
                 )
             case let .completedCompact(session, usage):
                 CompactNotchView(
+                    layoutMode: model.layoutMode,
+                    compactHeight: model.compactHeight,
                     icon: .completed,
-                    title: appLanguage.localized(
-                        chinese: "Codex 已完成",
-                        english: "Codex completed"
+                    title: NotchText.compactActivityTitle(
+                        session.title,
+                        fallback: appLanguage.localized(
+                            chinese: "Codex 已完成",
+                            english: "Codex completed"
+                        )
                     ),
                     subtitle: NotchText.projectName(cwd: session.cwd, language: appLanguage),
                     usage: usage,
@@ -261,8 +302,10 @@ struct NotchView: View {
                 ExpandedNotchView(
                     content: content,
                     now: model.now,
+                    layoutMode: model.layoutMode,
                     cameraSafeAreaInset: model.cameraSafeAreaInset,
                     compactWidth: model.compactWidth,
+                    compactHeight: model.compactHeight,
                     quotaDisplayStyle: quotaDisplayStyle,
                     language: appLanguage,
                     isResetScheduleExpanded: model.isResetScheduleExpanded,
@@ -312,7 +355,10 @@ struct NotchView: View {
                 notchDisplayEnabled = false
             } label: {
                 Label(
-                    appLanguage.localized(chinese: "隐藏刘海", english: "Hide notch"),
+                    appLanguage.localized(
+                        chinese: model.layoutMode == .floatingBar ? "隐藏悬浮岛" : "隐藏刘海",
+                        english: model.layoutMode == .floatingBar ? "Hide activity island" : "Hide notch"
+                    ),
                     systemImage: "eye.slash"
                 )
             }
@@ -345,7 +391,7 @@ private struct NotchMotionEnabledKey: EnvironmentKey {
     static let defaultValue = true
 }
 
-private extension EnvironmentValues {
+extension EnvironmentValues {
     var notchAppLanguage: AppLanguage {
         get { self[NotchAppLanguageKey.self] }
         set { self[NotchAppLanguageKey.self] = newValue }
@@ -359,7 +405,7 @@ private extension EnvironmentValues {
 
 private struct NotchSurfaceBackground: View {
     let material: NotchSurfaceMaterial
-    let shape: NotchAttachedShape
+    let shape: NotchSurfaceShape
 
     @ViewBuilder
     var body: some View {
@@ -369,6 +415,27 @@ private struct NotchSurfaceBackground: View {
         case .black:
             NotchPalette.background
         }
+    }
+}
+
+struct NotchSurfaceShape: Shape {
+    let layoutMode: NotchLayoutMode
+    var shoulderDepth: CGFloat
+    var bottomRadius: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        if layoutMode == .floatingBar {
+            return NotchAttachedShape(
+                shoulderDepth: 0,
+                bottomRadius: bottomRadius
+            ).path(in: rect)
+        }
+
+        return NotchAttachedShape(
+            shoulderDepth: shoulderDepth,
+            bottomRadius: bottomRadius
+        )
+        .path(in: rect)
     }
 }
 
@@ -424,6 +491,15 @@ private struct NotchAttachedShape: Shape {
     }
 }
 
+enum CompactLeftIndicatorPolicy {
+    static func showsFiveHourQuota(
+        layoutMode: NotchLayoutMode,
+        hasFiveHourWindow: Bool
+    ) -> Bool {
+        layoutMode == .notch && hasFiveHourWindow
+    }
+}
+
 private struct CompactNotchView: View {
     enum IconKind: Equatable {
         case quota
@@ -445,8 +521,11 @@ private struct CompactNotchView: View {
             case .completed: return .completed
             }
         }
+
     }
 
+    let layoutMode: NotchLayoutMode
+    let compactHeight: CGFloat
     let icon: IconKind
     let title: String
     let subtitle: String
@@ -457,8 +536,41 @@ private struct CompactNotchView: View {
 
     var body: some View {
         Button(action: action) {
+            compactContent
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(NotchButtonStyle())
+        .accessibilityLabel(accessibilityText)
+    }
+
+    @ViewBuilder
+    private var compactContent: some View {
+        if layoutMode == .floatingBar {
             HStack(spacing: 0) {
-                CompactAppIconView(status: icon)
+                compactLeftIndicator
+                    .frame(
+                        width: NotchFloatingBarLayout.appLaneWidth,
+                        height: compactHeight
+                    )
+
+                SwordWandererBattleView(compactHeight: compactHeight)
+                    .frame(
+                        width: NotchFloatingBarLayout.battleLaneWidth,
+                        height: compactHeight
+                    )
+
+                CompactQuotaView(
+                    window: usage?.weeklyWindow,
+                    activity: icon.quotaActivity,
+                    style: quotaDisplayStyle,
+                    layoutMode: .floatingBar,
+                    laneWidth: NotchFloatingBarLayout.quotaLaneWidth
+                )
+            }
+            .padding(.horizontal, NotchFloatingBarLayout.horizontalInset)
+        } else {
+            HStack(spacing: 0) {
+                compactLeftIndicator
                     .frame(
                         width: NotchCompactLayout.indicatorLaneWidth,
                         height: NotchCompactLayout.height
@@ -469,15 +581,34 @@ private struct CompactNotchView: View {
                 // The wider content lanes move both indicators slightly toward
                 // the camera while keeping their visible shapes outside it.
                 CompactQuotaView(
-                    usage: usage,
+                    window: usage?.weeklyWindow,
                     activity: icon.quotaActivity,
-                    style: quotaDisplayStyle
+                    style: quotaDisplayStyle,
+                    layoutMode: .notch
                 )
             }
-            .contentShape(Rectangle())
         }
-        .buttonStyle(NotchButtonStyle())
-        .accessibilityLabel(accessibilityText)
+    }
+
+    @ViewBuilder
+    private var compactLeftIndicator: some View {
+        if CompactLeftIndicatorPolicy.showsFiveHourQuota(
+            layoutMode: layoutMode,
+            hasFiveHourWindow: usage?.fiveHourWindow != nil
+        ), let fiveHourWindow = usage?.fiveHourWindow {
+            CompactQuotaView(
+                window: fiveHourWindow,
+                activity: icon.quotaActivity,
+                style: quotaDisplayStyle,
+                layoutMode: .notch
+            )
+        } else if layoutMode == .notch {
+            Color.clear
+        } else {
+            // The no-notch floating bar still needs a status lane because it
+            // has no physical notch to provide the visual activity context.
+            CompactAppIconView(status: icon)
+        }
     }
 
     private var accessibilityText: String {
@@ -516,16 +647,38 @@ private struct CompactAppIconView: View {
 }
 
 private struct CompactQuotaView: View {
-    let usage: UsageSnapshot?
+    let window: UsageWindow?
     let activity: QuotaRingActivity
     let style: QuotaDisplayStyle
+    let layoutMode: NotchLayoutMode
+    var laneWidth = NotchCompactLayout.indicatorLaneWidth
+
+    @Environment(\.notchMotionEnabled) private var motionEnabled
 
     var body: some View {
-        quotaIndicator
+        ZStack {
+            if QuotaRunningHaloMotion.shouldAnimate(
+                layoutMode: layoutMode,
+                activity: activity,
+                hasQuota: window != nil,
+                motionEnabled: motionEnabled
+            ) {
+                // This is intentionally centered on the visible quota circle,
+                // never on the physical camera cutout in the middle.
+                QuotaRunningHaloView(isAnimating: true)
+                    .frame(
+                        width: QuotaRunningHaloMotion.visualDiameter,
+                        height: QuotaRunningHaloMotion.visualDiameter
+                    )
+                    .allowsHitTesting(false)
+            }
+
+            quotaIndicator
+        }
             .offset(x: NotchCompactLayout.quotaIndicatorOutwardOffset)
             .frame(maxWidth: .infinity, alignment: .center)
             .frame(
-                width: NotchCompactLayout.indicatorLaneWidth,
+                width: laneWidth,
                 height: NotchCompactLayout.height,
                 alignment: .center
             )
@@ -535,7 +688,7 @@ private struct CompactQuotaView: View {
     private var quotaIndicator: some View {
         QuotaIndicatorView(
             style: style,
-            usage: usage,
+            window: window,
             activity: activity,
             diameter: NotchCompactLayout.indicatorDiameter,
             lineWidth: NotchCompactLayout.quotaIndicatorLineWidth(for: style),
@@ -630,7 +783,7 @@ private struct RunningChatGPTIcon: View {
 
 private struct QuotaIndicatorView: View {
     let style: QuotaDisplayStyle
-    let usage: UsageSnapshot?
+    let window: UsageWindow?
     let activity: QuotaRingActivity
     let diameter: CGFloat
     let lineWidth: CGFloat
@@ -639,9 +792,9 @@ private struct QuotaIndicatorView: View {
     var body: some View {
         switch style {
         case .clockwiseRing:
-            WeeklyQuotaRing(
+            QuotaRing(
                 style: style,
-                usage: usage,
+                window: window,
                 activity: activity,
                 diameter: diameter,
                 lineWidth: lineWidth,
@@ -649,7 +802,7 @@ private struct QuotaIndicatorView: View {
             )
         case .waveBall:
             QuotaWaveBall(
-                usage: usage,
+                window: window,
                 activity: activity,
                 diameter: diameter,
                 lineWidth: lineWidth,
@@ -876,7 +1029,7 @@ private struct QuotaValueText: View {
 }
 
 private struct QuotaWaveBall: View {
-    let usage: UsageSnapshot?
+    let window: UsageWindow?
     let activity: QuotaRingActivity
     let diameter: CGFloat
     let lineWidth: CGFloat
@@ -884,10 +1037,6 @@ private struct QuotaWaveBall: View {
 
     @Environment(\.notchMotionEnabled) private var motionEnabled
     @State private var displayedProgress: CGFloat = 0
-
-    private var window: UsageWindow? {
-        usage?.weeklyWindow
-    }
 
     private var remainingPercent: Double {
         window?.remainingPercent ?? 0
@@ -995,9 +1144,9 @@ private struct QuotaWaveBall: View {
     }
 }
 
-private struct WeeklyQuotaRing: View {
+private struct QuotaRing: View {
     let style: QuotaDisplayStyle
-    let usage: UsageSnapshot?
+    let window: UsageWindow?
     let activity: QuotaRingActivity
     let diameter: CGFloat
     let lineWidth: CGFloat
@@ -1005,10 +1154,6 @@ private struct WeeklyQuotaRing: View {
 
     @Environment(\.notchMotionEnabled) private var motionEnabled
     @State private var displayedProgress: CGFloat = 0
-
-    private var window: UsageWindow? {
-        usage?.weeklyWindow
-    }
 
     private var remainingPercent: Double {
         window?.remainingPercent ?? 0
@@ -1153,8 +1298,10 @@ private struct WeeklyQuotaRing: View {
 private struct ExpandedNotchView: View {
     let content: ExpandedContent
     let now: Date
+    let layoutMode: NotchLayoutMode
     let cameraSafeAreaInset: CGFloat
     let compactWidth: CGFloat
+    let compactHeight: CGFloat
     let quotaDisplayStyle: QuotaDisplayStyle
     let language: AppLanguage
     let isResetScheduleExpanded: Bool
@@ -1171,6 +1318,8 @@ private struct ExpandedNotchView: View {
             // Keep the original compact island visible at the top. The detail
             // body is revealed underneath it as the panel's bottom edge grows.
             CompactNotchView(
+                layoutMode: layoutMode,
+                compactHeight: compactHeight,
                 icon: headerIcon,
                 title: headerTitle,
                 subtitle: headerSubtitle,
@@ -1180,7 +1329,7 @@ private struct ExpandedNotchView: View {
             )
             .frame(
                 width: compactWidth,
-                height: NotchCompactLayout.height
+                height: compactHeight
             )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -1188,7 +1337,7 @@ private struct ExpandedNotchView: View {
 
     private var detailContent: some View {
         VStack(alignment: .leading, spacing: 0) {
-            WeeklyQuotaProgressView(
+            QuotaWindowsProgressView(
                 usage: content.usage,
                 now: now,
                 isResetScheduleExpanded: isResetScheduleExpanded,
@@ -1264,8 +1413,8 @@ private struct ExpandedNotchView: View {
 
                         Text(
                             notchDisplayEnabled
-                                ? language.localized(chinese: "刘海开启", english: "Notch On")
-                                : language.localized(chinese: "刘海关闭", english: "Notch Off")
+                                ? displayOnLabel
+                                : displayOffLabel
                         )
                         .font(.system(size: 10.5, weight: .semibold, design: .rounded))
                         .foregroundStyle(
@@ -1295,7 +1444,10 @@ private struct ExpandedNotchView: View {
                 .toggleStyle(.button)
                 .buttonStyle(NotchButtonStyle())
                 .accessibilityLabel(
-                    language.localized(chinese: "显示刘海", english: "Show notch")
+                    language.localized(
+                        chinese: layoutMode == .floatingBar ? "显示悬浮岛" : "显示刘海",
+                        english: layoutMode == .floatingBar ? "Show activity island" : "Show notch"
+                    )
                 )
                 .accessibilityValue(
                     notchDisplayEnabled
@@ -1327,9 +1479,30 @@ private struct ExpandedNotchView: View {
         .padding(.horizontal, 14)
         // The panel itself attaches to the physical notch. Only the content
         // moves down, so the progress bar and text stay on drawable pixels.
-        .padding(.top, cameraSafeAreaInset + 8)
+        .padding(.top, expandedContentTopInset)
         .padding(.bottom, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private var displayOnLabel: String {
+        language.localized(
+            chinese: layoutMode == .floatingBar ? "悬浮岛开启" : "刘海开启",
+            english: layoutMode == .floatingBar ? "Activity island On" : "Notch On"
+        )
+    }
+
+    private var displayOffLabel: String {
+        language.localized(
+            chinese: layoutMode == .floatingBar ? "悬浮岛关闭" : "刘海关闭",
+            english: layoutMode == .floatingBar ? "Activity island Off" : "Notch Off"
+        )
+    }
+
+    private var expandedContentTopInset: CGFloat {
+        if layoutMode == .floatingBar {
+            return compactHeight + 8
+        }
+        return cameraSafeAreaInset + 8
     }
 
     private var headerIcon: CompactNotchView.IconKind {
@@ -1345,11 +1518,23 @@ private struct ExpandedNotchView: View {
     private var headerTitle: String {
         switch headerIcon {
         case .working:
-            return language.localized(chinese: "Codex 运行中", english: "Codex running")
+            return NotchText.compactActivityTitle(
+                content.sessions.first?.title,
+                fallback: language.localized(
+                    chinese: "Codex 运行中",
+                    english: "Codex running"
+                )
+            )
         case .completed:
-            return language.localized(chinese: "Codex 已完成", english: "Codex completed")
+            return NotchText.compactActivityTitle(
+                content.headerConversation?.title,
+                fallback: language.localized(
+                    chinese: "Codex 已完成",
+                    english: "Codex completed"
+                )
+            )
         case .quota:
-            return "Codex"
+            return language.localized(chinese: "Codex 就绪", english: "Codex ready")
         }
     }
 
@@ -1472,20 +1657,19 @@ private struct RunningStatusDot: View {
     }
 }
 
-private struct WeeklyQuotaProgressView: View {
+private struct QuotaWindowsProgressView: View {
     let usage: UsageSnapshot?
     let now: Date
     let isResetScheduleExpanded: Bool
     let onResetScheduleExpandedChanged: (Bool) -> Void
     @Environment(\.notchAppLanguage) private var language
 
-    private var window: UsageWindow? {
+    private var weeklyWindow: UsageWindow? {
         usage?.weeklyWindow
     }
 
-    private var progressColor: Color {
-        guard window != nil else { return NotchPalette.secondaryText }
-        return QuotaColorScale.color(for: window?.remainingPercent ?? 0)
+    private var fiveHourWindow: UsageWindow? {
+        usage?.fiveHourWindow
     }
 
     private var resetCredits: [ResetCredit] {
@@ -1494,8 +1678,49 @@ private struct WeeklyQuotaProgressView: View {
 
     var body: some View {
         VStack(spacing: 7) {
+            if let fiveHourWindow {
+                QuotaWindowProgressRow(
+                    kind: .rolling(hours: 5),
+                    window: fiveHourWindow,
+                    now: now
+                )
+            }
+
+            QuotaWindowProgressRow(
+                kind: .weekly,
+                window: weeklyWindow,
+                now: now
+            )
+
+            ResetScheduleDisclosure(
+                credits: resetCredits,
+                now: now,
+                isExpanded: isResetScheduleExpanded,
+                title: NotchText.resetCredits(usage: usage, language: language),
+                onExpandedChanged: onResetScheduleExpandedChanged
+            )
+        }
+        .frame(maxWidth: .infinity, minHeight: 52, alignment: .top)
+        .animation(.easeInOut(duration: 0.28), value: weeklyWindow?.remainingPercent ?? 0)
+        .animation(.easeInOut(duration: 0.28), value: fiveHourWindow?.remainingPercent ?? 0)
+    }
+}
+
+private struct QuotaWindowProgressRow: View {
+    let kind: UsageWindowKind
+    let window: UsageWindow?
+    let now: Date
+    @Environment(\.notchAppLanguage) private var language
+
+    private var progressColor: Color {
+        guard window != nil else { return NotchPalette.secondaryText }
+        return QuotaColorScale.color(for: window?.remainingPercent ?? 0)
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
             HStack {
-                Text(language.localized(chinese: "本周剩余", english: "Weekly remaining"))
+                Text(NotchText.quotaWindowTitle(kind, language: language))
                     .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                     .foregroundStyle(NotchPalette.primaryText)
 
@@ -1539,17 +1764,8 @@ private struct WeeklyQuotaProgressView: View {
                     .monospacedDigit()
                     .lineLimit(1)
             }
-
-            ResetScheduleDisclosure(
-                credits: resetCredits,
-                now: now,
-                isExpanded: isResetScheduleExpanded,
-                title: NotchText.resetCredits(usage: usage, language: language),
-                onExpandedChanged: onResetScheduleExpandedChanged
-            )
         }
-        .frame(maxWidth: .infinity, minHeight: 52, alignment: .top)
-        .animation(.easeInOut(duration: 0.28), value: window?.remainingPercent ?? 0)
+        .frame(maxWidth: .infinity, alignment: .top)
     }
 
     private var resetTimestampText: String {
@@ -1762,6 +1978,18 @@ private struct NotchButtonStyle: ButtonStyle {
 }
 
 enum NotchText {
+    static func compactActivityTitle(
+        _ candidate: String?,
+        fallback: String
+    ) -> String {
+        guard let title = candidate?.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ), !title.isEmpty else {
+            return fallback
+        }
+        return title
+    }
+
     static func windowLabel(
         _ kind: UsageWindowKind,
         language: AppLanguage = .chinese
@@ -1778,6 +2006,28 @@ enum NotchText {
             return language.localized(chinese: "每周", english: "Weekly")
         case let .custom(seconds):
             return formatDuration(seconds: seconds)
+        }
+    }
+
+    static func quotaWindowTitle(
+        _ kind: UsageWindowKind,
+        language: AppLanguage = .chinese
+    ) -> String {
+        switch kind {
+        case .weekly:
+            return language.localized(chinese: "本周剩余", english: "Weekly remaining")
+        case let .rolling(hours):
+            return language.localized(
+                chinese: "\(hours)h 剩余",
+                english: "\(hours)h remaining"
+            )
+        case .daily:
+            return language.localized(chinese: "每日剩余", english: "Daily remaining")
+        case let .custom(seconds):
+            return language.localized(
+                chinese: "\(formatDuration(seconds: seconds)) 剩余",
+                english: "\(formatDuration(seconds: seconds)) remaining"
+            )
         }
     }
 
@@ -1803,16 +2053,65 @@ enum NotchText {
         usage: UsageSnapshot?,
         language: AppLanguage = .chinese
     ) -> String {
-        guard let usage, let window = usage.windows.first else {
+        guard let usage else {
             return language.localized(
                 chinese: "额度暂不可用",
                 english: "Quota unavailable"
             )
         }
-        return language.localized(
-            chinese: "\(windowLabel(window.kind, language: language))剩余 \(percent(window.remainingPercent)) · 已用 \(percent(window.usedPercent))",
-            english: "\(windowLabel(window.kind, language: language)) \(percent(window.remainingPercent)) remaining · \(percent(window.usedPercent)) used"
-        )
+
+        var windows: [UsageWindow] = []
+        if let weeklyWindow = usage.weeklyWindow {
+            windows.append(weeklyWindow)
+        }
+        if let fiveHourWindow = usage.fiveHourWindow,
+           !windows.contains(where: { $0.id == fiveHourWindow.id }) {
+            windows.append(fiveHourWindow)
+        }
+        if windows.isEmpty, let firstWindow = usage.windows.first {
+            windows.append(firstWindow)
+        }
+        guard !windows.isEmpty else {
+            return language.localized(
+                chinese: "额度暂不可用",
+                english: "Quota unavailable"
+            )
+        }
+
+        return windows
+            .map { quotaWindowSummary($0, language: language) }
+            .joined(separator: " · ")
+    }
+
+    private static func quotaWindowSummary(
+        _ window: UsageWindow,
+        language: AppLanguage
+    ) -> String {
+        let remaining = percent(window.remainingPercent)
+        let used = percent(window.usedPercent)
+        switch window.kind {
+        case .weekly:
+            return language.localized(
+                chinese: "每周剩余 \(remaining) · 已用 \(used)",
+                english: "Weekly \(remaining) remaining · \(used) used"
+            )
+        case let .rolling(hours):
+            return language.localized(
+                chinese: "\(hours)h 剩余 \(remaining) · 已用 \(used)",
+                english: "\(hours)h \(remaining) remaining · \(used) used"
+            )
+        case .daily:
+            return language.localized(
+                chinese: "每日剩余 \(remaining) · 已用 \(used)",
+                english: "Daily \(remaining) remaining · \(used) used"
+            )
+        case let .custom(seconds):
+            let label = formatDuration(seconds: seconds)
+            return language.localized(
+                chinese: "\(label) 剩余 \(remaining) · 已用 \(used)",
+                english: "\(label) \(remaining) remaining · \(used) used"
+            )
+        }
     }
 
     static func resetCredits(

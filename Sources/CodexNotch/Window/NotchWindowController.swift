@@ -2,6 +2,14 @@ import AppKit
 import Foundation
 import SwiftUI
 
+enum NotchPanelFramePolicy {
+    static func shouldSettleAfterCollapse(
+        layoutMode: NotchLayoutMode
+    ) -> Bool {
+        layoutMode != .menuBarFallback
+    }
+}
+
 final class NotchWindowController: NSWindowController {
     var onScreenParametersChanged: (() -> Void)?
     var onOpenThread: ((String) -> Void)?
@@ -60,7 +68,7 @@ final class NotchWindowController: NSWindowController {
             return
         }
 
-        requestedLayoutMode = .notch
+        requestedLayoutMode = layout.mode
         hideFallbackMenu()
         let frame = layout.frame(for: state)
         let wasVisible = panel.isVisible
@@ -105,7 +113,9 @@ final class NotchWindowController: NSWindowController {
         state: NotchPresentationState,
         animationsEnabled: Bool = AppAnimationPreference.defaultEnabled
     ) {
-        guard layout.mode == .notch,
+        guard NotchPanelFramePolicy.shouldSettleAfterCollapse(
+            layoutMode: layout.mode
+        ),
               let panel = window as? NotchPanel else {
             return
         }
@@ -142,20 +152,6 @@ final class NotchWindowController: NSWindowController {
         )
     }
 
-    private func shouldSetFrameImmediately(
-        from current: NSRect,
-        to target: NSRect,
-        wasVisible: Bool
-    ) -> Bool {
-        guard wasVisible else { return true }
-        guard !current.equalTo(target) else { return false }
-
-        let growsWidth = target.width > current.width + 0.5
-        let growsHeight = target.height > current.height + 0.5
-        let changesTopAttachment = abs(target.maxY - current.maxY) > 0.5
-        return growsWidth || growsHeight || changesTopAttachment
-    }
-
     private func shouldDeferFrameSettlement(from current: NSRect, to target: NSRect) -> Bool {
         let growsWidth = target.width > current.width + 0.5
         let growsHeight = target.height > current.height + 0.5
@@ -168,6 +164,20 @@ final class NotchWindowController: NSWindowController {
         deferredFrameWorkItem?.cancel()
         deferredFrameWorkItem = nil
         deferredFrameIdentifier = nil
+    }
+
+    private func shouldSetFrameImmediately(
+        from current: NSRect,
+        to target: NSRect,
+        wasVisible: Bool
+    ) -> Bool {
+        guard wasVisible else { return true }
+        guard !current.equalTo(target) else { return false }
+
+        let growsWidth = target.width > current.width + 0.5
+        let growsHeight = target.height > current.height + 0.5
+        let changesTopAttachment = abs(target.maxY - current.maxY) > 0.5
+        return growsWidth || growsHeight || changesTopAttachment
     }
 
     func hideNotchPanel() {
@@ -215,9 +225,17 @@ final class NotchWindowController: NSWindowController {
         showFallbackMenu(for: .hidden, includesShowNotchAction: true)
     }
 
+    /// Hardware display mirroring has no stable physical-notch coordinate
+    /// space. Keep current task and quota actions in the menu bar without
+    /// placing a floating island over mirrored application content.
+    func showMenuBarFallback(for state: NotchPresentationState) {
+        hideNotchPanel()
+        showFallbackMenu(for: state)
+    }
+
     private func restoreNotchPanelAfterApplicationSwitch(displayIsEnabled: Bool) {
         guard NotchPanelVisibilityPolicy.shouldRestoreAfterApplicationSwitch(
-            panelIsRequested: requestedLayoutMode == .notch,
+            panelIsRequested: requestedLayoutMode != .menuBarFallback,
             layoutMode: requestedLayoutMode,
             displayIsEnabled: displayIsEnabled
         ), let panel = window as? NotchPanel else {

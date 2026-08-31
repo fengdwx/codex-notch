@@ -32,6 +32,31 @@ final class NotchPanelVisibilityPolicyTests: XCTestCase {
         )
     }
 
+    func testFloatingBarIsRestoredAfterAnAppSwitch() {
+        XCTAssertTrue(
+            NotchPanelVisibilityPolicy.shouldRestoreAfterApplicationSwitch(
+                panelIsRequested: true,
+                layoutMode: .floatingBar,
+                displayIsEnabled: true
+            )
+        )
+    }
+
+    func testDisabledFloatingBarUsesTheMenuBarRecoveryPath() {
+        XCTAssertTrue(
+            NotchPanelVisibilityPolicy.shouldUseMenuBarFallback(
+                layoutMode: .floatingBar,
+                displayIsEnabled: false
+            )
+        )
+        XCTAssertFalse(
+            NotchPanelVisibilityPolicy.shouldUseMenuBarFallback(
+                layoutMode: .floatingBar,
+                displayIsEnabled: true
+            )
+        )
+    }
+
     func testAnUnrequestedNotchPanelDoesNotReappearAfterAnAppSwitch() {
         XCTAssertFalse(
             NotchPanelVisibilityPolicy.shouldRestoreAfterApplicationSwitch(
@@ -69,6 +94,12 @@ final class NotchPanelVisibilityPolicyTests: XCTestCase {
             NotchPanelVisibilityPolicy.shouldKeepHiddenHoverSensor(
                 layoutMode: .notch,
                 displayIsEnabled: true
+            )
+        )
+        XCTAssertFalse(
+            NotchPanelVisibilityPolicy.shouldKeepHiddenHoverSensor(
+                layoutMode: .floatingBar,
+                displayIsEnabled: false
             )
         )
     }

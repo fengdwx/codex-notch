@@ -32,6 +32,42 @@ final class NotchRuntimePerformanceTests: XCTestCase {
         XCTAssertEqual(updateCount, 0)
     }
 
+    func testViewModelCarriesTheFloatingBarLayoutModeIntoTheSurface() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let model = NotchViewModel(
+            state: .hidden,
+            now: now,
+            animationsEnabled: false
+        )
+
+        model.update(
+            state: .hidden,
+            now: now,
+            layoutMode: .floatingBar,
+            animationsEnabled: false
+        )
+
+        XCTAssertEqual(model.layoutMode, .floatingBar)
+    }
+
+    func testFloatingBarReclaimsExpandedTransparentCanvasAfterCollapse() {
+        XCTAssertTrue(
+            NotchPanelFramePolicy.shouldSettleAfterCollapse(
+                layoutMode: .notch
+            )
+        )
+        XCTAssertTrue(
+            NotchPanelFramePolicy.shouldSettleAfterCollapse(
+                layoutMode: .floatingBar
+            )
+        )
+        XCTAssertFalse(
+            NotchPanelFramePolicy.shouldSettleAfterCollapse(
+                layoutMode: .menuBarFallback
+            )
+        )
+    }
+
     func testClockUpdatesAtWholeSecondPrecisionOnly() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let model = NotchViewModel(state: .hidden, now: now)

@@ -3,6 +3,7 @@ import Foundation
 
 enum NotchLayoutMode: Equatable {
     case notch
+    case floatingBar
     case menuBarFallback
 }
 
@@ -93,6 +94,31 @@ enum NotchCompactLayout {
     }
 }
 
+enum NotchFloatingBarLayout {
+    static let compactWidth: CGFloat = 212
+    static let preferredHeight: CGFloat = 30
+    static let autoHiddenMenuBarHeight: CGFloat = 28
+    static let minimumMenuBarHeight: CGFloat = 24
+    static let horizontalInset: CGFloat = 8
+    static let appLaneWidth: CGFloat = 30
+    static let battleLaneWidth: CGFloat = 136
+    static let quotaLaneWidth: CGFloat = 30
+
+    static var contentWidth: CGFloat {
+        horizontalInset * 2
+            + appLaneWidth
+            + battleLaneWidth
+            + quotaLaneWidth
+    }
+
+    static func compactHeight(menuBarHeight: CGFloat) -> CGFloat {
+        guard menuBarHeight >= minimumMenuBarHeight else {
+            return autoHiddenMenuBarHeight
+        }
+        return min(preferredHeight, menuBarHeight)
+    }
+}
+
 enum NotchExpandedLayout {
     static let width: CGFloat = 420
     static let resetScheduleControlHeight: CGFloat = 39
@@ -108,14 +134,20 @@ enum NotchExpandedLayout {
     static let resetScheduleRowHeight: CGFloat = 34
     static let resetScheduleDetailSpacing: CGFloat = 6
     static let resetScheduleDetailVerticalPadding: CGFloat = 6
+    // The base quota height reserves the weekly row. Add one measured row when
+    // the usage response also contains the five-hour rolling limit.
+    static let fiveHourQuotaContentHeight: CGFloat = 58
 
     static func quotaContentSize(
         isResetScheduleExpanded: Bool = false,
-        resetCreditCount: Int = 0
+        resetCreditCount: Int = 0,
+        hasFiveHourWindow: Bool = false
     ) -> NSSize {
         NSSize(
             width: width,
-            height: quotaContentHeight + resetScheduleExpansionHeight(
+            height: quotaContentHeight
+                + (hasFiveHourWindow ? fiveHourQuotaContentHeight : 0)
+                + resetScheduleExpansionHeight(
                 isExpanded: isResetScheduleExpanded,
                 resetCreditCount: resetCreditCount
             )
@@ -125,12 +157,14 @@ enum NotchExpandedLayout {
     static func taskContentHeight(
         conversationCount: Int,
         isResetScheduleExpanded: Bool = false,
-        resetCreditCount: Int = 0
+        resetCreditCount: Int = 0,
+        hasFiveHourWindow: Bool = false
     ) -> CGFloat {
         let count = max(1, conversationCount)
         return twoConversationContentHeight
             + CGFloat(count - 2)
             * (conversationRowHeight + conversationSeparatorHeight)
+            + (hasFiveHourWindow ? fiveHourQuotaContentHeight : 0)
             + resetScheduleExpansionHeight(
                 isExpanded: isResetScheduleExpanded,
                 resetCreditCount: resetCreditCount
@@ -140,14 +174,16 @@ enum NotchExpandedLayout {
     static func taskContentSize(
         conversationCount: Int,
         isResetScheduleExpanded: Bool = false,
-        resetCreditCount: Int = 0
+        resetCreditCount: Int = 0,
+        hasFiveHourWindow: Bool = false
     ) -> NSSize {
         NSSize(
             width: width,
             height: taskContentHeight(
                 conversationCount: conversationCount,
                 isResetScheduleExpanded: isResetScheduleExpanded,
-                resetCreditCount: resetCreditCount
+                resetCreditCount: resetCreditCount,
+                hasFiveHourWindow: hasFiveHourWindow
             )
         )
     }
@@ -186,13 +222,11 @@ enum NotchGeometry {
               left.width > 0,
               right.width > 0,
               right.minX > left.maxX else {
-            return NotchLayout(
-                mode: .menuBarFallback,
-                centerX: metrics.visibleFrame.midX,
-                hoverSensorFrame: .zero,
-                compactFrame: .zero,
-                quotaExpandedFrame: .zero,
-                expandedFrame: .zero
+            return floatingBarLayout(
+                metrics: metrics,
+                compactSize: compactSize,
+                quotaExpandedSize: quotaExpandedSize,
+                expandedSize: expandedSize
             )
         }
 
@@ -233,6 +267,66 @@ enum NotchGeometry {
             compactFrame: frame(
                 centeredAt: centerX,
                 size: NSSize(width: compactWidth, height: compactHeight),
+                screenFrame: metrics.frame,
+                visibleFrame: metrics.visibleFrame,
+                topInset: 0
+            ),
+            quotaExpandedFrame: frame(
+                centeredAt: centerX,
+                size: quotaExpandedPanelSize,
+                screenFrame: metrics.frame,
+                visibleFrame: metrics.visibleFrame,
+                topInset: 0
+            ),
+            expandedFrame: frame(
+                centeredAt: centerX,
+                size: expandedPanelSize,
+                screenFrame: metrics.frame,
+                visibleFrame: metrics.visibleFrame,
+                topInset: 0
+            )
+        )
+    }
+
+    private static func floatingBarLayout(
+        metrics: NotchScreenMetrics,
+        compactSize: NSSize,
+        quotaExpandedSize: NSSize,
+        expandedSize: NSSize
+    ) -> NotchLayout {
+        let centerX = metrics.visibleFrame.midX
+        let menuBarHeight = max(
+            0,
+            metrics.frame.maxY - metrics.visibleFrame.maxY
+        )
+        let compactHeight = NotchFloatingBarLayout.compactHeight(
+            menuBarHeight: menuBarHeight
+        )
+        let compactIslandSize = NSSize(
+            width: NotchFloatingBarLayout.compactWidth,
+            height: min(compactSize.height, compactHeight)
+        )
+        let quotaExpandedPanelSize = NSSize(
+            width: quotaExpandedSize.width,
+            height: quotaExpandedSize.height + compactIslandSize.height
+        )
+        let expandedPanelSize = NSSize(
+            width: expandedSize.width,
+            height: expandedSize.height + compactIslandSize.height
+        )
+
+        // The no-notch path uses the same fixed-canvas and downward expansion
+        // model, but attaches directly to the physical screen top. Its compact
+        // width is independent of the camera-gap width used by notch hardware.
+        // There is no hidden hover sensor here: when the user disables the
+        // display, the menu-bar action is the recovery path.
+        return NotchLayout(
+            mode: .floatingBar,
+            centerX: centerX,
+            hoverSensorFrame: .zero,
+            compactFrame: frame(
+                centeredAt: centerX,
+                size: compactIslandSize,
                 screenFrame: metrics.frame,
                 visibleFrame: metrics.visibleFrame,
                 topInset: 0

@@ -6,7 +6,10 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [.executable(name: "CodexNotch", targets: ["CodexNotch"])],
     targets: [
-        .executableTarget(name: "CodexNotch"),
+        .executableTarget(
+            name: "CodexNotch",
+            resources: [.copy("Resources")]
+        ),
         .testTarget(name: "CodexNotchTests", dependencies: ["CodexNotch"])
     ],
     swiftLanguageVersions: [.v5]

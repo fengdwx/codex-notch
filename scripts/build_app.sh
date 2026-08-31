@@ -28,6 +28,10 @@ rm -rf "$APP_PATH"
 mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
 cp "$BIN_PATH" "$APP_PATH/Contents/MacOS/$PRODUCT_NAME"
 cp "$ROOT_DIR/Resources/Info.plist" "$APP_PATH/Contents/Info.plist"
+RESOURCE_BUNDLE="$BIN_DIR/CodexNotch_CodexNotch.bundle"
+if [[ -d "$RESOURCE_BUNDLE" ]]; then
+    cp -R "$RESOURCE_BUNDLE" "$APP_PATH/Contents/Resources/"
+fi
 "$ROOT_DIR/scripts/build_icon.sh" "$APP_PATH/Contents/Resources/CodexNotch.icns"
 
 if [[ "$SIGN_IDENTITY" != "none" ]]; then

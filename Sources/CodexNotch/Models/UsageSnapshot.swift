@@ -71,6 +71,13 @@ struct UsageSnapshot: Equatable, Sendable {
         }
     }
 
+    var fiveHourWindow: UsageWindow? {
+        windows.first { window in
+            if case .rolling(hours: 5) = window.kind { return true }
+            return false
+        }
+    }
+
     func replacingResetCredits(
         availableCount: Int?,
         credits: [ResetCredit]

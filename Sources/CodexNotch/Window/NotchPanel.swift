@@ -1,6 +1,14 @@
 import AppKit
 
 enum NotchPanelVisibilityPolicy {
+    static func shouldUseMenuBarFallback(
+        layoutMode: NotchLayoutMode,
+        displayIsEnabled: Bool
+    ) -> Bool {
+        layoutMode == .menuBarFallback
+            || (layoutMode == .floatingBar && !displayIsEnabled)
+    }
+
     static func shouldKeepHiddenHoverSensor(
         layoutMode: NotchLayoutMode,
         displayIsEnabled: Bool
@@ -14,7 +22,7 @@ enum NotchPanelVisibilityPolicy {
         displayIsEnabled: Bool
     ) -> Bool {
         guard panelIsRequested,
-              layoutMode == .notch else {
+              layoutMode != .menuBarFallback else {
             return false
         }
         // A hidden notch keeps a transparent sensor at the physical notch so

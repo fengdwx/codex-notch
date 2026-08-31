@@ -3,6 +3,23 @@ import XCTest
 @testable import CodexNotch
 
 final class NotchTextTests: XCTestCase {
+    func testCompactActivityTitleUsesResolvedTaskTitleOrFallback() {
+        XCTAssertEqual(
+            NotchText.compactActivityTitle(
+                "  Fix authentication bug  ",
+                fallback: "Codex running"
+            ),
+            "Fix authentication bug"
+        )
+        XCTAssertEqual(
+            NotchText.compactActivityTitle(
+                "  \n ",
+                fallback: "Codex running"
+            ),
+            "Codex running"
+        )
+    }
+
     func testWindowLabelsKeepDynamicRollingDuration() {
         XCTAssertEqual(NotchText.windowLabel(.rolling(hours: 12)), "滚动 12h")
         XCTAssertEqual(NotchText.windowLabel(.daily), "每日")
@@ -49,6 +66,20 @@ final class NotchTextTests: XCTestCase {
         XCTAssertEqual(
             NotchText.resetCredits(usage: usage, language: .english),
             "2 resets available"
+        )
+    }
+
+    func testQuotaSubtitleIncludesWeeklyAndFiveHourWindows() {
+        let usage = UsageSnapshot(
+            windows: [
+                UsageWindow(id: "primary", kind: .rolling(hours: 5), usedPercent: 42),
+                UsageWindow(id: "secondary", kind: .weekly, usedPercent: 25)
+            ]
+        )
+
+        XCTAssertEqual(
+            NotchText.quotaSubtitle(usage: usage),
+            "每周剩余 75% · 已用 25% · 5h 剩余 58% · 已用 42%"
         )
     }
 
@@ -100,6 +131,18 @@ final class NotchTextTests: XCTestCase {
 
         XCTAssertEqual(usage.weeklyWindow?.id, "secondary")
         XCTAssertNil(UsageSnapshot(windows: [rolling]).weeklyWindow)
+    }
+
+    func testFiveHourWindowIsAvailableSeparatelyForExpandedQuota() {
+        let rolling = UsageWindow(id: "primary", kind: .rolling(hours: 5), usedPercent: 42)
+        let weekly = UsageWindow(id: "secondary", kind: .weekly, usedPercent: 25)
+        let usage = UsageSnapshot(windows: [rolling, weekly])
+
+        XCTAssertEqual(usage.fiveHourWindow?.id, "primary")
+        XCTAssertEqual(
+            NotchText.quotaWindowTitle(.rolling(hours: 5)),
+            "5h 剩余"
+        )
     }
 
     func testWeeklyQuotaLevelUsesWarningAndCriticalBoundaries() {
