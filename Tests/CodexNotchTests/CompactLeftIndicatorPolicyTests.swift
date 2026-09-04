@@ -3,26 +3,39 @@ import XCTest
 
 final class CompactLeftIndicatorPolicyTests: XCTestCase {
     func testPhysicalNotchUsesReturnedFiveHourWindowInTheLeftLane() {
-        XCTAssertTrue(
-            CompactLeftIndicatorPolicy.showsFiveHourQuota(
+        XCTAssertEqual(
+            CompactLeftIndicatorPolicy.content(
                 layoutMode: .notch,
                 hasFiveHourWindow: true
-            )
+            ),
+            .fiveHourQuota
         )
-        XCTAssertFalse(
-            CompactLeftIndicatorPolicy.showsFiveHourQuota(
+    }
+
+    func testPhysicalNotchRestoresStatusIconWithoutFiveHourWindow() {
+        XCTAssertEqual(
+            CompactLeftIndicatorPolicy.content(
                 layoutMode: .notch,
                 hasFiveHourWindow: false
-            )
+            ),
+            .appStatus
         )
     }
 
     func testFloatingBarKeepsItsSeparateStatusLane() {
-        XCTAssertFalse(
-            CompactLeftIndicatorPolicy.showsFiveHourQuota(
+        XCTAssertEqual(
+            CompactLeftIndicatorPolicy.content(
                 layoutMode: .floatingBar,
                 hasFiveHourWindow: true
-            )
+            ),
+            .appStatus
+        )
+        XCTAssertEqual(
+            CompactLeftIndicatorPolicy.content(
+                layoutMode: .floatingBar,
+                hasFiveHourWindow: false
+            ),
+            .appStatus
         )
     }
 }

@@ -1289,7 +1289,7 @@ contracts:
 
   - id: QUOTA-SEMANTICS-046
     title: Physical-notch quota halos put the running cue in real visible side lanes
-    status: active
+    status: superseded
     statement: >-
       On the physical-notch layout, the compact left lane shows the returned five-hour quota's remaining percentage and no adjacent Codex status mark; when the API omits the five-hour rolling window, that lane stays empty. The compact right side continues to show the weekly quota's remaining percentage, and the no-notch floating-bar layout keeps its separate status lane. A returned five-hour rolling window (`limit_window_seconds=18000`) remains the first quota row in the expanded card, above weekly, with its own remaining percentage, readable progress bar, exact reset timestamp, and second-level countdown. The weekly compact number stays readable at 9.5pt inside a 22pt ring or wave ball; existing ring geometry, warning bands, reset-credit rows, recent-conversation rows, downward-only expansion, and fixed-canvas behavior remain unchanged. While a task is running, app animations are enabled, Reduce Motion is disabled, and the visible physical-notch compact surface is present, Core Animation owns the quota ring, wave path, and a slow blue breathing halo at the existing preferred 8 frames per second. Each halo sits behind its actual returned compact quota indicator in the left or right 46pt indicator lane, has a 24pt visible diameter inside the indicator's 2pt camera-side clearance, and never draws a cue in the physical camera cutout at the center. The halo changes only opacity and scale, without x/y translation, marquee travel, a full bright outline, or SwiftUI's continuous `TimelineView`. When a window is absent, its lane remains halo-free; the floating-bar layout never shows this physical-notch halo. When the surface is detached or no longer visible, the task stops, the card is expanded, app animations are disabled, or Reduce Motion is enabled, the corresponding layer animations are removed. Idle, completed, user-disabled-animation, and Reduce Motion states keep a readable static surface with no running halo. The real notch in Settings remains the live preview, with no duplicate static preview card; the lower-right of the expanded panel continues to provide a Settings entry.
     rationale: >-
@@ -1315,6 +1315,38 @@ contracts:
       - docs/decisions/021-visible-quota-halo-running-cue.md
       - "manual: on a physical notch with both windows returned, confirm the left lane shows only 5h, the right lane shows weekly, the expanded card puts 5h above weekly, the blue halo is visible only around the two real displayable indicator locations and never under the camera cutout, and the halos stop when the card expands or motion is disabled"
     supersedes: [QUOTA-SEMANTICS-045]
+    superseded_by: QUOTA-SEMANTICS-047
+    last_verified_commit: null
+
+  - id: QUOTA-SEMANTICS-047
+    title: Physical-notch left lane falls back to Codex status when five-hour quota is unavailable
+    status: active
+    statement: >-
+      On the physical-notch layout, the compact left lane shows the returned five-hour quota's remaining percentage and no adjacent Codex status mark. When the API omits the five-hour rolling window, the same lane restores the original Codex status presentation: the ChatGPT mark while idle, its blue running echo while a task is active, and its green completion treatment after a task completes. The compact right side continues to show the weekly quota's remaining percentage, and the no-notch floating-bar layout keeps its separate status lane. A returned five-hour rolling window (`limit_window_seconds=18000`) remains the first quota row in the expanded card, above weekly, with its own remaining percentage, readable progress bar, exact reset timestamp, and second-level countdown. The weekly compact number stays readable at 9.5pt inside a 22pt ring or wave ball; existing ring geometry, warning bands, reset-credit rows, recent-conversation rows, downward-only expansion, and fixed-canvas behavior remain unchanged. While a task is running, app animations are enabled, Reduce Motion is disabled, and the visible physical-notch compact surface is present, Core Animation owns the quota ring, wave path, and a slow blue breathing halo at the existing preferred 8 frames per second. Each halo sits behind an actual returned compact quota indicator in the left or right 46pt indicator lane, has a 24pt visible diameter inside the indicator's 2pt camera-side clearance, and never draws a cue in the physical camera cutout at the center. When the five-hour window is absent, the restored app-status icon replaces that quota indicator and no left quota halo is drawn. The halo changes only opacity and scale, without x/y translation, marquee travel, a full bright outline, or SwiftUI's continuous `TimelineView`. The floating-bar layout never shows this physical-notch halo. When the surface is detached or no longer visible, the task stops, the card is expanded, app animations are disabled, or Reduce Motion is enabled, the corresponding layer animations are removed. Idle, completed, user-disabled-animation, and Reduce Motion states keep a readable static surface with no running halo. The real notch in Settings remains the live preview, with no duplicate static preview card; the lower-right of the expanded panel continues to provide a Settings entry.
+    rationale: >-
+      The earlier removal of the physical-notch Codex mark treated an absent five-hour window as an intentionally empty lane. The user clarified that the mark is unnecessary only when a returned five-hour indicator occupies that lane; accounts or plans without a five-hour window still need the original status icon so the left side communicates ready, running, and completed states instead of appearing broken. Selecting exactly one left-lane content type preserves the existing geometry and prevents the quota and app mark from appearing together.
+    source: user-correction
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [compact-state, quota-expanded-state, settings, quota-animation, five-hour-window, running-quota-halo]
+      exclude: [cost-estimation, window-geometry, completion-animation, no-notch-running-cue]
+    examples:
+      positive: A physical-notch response containing a five-hour window shows only its percentage on the left and weekly on the right; a response without that window restores the left Codex ready, running, or completed icon while weekly stays on the right; expanded quota ordering and motion gates remain unchanged.
+      negative: Leaving the left lane empty when five-hour data is absent, showing the Codex mark beside a returned five-hour indicator, inventing a five-hour value, moving weekly to the left, drawing a halo in the camera cutout or behind a missing quota, or changing the no-notch status lane.
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchTextTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/CompactLeftIndicatorPolicyTests.swift
+      - Tests/CodexNotchTests/QuotaRunningHaloMotionTests.swift
+      - Tests/CodexNotchTests/CodexUsageClientTests.swift
+      - Tests/CodexNotchTests/UsageWindowClassifierTests.swift
+      - docs/decisions/010-layer-backed-quota-motion.md
+      - docs/decisions/021-visible-quota-halo-running-cue.md
+      - docs/decisions/022-restore-left-status-without-five-hour-quota.md
+      - "manual: on a physical notch, confirm a returned five-hour window replaces the left status icon, while an absent five-hour window restores the ready, running, and completed Codex icons; weekly remains on the right and no effect appears under the camera cutout"
+    supersedes: [QUOTA-SEMANTICS-046]
     superseded_by: null
     last_verified_commit: null
 

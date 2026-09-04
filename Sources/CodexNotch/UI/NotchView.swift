@@ -492,11 +492,19 @@ private struct NotchAttachedShape: Shape {
 }
 
 enum CompactLeftIndicatorPolicy {
-    static func showsFiveHourQuota(
+    enum Content: Equatable {
+        case fiveHourQuota
+        case appStatus
+    }
+
+    static func content(
         layoutMode: NotchLayoutMode,
         hasFiveHourWindow: Bool
-    ) -> Bool {
-        layoutMode == .notch && hasFiveHourWindow
+    ) -> Content {
+        if layoutMode == .notch && hasFiveHourWindow {
+            return .fiveHourQuota
+        }
+        return .appStatus
     }
 }
 
@@ -592,21 +600,22 @@ private struct CompactNotchView: View {
 
     @ViewBuilder
     private var compactLeftIndicator: some View {
-        if CompactLeftIndicatorPolicy.showsFiveHourQuota(
+        switch CompactLeftIndicatorPolicy.content(
             layoutMode: layoutMode,
             hasFiveHourWindow: usage?.fiveHourWindow != nil
-        ), let fiveHourWindow = usage?.fiveHourWindow {
-            CompactQuotaView(
-                window: fiveHourWindow,
-                activity: icon.quotaActivity,
-                style: quotaDisplayStyle,
-                layoutMode: .notch
-            )
-        } else if layoutMode == .notch {
-            Color.clear
-        } else {
-            // The no-notch floating bar still needs a status lane because it
-            // has no physical notch to provide the visual activity context.
+        ) {
+        case .fiveHourQuota:
+            if let fiveHourWindow = usage?.fiveHourWindow {
+                CompactQuotaView(
+                    window: fiveHourWindow,
+                    activity: icon.quotaActivity,
+                    style: quotaDisplayStyle,
+                    layoutMode: .notch
+                )
+            } else {
+                CompactAppIconView(status: icon)
+            }
+        case .appStatus:
             CompactAppIconView(status: icon)
         }
     }

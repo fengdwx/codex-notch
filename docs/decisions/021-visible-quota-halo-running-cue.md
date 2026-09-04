@@ -1,6 +1,6 @@
 ---
 status: active
-contract_ids: [QUOTA-SEMANTICS-046]
+contract_ids: [QUOTA-SEMANTICS-047]
 supersedes: [020-running-notch-breathing-light]
 superseded_by: null
 owner: project-maintainer
