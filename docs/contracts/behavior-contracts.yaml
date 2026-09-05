@@ -1320,7 +1320,7 @@ contracts:
 
   - id: QUOTA-SEMANTICS-047
     title: Physical-notch left lane falls back to Codex status when five-hour quota is unavailable
-    status: active
+    status: superseded
     statement: >-
       On the physical-notch layout, the compact left lane shows the returned five-hour quota's remaining percentage and no adjacent Codex status mark. When the API omits the five-hour rolling window, the same lane restores the original Codex status presentation: the ChatGPT mark while idle, its blue running echo while a task is active, and its green completion treatment after a task completes. The compact right side continues to show the weekly quota's remaining percentage, and the no-notch floating-bar layout keeps its separate status lane. A returned five-hour rolling window (`limit_window_seconds=18000`) remains the first quota row in the expanded card, above weekly, with its own remaining percentage, readable progress bar, exact reset timestamp, and second-level countdown. The weekly compact number stays readable at 9.5pt inside a 22pt ring or wave ball; existing ring geometry, warning bands, reset-credit rows, recent-conversation rows, downward-only expansion, and fixed-canvas behavior remain unchanged. While a task is running, app animations are enabled, Reduce Motion is disabled, and the visible physical-notch compact surface is present, Core Animation owns the quota ring, wave path, and a slow blue breathing halo at the existing preferred 8 frames per second. Each halo sits behind an actual returned compact quota indicator in the left or right 46pt indicator lane, has a 24pt visible diameter inside the indicator's 2pt camera-side clearance, and never draws a cue in the physical camera cutout at the center. When the five-hour window is absent, the restored app-status icon replaces that quota indicator and no left quota halo is drawn. The halo changes only opacity and scale, without x/y translation, marquee travel, a full bright outline, or SwiftUI's continuous `TimelineView`. The floating-bar layout never shows this physical-notch halo. When the surface is detached or no longer visible, the task stops, the card is expanded, app animations are disabled, or Reduce Motion is enabled, the corresponding layer animations are removed. Idle, completed, user-disabled-animation, and Reduce Motion states keep a readable static surface with no running halo. The real notch in Settings remains the live preview, with no duplicate static preview card; the lower-right of the expanded panel continues to provide a Settings entry.
     rationale: >-
@@ -1347,6 +1347,62 @@ contracts:
       - docs/decisions/022-restore-left-status-without-five-hour-quota.md
       - "manual: on a physical notch, confirm a returned five-hour window replaces the left status icon, while an absent five-hour window restores the ready, running, and completed Codex icons; weekly remains on the right and no effect appears under the camera cutout"
     supersedes: [QUOTA-SEMANTICS-046]
+    superseded_by: QUOTA-SEMANTICS-048
+    last_verified_commit: null
+
+  - id: QUOTA-SEMANTICS-048
+    title: Physical-notch left lane uses the Codex mark when five-hour quota is unavailable
+    status: superseded
+    statement: >-
+      On the physical-notch layout, the compact left lane shows the returned five-hour quota's remaining percentage and no adjacent app-status mark. When the API omits the five-hour rolling window, the same lane shows the embedded white Codex terminal-flower mark while idle, its restrained blue echo while a task is active, and its green completion treatment after a task completes. The compact right side continues to show the weekly quota's remaining percentage, and the no-notch floating-bar layout uses the same Codex status mark in its separate status lane. A returned five-hour rolling window (`limit_window_seconds=18000`) remains the first quota row in the expanded card, above weekly, with its own remaining percentage, readable progress bar, exact reset timestamp, and second-level countdown. Existing quota geometry, warning bands, reset-credit rows, recent-conversation rows, downward-only expansion, fixed-canvas behavior, quota animation, and motion lifecycle gates remain unchanged. A quota halo appears only behind an actual returned quota indicator; when five-hour is absent, the Codex status mark replaces that indicator and no left quota halo is drawn.
+    rationale: >-
+      The white ChatGPT knot made the restored fallback look like the ChatGPT product rather than the Codex task surface being monitored. The user requested the Codex terminal flower and then preferred a white treatment that matches the compact notch. Embedding one 36px alpha mask and displaying it at the existing 18pt size preserves the flower silhouette and dark `>_` cutout without widening the lane, inventing quota data, or adding runtime access to another app bundle.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [compact-state, five-hour-window, physical-notch-status-mark, no-notch-status-mark]
+      exclude: [quota-values, window-geometry, expanded-layout, activity-state-machine]
+    examples:
+      positive: Without a five-hour window, the left lane shows the white Codex terminal-flower mark with a dark `>_` cutout and weekly remains on the right; with five-hour data, that percentage replaces the mark without changing either lane's geometry.
+      negative: Keeping the ChatGPT knot, showing both Codex and five-hour indicators, reading the artwork from ChatGPT.app at runtime, moving weekly, widening the compact surface, or drawing a quota halo behind the fallback mark.
+    guards:
+      - Tests/CodexNotchTests/AppIconAssetTests.swift
+      - Tests/CodexNotchTests/CompactLeftIndicatorPolicyTests.swift
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/QuotaRunningHaloMotionTests.swift
+      - docs/decisions/022-restore-left-status-without-five-hour-quota.md
+      - docs/decisions/023-embed-codex-mark-for-status-fallback.md
+      - "manual: on a physical notch without five-hour data, inspect the 18pt Codex mark in idle, running, and completed states; then confirm returned five-hour data replaces it and weekly remains on the right"
+    supersedes: [QUOTA-SEMANTICS-047]
+    superseded_by: QUOTA-SEMANTICS-049
+    last_verified_commit: null
+
+  - id: QUOTA-SEMANTICS-049
+    title: Add inner-ring glint and Codex echo motion while preserving existing quota flow
+    status: active
+    statement: >-
+      Preserve the quota values, warning colors, reset information, lane selection, embedded white Codex mark, and completion behavior from QUOTA-SEMANTICS-048. The physical-notch left lane continues to show returned five-hour quota or the Codex status mark when that window is absent; weekly remains on the right and the floating-bar status lane remains separate. While a task is running with motion enabled, the ring keeps its original rotating quota-colored gradient and the physical-notch quota indicators keep their existing blue breathing halos. Add a separate silver-blue glint on the ring's inner edge, using a full circular mask independent of remaining percentage so 0%, 5%, and 100% do not shrink or hide the activity cue. The glint has a one-point stroke and a quarter-point clearance inside the existing quota stroke, rotates over 3.5 seconds, and leaves the centered quota number readable. Wave-ball motion remains unchanged. Whenever the left Codex status mark is shown during a running task, its white 18pt foreground stays recognizable and its same-silhouette blue echo gently changes opacity and scale over 2.6 seconds, with a maximum 1.17 scale inside the existing 22pt indicator container. Use the existing visible-only Core Animation lifecycle and preferred 8 FPS cadence for both additions. Remove their animations when motion is disabled, Reduce Motion is enabled, the task stops, or the visible surface detaches, hides, or expands away. Reduced-motion running states retain the existing static blue echo; idle and completion retain their existing static identities and completion checkmark. No extra bars, dots, external icon loading, window resizing, continuous SwiftUI timeline, quota firework, or state-machine change is introduced.
+    rationale: >-
+      At 5% remaining, the original quota-gradient motion is confined to a tiny arc and is hard to identify as active. The user rejected external activity bars as unattractive, chose the integrated inner-ring glint, explicitly asked to retain the original animation, and requested motion for the left icon as well. Separate compositor layers add a quota-independent running cue without changing the meaning of the original arc or the silhouette and safe-area geometry.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [compact-state, ring-running-motion, physical-notch-status-mark, no-notch-status-mark]
+      exclude: [quota-values, wave-ball-motion, window-geometry, expanded-layout, activity-state-machine, releases]
+    examples:
+      positive: At 5% remaining the original red arc still shimmers, a silver-blue glint travels around its inner edge, and the available left Codex mark has a gently breathing blue echo; completion stops both added loops and preserves the original green checkmark.
+      negative: Replacing the original quota gradient with a static arc, trimming the new glint to 5%, adding separate activity bars, moving or rotating the white Codex foreground, hiding the real five-hour quota, or continuing the loops after the surface is hidden or motion is disabled.
+    guards:
+      - Tests/CodexNotchTests/AdditiveRunningMotionTests.swift
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/QuotaRunningHaloMotionTests.swift
+      - Tests/CodexNotchTests/CompactLeftIndicatorPolicyTests.swift
+      - Tests/CodexNotchTests/AppIconAssetTests.swift
+      - docs/decisions/024-additive-inner-glow-and-codex-echo.md
+      - "manual: inspect 5% ring motion and the left Codex echo on a real notch; confirm readable values, camera clearance, smooth motion, original quota flow, completion, hover, Reduce Motion, and wave-ball behavior"
+    supersedes: [QUOTA-SEMANTICS-048]
     superseded_by: null
     last_verified_commit: null
 
@@ -1374,7 +1430,7 @@ contracts:
 
   - id: PRIVACY-APP-BUNDLE-039
     title: The notch mark must not require access to another application bundle
-    status: active
+    status: superseded
     statement: The ChatGPT-shaped notch mark must be compiled into CodexNotch and rendered without locating, opening, or reading the contents of ChatGPT.app, Codex.app, or any other application bundle. CodexNotch must not declare or rely on App Management permission merely to render its compact, running, or completed states; the 18pt mark, template tinting, completion checkmark, and task navigation behavior remain unchanged.
     rationale: Reading `chatgptTemplate` from ChatGPT.app caused macOS to register CodexNotch for App Management even though quota and task monitoring do not need authority over other applications. A decorative status mark does not justify that privacy permission or a runtime dependency on another app's private resource layout.
     source: user-reported-permission-and-requested-fix
@@ -1391,6 +1447,29 @@ contracts:
       - scripts/verify_app.sh
       - "manual: launch with CodexNotch disabled or absent from App Management and inspect idle, running, and completed marks on a physical notch"
     supersedes: []
+    superseded_by: PRIVACY-APP-BUNDLE-040
+    last_verified_commit: null
+
+  - id: PRIVACY-APP-BUNDLE-040
+    title: The embedded Codex notch mark must not require another application bundle
+    status: active
+    statement: The white template Codex notch mark must be compiled into CodexNotch and rendered without locating, opening, or reading the contents of ChatGPT.app, Codex.app, or any other application bundle at runtime. CodexNotch must not declare or rely on App Management permission merely to render its compact, running, or completed states; the 18pt mark, running echo, completion checkmark, and task navigation behavior remain available without that permission.
+    rationale: A decorative product mark does not justify App Management permission or a runtime dependency on another application's private resource layout. Embedding the display-sized artwork preserves the requested Codex identity while retaining the existing privacy boundary.
+    source: user-request-and-privacy-boundary
+    owner: project-maintainer
+    risk: critical
+    scope:
+      include: [notch-mark, compact-state, running-state, completed-state, privacy-permissions, app-bundle]
+      exclude: [quota-semantics, activity-state-machine, window-geometry, release-upload]
+    examples:
+      positive: CodexNotch renders its 18pt white Codex template mark from data compiled into its own executable while App Management remains disabled.
+      negative: Resolving ChatGPT.app with NSWorkspace, opening its bundle with Bundle(url:), reading icon-codex-dark-color.png from its Resources directory at runtime, or adding NSAppBundlesUsageDescription for the icon.
+    guards:
+      - Tests/CodexNotchTests/AppIconAssetTests.swift
+      - scripts/verify_app.sh
+      - docs/decisions/023-embed-codex-mark-for-status-fallback.md
+      - "manual: launch with CodexNotch disabled or absent from App Management and inspect idle, running, and completed Codex marks on a physical notch"
+    supersedes: [PRIVACY-APP-BUNDLE-039]
     superseded_by: null
     last_verified_commit: null
 

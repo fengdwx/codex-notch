@@ -516,9 +516,7 @@ private struct CompactNotchView: View {
 
         var fallbackSystemName: String {
             switch self {
-            case .quota: return "sparkles"
-            case .working: return "sparkles"
-            case .completed: return "checkmark.circle.fill"
+            case .quota, .working, .completed: return "terminal.fill"
             }
         }
 
@@ -637,11 +635,11 @@ private struct CompactAppIconView: View {
         Group {
             switch status {
             case .working:
-                RunningChatGPTIcon(size: NotchCompactLayout.appMarkSize)
+                RunningCodexIcon(size: NotchCompactLayout.appMarkSize)
             case .completed:
-                CompletedChatGPTIcon(size: NotchCompactLayout.appMarkSize)
+                CompletedCodexIcon(size: NotchCompactLayout.appMarkSize)
             case .quota:
-                ChatGPTMark(
+                CodexMark(
                     size: NotchCompactLayout.appMarkSize,
                     fallbackSystemName: status.fallbackSystemName
                 )
@@ -706,7 +704,7 @@ private struct CompactQuotaView: View {
     }
 }
 
-private struct CompletedChatGPTIcon: View {
+private struct CompletedCodexIcon: View {
     @Environment(\.notchMotionEnabled) private var motionEnabled
     @State private var hasSettled = false
 
@@ -715,16 +713,13 @@ private struct CompletedChatGPTIcon: View {
     var body: some View {
         ZStack {
             if motionEnabled {
-                // Keep the acknowledgement tied to the actual ChatGPT mark,
-                // not a generic circular notification ring. It reads as a
-                // single completion echo from the left-side app icon.
-                ChatGPTMark(size: size, tint: NotchPalette.success)
+                CodexMark(size: size, tint: NotchPalette.success)
                     .scaleEffect(hasSettled ? 1.14 : 0.92)
                     .opacity(hasSettled ? 0 : 0.42)
                     .blur(radius: hasSettled ? 0.5 : 0)
             }
 
-            ChatGPTMark(size: size)
+            CodexMark(size: size)
 
             Image(systemName: "checkmark")
                 .font(.system(size: 6.5, weight: .black))
@@ -749,14 +744,14 @@ private struct CompletedChatGPTIcon: View {
     }
 }
 
-private struct ChatGPTMark: View {
+private struct CodexMark: View {
     let size: CGFloat
-    var fallbackSystemName = "sparkles"
+    var fallbackSystemName = "terminal.fill"
     var tint = NotchPalette.primaryText.opacity(0.96)
 
     var body: some View {
         Group {
-            if let image = ChatGPTMarkAsset.templateImage {
+            if let image = CodexMarkAsset.templateImage {
                 Image(nsImage: image)
                     .renderingMode(.template)
                     .resizable()
@@ -773,18 +768,23 @@ private struct ChatGPTMark: View {
     }
 }
 
-private struct RunningChatGPTIcon: View {
+private struct RunningCodexIcon: View {
     let size: CGFloat
+    @Environment(\.notchMotionEnabled) private var motionEnabled
 
     var body: some View {
         ZStack {
-            // Keep the running signal visible without a perpetual pulse.
-            // The low-opacity blue silhouette is the static ChatGPT echo.
-            ChatGPTMark(size: size, tint: NotchPalette.accent.opacity(0.38))
-                .scaleEffect(1.05)
-                .blur(radius: 0.2)
+            if motionEnabled, CodexMarkAsset.templateImage != nil {
+                CodexRunningEchoLayer(isAnimating: true)
+                    .frame(width: size, height: size)
+                    .allowsHitTesting(false)
+            } else {
+                CodexMark(size: size, tint: NotchPalette.accent.opacity(0.38))
+                    .scaleEffect(1.05)
+                    .blur(radius: 0.2)
+            }
 
-            ChatGPTMark(size: size)
+            CodexMark(size: size)
         }
         .frame(width: size, height: size)
     }
@@ -1199,6 +1199,25 @@ private struct QuotaRing: View {
 
             if window != nil {
                 quotaStroke
+
+                if QuotaInnerGlowMotion.shouldAnimate(
+                    activity: activity,
+                    hasQuota: window != nil,
+                    motionEnabled: motionEnabled
+                ) {
+                    QuotaGradientLayer(
+                        color: QuotaInnerGlowMotion.color,
+                        isAnimating: true,
+                        style: .innerGlow
+                    )
+                    .mask {
+                        Circle()
+                            .inset(by: QuotaInnerGlowMotion.strokeInset(quotaLineWidth: lineWidth))
+                            .stroke(Color.white, lineWidth: QuotaInnerGlowMotion.lineWidth)
+                    }
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                }
 
                 if QuotaIndicatorMotion.shouldShowCompletionFirework(
                     activity: activity,

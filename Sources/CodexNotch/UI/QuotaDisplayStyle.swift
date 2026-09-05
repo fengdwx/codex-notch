@@ -472,6 +472,26 @@ enum QuotaRingGradientMotion {
     }
 }
 
+enum QuotaInnerGlowMotion {
+    static let duration: TimeInterval = 3.5
+    static let lineWidth: CGFloat = 1
+    static let color = QuotaColorScale.RGB(red: 0.74, green: 0.86, blue: 1)
+
+    static func strokeInset(quotaLineWidth: CGFloat) -> CGFloat {
+        // Leave a quarter point between the quota stroke and the glint. The
+        // full circular mask never depends on the remaining percentage.
+        quotaLineWidth + 0.25 + lineWidth / 2
+    }
+
+    static func shouldAnimate(
+        activity: QuotaRingActivity,
+        hasQuota: Bool,
+        motionEnabled: Bool
+    ) -> Bool {
+        activity == .running && hasQuota && motionEnabled
+    }
+}
+
 enum QuotaRingActivity: Equatable {
     case idle
     case running

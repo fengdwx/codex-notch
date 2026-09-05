@@ -120,9 +120,15 @@ class QuotaAnimatedLayerView: NSView {
     }
 }
 
+enum QuotaGradientStyle {
+    case quota
+    case innerGlow
+}
+
 final class QuotaGradientLayerView: QuotaAnimatedLayerView {
     private let gradientLayer = CAGradientLayer()
     private var currentColor: QuotaColorScale.RGB?
+    private var currentStyle = QuotaGradientStyle.quota
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -148,23 +154,30 @@ final class QuotaGradientLayerView: QuotaAnimatedLayerView {
 
     func configure(
         color: QuotaColorScale.RGB,
-        isAnimating: Bool
+        isAnimating: Bool,
+        style: QuotaGradientStyle = .quota
     ) {
-        if currentColor != color {
+        let styleChanged = currentStyle != style
+        if currentColor != color || styleChanged {
             currentColor = color
+            currentStyle = style
             CATransaction.performWithoutAnimation {
-                gradientLayer.colors = [
-                    color.cgColor(alpha: 0.24),
-                    color.cgColor(alpha: 0.42),
-                    color.cgColor(alpha: 0.78),
-                    color.cgColor(alpha: 1),
-                    color.cgColor(alpha: 0.82),
-                    color.cgColor(alpha: 0.46),
-                    color.cgColor(alpha: 0.24)
-                ]
+                switch style {
+                case .quota:
+                    gradientLayer.locations = [0, 0.18, 0.36, 0.52, 0.66, 0.82, 1]
+                    gradientLayer.colors = [0.24, 0.42, 0.78, 1, 0.82, 0.46, 0.24]
+                        .map { color.cgColor(alpha: $0) }
+                case .innerGlow:
+                    gradientLayer.locations = [0, 0.63, 0.69, 0.77, 0.87, 0.94, 0.98, 1]
+                    gradientLayer.colors = [0, 0, 0.08, 0.35, 0.75, 0.95, 0, 0]
+                        .map { color.cgColor(alpha: $0) }
+                }
             }
         }
         setAnimationRequested(isAnimating)
+        if styleChanged {
+            restartLayerAnimationAfterGeometryChange()
+        }
     }
 
     override func startLayerAnimation() {
@@ -176,8 +189,10 @@ final class QuotaGradientLayerView: QuotaAnimatedLayerView {
 
         let rotation = CABasicAnimation(keyPath: "transform.rotation.z")
         rotation.fromValue = 0
-        rotation.toValue = Double.pi * 2
-        rotation.duration = QuotaRingGradientMotion.duration
+        rotation.toValue = currentStyle == .innerGlow ? -Double.pi * 2 : Double.pi * 2
+        rotation.duration = currentStyle == .innerGlow
+            ? QuotaInnerGlowMotion.duration
+            : QuotaRingGradientMotion.duration
         rotation.repeatCount = .infinity
         rotation.timingFunction = CAMediaTimingFunction(name: .linear)
         rotation.preferredFrameRateRange =
@@ -201,11 +216,12 @@ final class QuotaGradientLayerView: QuotaAnimatedLayerView {
 struct QuotaGradientLayer: NSViewRepresentable {
     let color: QuotaColorScale.RGB
     let isAnimating: Bool
+    var style = QuotaGradientStyle.quota
 
     func makeNSView(context _: Context) -> QuotaGradientLayerView {
         let view = QuotaGradientLayerView(frame: .zero)
         view.setAccessibilityElement(false)
-        view.configure(color: color, isAnimating: isAnimating)
+        view.configure(color: color, isAnimating: isAnimating, style: style)
         return view
     }
 
@@ -213,7 +229,7 @@ struct QuotaGradientLayer: NSViewRepresentable {
         _ nsView: QuotaGradientLayerView,
         context _: Context
     ) {
-        nsView.configure(color: color, isAnimating: isAnimating)
+        nsView.configure(color: color, isAnimating: isAnimating, style: style)
     }
 
     static func dismantleNSView(
@@ -416,7 +432,7 @@ struct QuotaWaveLayer: NSViewRepresentable {
     }
 }
 
-private extension QuotaLayerAnimationPolicy {
+extension QuotaLayerAnimationPolicy {
     static var frameRateRange: CAFrameRateRange {
         CAFrameRateRange(
             minimum: preferredFramesPerSecond,

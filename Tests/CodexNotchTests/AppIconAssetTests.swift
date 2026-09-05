@@ -19,7 +19,7 @@ final class AppIconAssetTests: XCTestCase {
         XCTAssertTrue(source.contains("stroke=\"#fff\""))
     }
 
-    func testNotchMarkUsesEmbeddedTemplateWithoutReadingAnotherAppBundle() throws {
+    func testNotchMarkUsesEmbeddedWhiteCodexArtworkWithoutReadingAnotherAppBundle() throws {
         let repositoryRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -30,12 +30,18 @@ final class AppIconAssetTests: XCTestCase {
             ),
             encoding: .utf8
         )
-        let image = try XCTUnwrap(ChatGPTMarkAsset.templateImage)
+        let image = try XCTUnwrap(CodexMarkAsset.templateImage)
 
         XCTAssertEqual(image.size.width, 18)
         XCTAssertEqual(image.size.height, 18)
         XCTAssertTrue(image.isTemplate)
-        XCTAssertTrue(notchViewSource.contains("ChatGPTMarkAsset.templateImage"))
+        XCTAssertTrue(
+            image.representations.contains {
+                $0.pixelsWide == 36 && $0.pixelsHigh == 36
+            }
+        )
+        XCTAssertTrue(notchViewSource.contains("CodexMarkAsset.templateImage"))
+        XCTAssertFalse(notchViewSource.contains("ChatGPTMarkAsset.templateImage"))
         XCTAssertFalse(notchViewSource.contains("Bundle(url: appURL)"))
         XCTAssertFalse(notchViewSource.contains("chatgptTemplate"))
     }
