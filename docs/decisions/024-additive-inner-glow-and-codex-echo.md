@@ -1,6 +1,6 @@
 ---
 status: active
-contract_ids: [QUOTA-SEMANTICS-049]
+contract_ids: [QUOTA-SEMANTICS-054]
 supersedes: []
 superseded_by: null
 owner: project-maintainer
@@ -31,11 +31,13 @@ notch confirmation and cannot be certified by automated samples.
   palette for a separate 3.5-second glint. A full-circle 1pt SwiftUI mask sits
   inside the quota stroke with 0.25pt separation. It receives no remaining
   percentage, so low quota cannot reduce the running cue's size.
-- Keep the 18pt white Codex foreground still. Mask one blue layer with the
-  existing embedded Codex silhouette and animate its opacity from 0.22 to 0.62
+- Keep the selected 18pt white foreground still. Mask one blue layer with the
+  matching embedded silhouette and animate its opacity from 0.22 to 0.62
   and scale from 1.02 to 1.17 over 2.6 seconds. The largest visible echo is
   21.06pt, inside the existing 22pt container. The unchanged static echo is
   used when motion is disabled or Reduce Motion is enabled.
+  The icon choice follows [decision 025](025-selectable-status-icon.md), with
+  Codex as the default; changing artwork preserves the animation's phase.
 - Both additions use `QuotaAnimatedLayerView` for visibility/detachment cleanup
   and the shared preferred 8 FPS Core Animation cadence. The existing static
   quota mask and white foreground never move. No timer, SwiftUI timeline,

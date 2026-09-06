@@ -38,13 +38,13 @@ final class AdditiveRunningMotionTests: XCTestCase {
 
     func testCodexEchoStaysInsideItsExistingIndicatorContainer() {
         XCTAssertLessThanOrEqual(
-            NotchCompactLayout.appMarkSize * CodexRunningEchoMotion.maximumScale,
+            NotchCompactLayout.appMarkSize * StatusMarkEchoMotion.maximumScale,
             NotchCompactLayout.indicatorDiameter
         )
-        XCTAssertGreaterThan(CodexRunningEchoMotion.maximumScale, 1.1)
+        XCTAssertGreaterThan(StatusMarkEchoMotion.maximumScale, 1.1)
         XCTAssertGreaterThan(
-            CodexRunningEchoMotion.maximumOpacity,
-            CodexRunningEchoMotion.minimumOpacity
+            StatusMarkEchoMotion.maximumOpacity,
+            StatusMarkEchoMotion.minimumOpacity
         )
     }
 
@@ -64,7 +64,7 @@ final class AdditiveRunningMotionTests: XCTestCase {
 
     @MainActor
     func testCodexEchoUsesEmbeddedSilhouetteAndStopsOnDetachment() async throws {
-        let view = CodexRunningEchoLayerView(frame: NSRect(x: 0, y: 0, width: 18, height: 18))
+        let view = StatusMarkEchoLayerView(frame: NSRect(x: 0, y: 0, width: 18, height: 18))
         view.layout()
         view.setAnimationRequested(true)
         XCTAssertFalse(view.layerAnimationIsRunning)

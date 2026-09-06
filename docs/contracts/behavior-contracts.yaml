@@ -1380,7 +1380,7 @@ contracts:
 
   - id: QUOTA-SEMANTICS-049
     title: Add inner-ring glint and Codex echo motion while preserving existing quota flow
-    status: active
+    status: superseded
     statement: >-
       Preserve the quota values, warning colors, reset information, lane selection, embedded white Codex mark, and completion behavior from QUOTA-SEMANTICS-048. The physical-notch left lane continues to show returned five-hour quota or the Codex status mark when that window is absent; weekly remains on the right and the floating-bar status lane remains separate. While a task is running with motion enabled, the ring keeps its original rotating quota-colored gradient and the physical-notch quota indicators keep their existing blue breathing halos. Add a separate silver-blue glint on the ring's inner edge, using a full circular mask independent of remaining percentage so 0%, 5%, and 100% do not shrink or hide the activity cue. The glint has a one-point stroke and a quarter-point clearance inside the existing quota stroke, rotates over 3.5 seconds, and leaves the centered quota number readable. Wave-ball motion remains unchanged. Whenever the left Codex status mark is shown during a running task, its white 18pt foreground stays recognizable and its same-silhouette blue echo gently changes opacity and scale over 2.6 seconds, with a maximum 1.17 scale inside the existing 22pt indicator container. Use the existing visible-only Core Animation lifecycle and preferred 8 FPS cadence for both additions. Remove their animations when motion is disabled, Reduce Motion is enabled, the task stops, or the visible surface detaches, hides, or expands away. Reduced-motion running states retain the existing static blue echo; idle and completion retain their existing static identities and completion checkmark. No extra bars, dots, external icon loading, window resizing, continuous SwiftUI timeline, quota firework, or state-machine change is introduced.
     rationale: >-
@@ -1403,6 +1403,141 @@ contracts:
       - docs/decisions/024-additive-inner-glow-and-codex-echo.md
       - "manual: inspect 5% ring motion and the left Codex echo on a real notch; confirm readable values, camera clearance, smooth motion, original quota flow, completion, hover, Reduce Motion, and wave-ball behavior"
     supersedes: [QUOTA-SEMANTICS-048]
+    superseded_by: QUOTA-SEMANTICS-050
+    last_verified_commit: null
+
+  - id: QUOTA-SEMANTICS-050
+    title: Settings select a persistent ChatGPT or Codex status mark with matching motion
+    status: superseded
+    statement: >-
+      Preserve the quota values, lane selection, original quota-gradient flow, full-circle inner-ring glint, quota halos, wave motion, completion checkmark, geometry, and motion lifecycle from QUOTA-SEMANTICS-049. Settings must offer Codex and ChatGPT status icons. The default and unknown stored values select Codex. A selection applies immediately to idle, running, and completed marks and their matching echoes, and survives app restart. Both marks use embedded 36px template artwork displayed at the existing 18pt size; they require no external application bundle, network request, or added permission. A running icon retains its fixed white foreground and same-silhouette blue echo, with the existing 2.6-second opacity/scale pulse and maximum 1.17 scale. Changing the artwork must not restart an already-running echo animation. Disabled animations and Reduce Motion retain the selected mark's static cue, and completion retains the green checkmark. On a physical notch, returned five-hour quota still replaces the status mark in the left lane; weekly remains on the right. The no-notch floating bar uses the selected mark in its existing status lane. The choice affects only status artwork, not quota data, task state, app language, navigation, window geometry, or the application Dock icon.
+    rationale: >-
+      The user requested a setting to choose between the previous ChatGPT knot and current Codex terminal flower. One local cosmetic preference and shared rendering keep both choices consistent across task states while preserving the accepted low-quota motion and privacy boundary.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [settings, compact-state, physical-notch-status-mark, no-notch-status-mark, running-status-motion]
+      exclude: [quota-values, window-geometry, expanded-layout, activity-state-machine, dock-icon, releases]
+    examples:
+      positive: Choosing ChatGPT immediately changes the available left status mark and blue echo to the knot; restarting preserves ChatGPT, switching back restores Codex, completion keeps the green checkmark, and returned five-hour data still takes the left lane.
+      negative: Requiring restart to see a choice, losing the choice after restart, mixing a ChatGPT foreground with a Codex echo, restarting the pulse on each settings update, reading another app bundle, replacing a returned quota, or changing the Dock icon.
+    guards:
+      - Tests/CodexNotchTests/StatusIconStyleTests.swift
+      - Tests/CodexNotchTests/AdditiveRunningMotionTests.swift
+      - Tests/CodexNotchTests/AppIconAssetTests.swift
+      - Tests/CodexNotchTests/CompactLeftIndicatorPolicyTests.swift
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/QuotaRunningHaloMotionTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePreferencesTests.swift
+      - docs/decisions/024-additive-inner-glow-and-codex-echo.md
+      - docs/decisions/025-selectable-status-icon.md
+      - "manual: switch both icon choices in the real settings window, verify immediate notch changes and restart persistence, and inspect both icons in idle, running, completed, and reduced-motion states on physical hardware"
+    supersedes: [QUOTA-SEMANTICS-049]
+    superseded_by: QUOTA-SEMANTICS-051
+    last_verified_commit: null
+
+  - id: QUOTA-SEMANTICS-051
+    title: Codex status uses the original prompt strokes with a transparent surrounding area
+    status: superseded
+    statement: >-
+      Preserve the immediate, persisted ChatGPT/Codex choice and all quota, layout, state, completion, and motion behavior from QUOTA-SEMANTICS-050. For the Codex choice, invert the original embedded artwork's enclosed terminal prompt strokes to white and make its former flower body and surrounding area transparent. Preserve the original chevron and underscore contours and their positions in the 36px template displayed at 18pt; do not redraw or generate a replacement glyph from a screenshot. Both the foreground and its blue running echo use this same prompt-only alpha mask, and completion retains its green checkmark. The ChatGPT choice remains unchanged. Artwork still requires no external app bundle or runtime image processing.
+    rationale: The user clarified that the dark flower should be removed by inverting the existing asset and retaining its prompt glyph, rather than generating a new logo or turning the whole icon black against the notch.
+    source: user-correction
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [codex-status-artwork, running-status-motion, settings-icon-preview]
+      exclude: [chatgpt-artwork, quota-values, window-geometry, activity-state-machine, dock-icon, releases]
+    examples:
+      positive: Selecting Codex shows only the original white chevron and underscore on the black notch, with transparent surroundings and the matching prompt-shaped running echo; selecting ChatGPT still shows the knot.
+      negative: Keeping the filled flower, inverting the outside into a white square, creating a new prompt design from the supplied screenshot, retaining a flower-shaped echo, or moving the icon's frame.
+    guards:
+      - Tests/CodexNotchTests/AppIconAssetTests.swift
+      - Tests/CodexNotchTests/StatusIconStyleTests.swift
+      - Tests/CodexNotchTests/AdditiveRunningMotionTests.swift
+      - Tests/CodexNotchTests/CompactLeftIndicatorPolicyTests.swift
+      - docs/decisions/026-invert-original-codex-prompt.md
+      - "manual: inspect the prompt-only Codex foreground and echo on the real notch, then verify ChatGPT switching and completion readability"
+    supersedes: [QUOTA-SEMANTICS-050]
+    superseded_by: QUOTA-SEMANTICS-052
+    last_verified_commit: null
+
+  - id: QUOTA-SEMANTICS-052
+    title: Restore the original dark Codex flower behind the white prompt
+    status: superseded
+    statement: >-
+      Preserve the original white prompt contours from QUOTA-SEMANTICS-051 and restore the original flower silhouette behind them in dark gray. The display mark has two colors: a #242424 flower and its original white chevron/underscore, with transparent exterior and the same 36px artwork displayed at 18pt. Use the full flower alpha silhouette for the existing blue running echo and green completion echo, while the foreground retains its original two-color rendering. Preserve immediate and persisted Codex/ChatGPT selection, ChatGPT artwork, motion timing and lifecycle, completion checkmark, quota priority and values, and window geometry. Use embedded assets without external bundle access or runtime pixel processing.
+    rationale: The user asked to put the flower background back after seeing the extracted white prompt; keeping the white prompt and restoring the dark original flower completes the requested inverted appearance.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [codex-status-artwork, running-status-motion, settings-icon-preview]
+      exclude: [chatgpt-artwork, quota-values, window-geometry, activity-state-machine, dock-icon, releases]
+    examples:
+      positive: Codex shows its original dark flower and white prompt, with a blue flower-shaped echo while running; the Settings preview uses the same colors and ChatGPT remains selectable.
+      negative: Hiding the restored flower, tinting the whole display mark white and losing the prompt, using a dark echo instead of the blue running cue, adding an opaque rectangular background, or changing the artwork frame.
+    guards:
+      - Tests/CodexNotchTests/AppIconAssetTests.swift
+      - Tests/CodexNotchTests/StatusIconStyleTests.swift
+      - Tests/CodexNotchTests/AdditiveRunningMotionTests.swift
+      - docs/decisions/027-restore-dark-codex-flower.md
+      - "manual: inspect dark flower and white prompt contrast on the real notch and in Settings, including blue running echo and green completion"
+    supersedes: [QUOTA-SEMANTICS-051]
+    superseded_by: QUOTA-SEMANTICS-053
+    last_verified_commit: null
+
+  - id: QUOTA-SEMANTICS-053
+    title: Status artwork shares the right weekly quota indicator's theme color
+    status: superseded
+    statement: >-
+      Preserve the original Codex flower and white prompt, ChatGPT artwork, icon selection, geometry, quota behavior, and motion lifecycle from QUOTA-SEMANTICS-052. Derive the status theme from the same weekly window and QuotaColorScale used by the right quota indicator. The Codex flower uses a dark shade with RGB channels at 28 percent of that theme color, preserving high contrast for its white prompt. In healthy and warning bands, both icon choices use the exact quota theme color for their running echo, including its static reduced-motion version. In the critical band, keep the dark red flower static and use a soft neutral-white running echo instead of a recurring red pulse. Apply quota-color changes without restarting an existing pulse. A missing weekly window uses neutral gray and must not borrow five-hour data or look like a critical quota. Completion still uses the green acknowledgement echo and checkmark while the underlying Codex flower retains its quota theme. The Settings brand samples remain neutral; no new preference, polling, quota palette, ring/wave animation, or window behavior is introduced.
+    rationale: The user liked the restored flower and requested a theme matching the right ring, then raised concern that a recurring red pulse could feel alarming. Reuse the weekly color source for static quota meaning while keeping critical-state activity neutral and the tiny white prompt readable.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [compact-status-theme, running-status-motion, physical-notch-status-mark, no-notch-status-mark]
+      exclude: [quota-values, quota-color-scale, settings-preferences, window-geometry, activity-state-machine, releases]
+    examples:
+      positive: With a green weekly ring the Codex flower is dark green and its echo is green; yellow quota updates both together, while critical quota keeps a static dark red flower with a neutral-white running echo and the completed green check remains clear.
+      negative: Repeatedly pulsing red at critical quota, keeping a fixed blue echo beside a green ring, using five-hour quota to color the status mark, tinting the white prompt, restarting the pulse on a color change, or showing red when weekly quota is unavailable.
+    guards:
+      - Tests/CodexNotchTests/StatusIconThemeTests.swift
+      - Tests/CodexNotchTests/StatusIconStyleTests.swift
+      - Tests/CodexNotchTests/AppIconAssetTests.swift
+      - Tests/CodexNotchTests/AdditiveRunningMotionTests.swift
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - docs/decisions/028-share-weekly-quota-theme.md
+      - "manual: inspect matching ring/status hues and white prompt contrast, verify color changes while running do not interrupt motion, and retain completed and reduced-motion cues"
+    supersedes: [QUOTA-SEMANTICS-052]
+    superseded_by: QUOTA-SEMANTICS-054
+    last_verified_commit: null
+
+  - id: QUOTA-SEMANTICS-054
+    title: Keep the Codex flower center black and tint only its outline
+    status: active
+    statement: >-
+      Preserve the original flower silhouette, white prompt, weekly quota theme, icon selection, and motion behavior from QUOTA-SEMANTICS-053. In the live themed Codex mark, keep the interior black and apply the weekly accent only to a narrow flower-shaped outline. Render the unchanged full silhouette in the accent color, cover its inner 88-percent scale with black, and retain the original white prompt above it, all inside the existing 18pt frame. At critical quota the outline stays red without pulsing and the running echo remains neutral white. Keep the completed green checkmark, ChatGPT mark, Settings samples, ring/wave behavior, and all window geometry unchanged.
+    rationale: The user clarified that the center should remain black and only the flower pattern should carry the theme color; a colored solid flower changed more of the surface than intended.
+    source: user-correction
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [codex-status-theme, compact-state]
+      exclude: [quota-values, quota-color-scale, settings-preferences, window-geometry, activity-state-machine, releases]
+    examples:
+      positive: A green ring pairs with a green flower outline around a black center and white prompt; low quota changes the outline to static red while the soft running echo stays neutral white.
+      negative: Filling the center green/yellow/red, tinting the prompt, enlarging the original flower frame, or restoring an alarming red running pulse.
+    guards:
+      - Tests/CodexNotchTests/StatusIconThemeTests.swift
+      - Tests/CodexNotchTests/StatusIconStyleTests.swift
+      - Tests/CodexNotchTests/AppIconAssetTests.swift
+      - Tests/CodexNotchTests/AdditiveRunningMotionTests.swift
+      - docs/decisions/029-black-center-themed-flower-outline.md
+      - "manual: inspect the real notch for a narrow colored flower outline, black center, white prompt, camera clearance, and retained motion cues"
+    supersedes: [QUOTA-SEMANTICS-053]
     superseded_by: null
     last_verified_commit: null
 

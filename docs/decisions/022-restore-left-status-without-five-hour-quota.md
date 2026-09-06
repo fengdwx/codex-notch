@@ -1,6 +1,6 @@
 ---
 status: active
-contract_ids: [QUOTA-SEMANTICS-049]
+contract_ids: [QUOTA-SEMANTICS-054]
 supersedes: []
 superseded_by: null
 owner: project-maintainer
@@ -21,8 +21,8 @@ appear to have lost their original activity indicator.
 
 - Select exactly one content type for the compact left lane.
 - On a physical notch, show the five-hour quota when that window is returned.
-- Otherwise, show the embedded white Codex ready, running, or completed
-  status icon.
+- Otherwise, show the selected embedded white ready, running, or completed
+  status icon, defaulting to Codex.
 - Keep weekly quota on the right, the no-notch status lane unchanged, and do
   not invent a five-hour value when the API omits it.
 - A quota halo may appear only behind a real quota indicator; the restored app

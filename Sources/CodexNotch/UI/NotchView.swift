@@ -143,6 +143,8 @@ struct NotchView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(QuotaDisplayStyle.storageKey)
     private var quotaDisplayStyleRaw = QuotaDisplayStyle.defaultStyle.rawValue
+    @AppStorage(StatusIconStyle.storageKey)
+    private var statusIconStyleRaw = StatusIconStyle.defaultStyle.rawValue
     @AppStorage(AppLanguage.storageKey)
     private var appLanguageRaw = AppLanguage.defaultLanguage.rawValue
     @AppStorage(NotchDisplayPreference.storageKey)
@@ -374,6 +376,7 @@ struct NotchView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .environment(\.notchAppLanguage, appLanguage)
+        .environment(\.notchStatusIconStyle, StatusIconStyle.fromStoredValue(statusIconStyleRaw))
         .environment(\.notchMotionEnabled, motionEnabled)
         .transaction { transaction in
             guard !motionEnabled else { return }
@@ -391,7 +394,16 @@ private struct NotchMotionEnabledKey: EnvironmentKey {
     static let defaultValue = true
 }
 
+private struct NotchStatusIconStyleKey: EnvironmentKey {
+    static let defaultValue = StatusIconStyle.defaultStyle
+}
+
 extension EnvironmentValues {
+    var notchStatusIconStyle: StatusIconStyle {
+        get { self[NotchStatusIconStyleKey.self] }
+        set { self[NotchStatusIconStyleKey.self] = newValue }
+    }
+
     var notchAppLanguage: AppLanguage {
         get { self[NotchAppLanguageKey.self] }
         set { self[NotchAppLanguageKey.self] = newValue }
@@ -514,12 +526,6 @@ private struct CompactNotchView: View {
         case working
         case completed
 
-        var fallbackSystemName: String {
-            switch self {
-            case .quota, .working, .completed: return "terminal.fill"
-            }
-        }
-
         var quotaActivity: QuotaRingActivity {
             switch self {
             case .quota: return .idle
@@ -611,10 +617,10 @@ private struct CompactNotchView: View {
                     layoutMode: .notch
                 )
             } else {
-                CompactAppIconView(status: icon)
+                CompactAppIconView(status: icon, theme: StatusIconTheme(usage: usage))
             }
         case .appStatus:
-            CompactAppIconView(status: icon)
+            CompactAppIconView(status: icon, theme: StatusIconTheme(usage: usage))
         }
     }
 
@@ -630,19 +636,18 @@ private struct CompactNotchView: View {
 
 private struct CompactAppIconView: View {
     let status: CompactNotchView.IconKind
+    let theme: StatusIconTheme
+    @Environment(\.notchStatusIconStyle) private var iconStyle
 
     var body: some View {
         Group {
             switch status {
             case .working:
-                RunningCodexIcon(size: NotchCompactLayout.appMarkSize)
+                RunningStatusIcon(iconStyle: iconStyle, size: NotchCompactLayout.appMarkSize, theme: theme)
             case .completed:
-                CompletedCodexIcon(size: NotchCompactLayout.appMarkSize)
+                CompletedStatusIcon(iconStyle: iconStyle, size: NotchCompactLayout.appMarkSize, theme: theme)
             case .quota:
-                CodexMark(
-                    size: NotchCompactLayout.appMarkSize,
-                    fallbackSystemName: status.fallbackSystemName
-                )
+                StatusMark(style: iconStyle, size: NotchCompactLayout.appMarkSize, theme: theme)
             }
         }
         .frame(
@@ -704,22 +709,24 @@ private struct CompactQuotaView: View {
     }
 }
 
-private struct CompletedCodexIcon: View {
+private struct CompletedStatusIcon: View {
     @Environment(\.notchMotionEnabled) private var motionEnabled
     @State private var hasSettled = false
 
+    let iconStyle: StatusIconStyle
     let size: CGFloat
+    let theme: StatusIconTheme
 
     var body: some View {
         ZStack {
             if motionEnabled {
-                CodexMark(size: size, tint: NotchPalette.success)
+                StatusMark(style: iconStyle, size: size, tint: NotchPalette.success, monochrome: true)
                     .scaleEffect(hasSettled ? 1.14 : 0.92)
                     .opacity(hasSettled ? 0 : 0.42)
                     .blur(radius: hasSettled ? 0.5 : 0)
             }
 
-            CodexMark(size: size)
+            StatusMark(style: iconStyle, size: size, theme: theme)
 
             Image(systemName: "checkmark")
                 .font(.system(size: 6.5, weight: .black))
@@ -744,47 +751,25 @@ private struct CompletedCodexIcon: View {
     }
 }
 
-private struct CodexMark: View {
+private struct RunningStatusIcon: View {
+    let iconStyle: StatusIconStyle
     let size: CGFloat
-    var fallbackSystemName = "terminal.fill"
-    var tint = NotchPalette.primaryText.opacity(0.96)
-
-    var body: some View {
-        Group {
-            if let image = CodexMarkAsset.templateImage {
-                Image(nsImage: image)
-                    .renderingMode(.template)
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
-                    .foregroundStyle(tint)
-            } else {
-                Image(systemName: fallbackSystemName)
-                    .font(.system(size: size * 0.72, weight: .semibold))
-                    .foregroundStyle(tint)
-            }
-        }
-        .frame(width: size, height: size)
-    }
-}
-
-private struct RunningCodexIcon: View {
-    let size: CGFloat
+    let theme: StatusIconTheme
     @Environment(\.notchMotionEnabled) private var motionEnabled
 
     var body: some View {
         ZStack {
-            if motionEnabled, CodexMarkAsset.templateImage != nil {
-                CodexRunningEchoLayer(isAnimating: true)
+            if motionEnabled, iconStyle.templateImage != nil {
+                StatusMarkEchoLayer(isAnimating: true, iconStyle: iconStyle, color: theme.runningEcho)
                     .frame(width: size, height: size)
                     .allowsHitTesting(false)
             } else {
-                CodexMark(size: size, tint: NotchPalette.accent.opacity(0.38))
+                StatusMark(style: iconStyle, size: size, tint: theme.runningEchoColor.opacity(0.38), monochrome: true)
                     .scaleEffect(1.05)
                     .blur(radius: 0.2)
             }
 
-            CodexMark(size: size)
+            StatusMark(style: iconStyle, size: size, theme: theme)
         }
         .frame(width: size, height: size)
     }

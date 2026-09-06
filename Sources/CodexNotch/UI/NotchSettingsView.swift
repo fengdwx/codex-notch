@@ -3,6 +3,8 @@ import SwiftUI
 struct NotchSettingsView: View {
     @AppStorage(QuotaDisplayStyle.storageKey)
     private var quotaDisplayStyleRaw = QuotaDisplayStyle.defaultStyle.rawValue
+    @AppStorage(StatusIconStyle.storageKey)
+    private var statusIconStyleRaw = StatusIconStyle.defaultStyle.rawValue
     @AppStorage(RecentConversationLimit.storageKey)
     private var recentConversationLimitRaw = RecentConversationLimit.defaultLimit.rawValue
     @AppStorage(AppLanguage.storageKey)
@@ -31,6 +33,13 @@ struct NotchSettingsView: View {
 
     private var recentConversationLimit: RecentConversationLimit {
         RecentConversationLimit.fromStoredValue(recentConversationLimitRaw)
+    }
+
+    private var statusIconStyleBinding: Binding<StatusIconStyle> {
+        Binding(
+            get: { StatusIconStyle.fromStoredValue(statusIconStyleRaw) },
+            set: { statusIconStyleRaw = $0.rawValue }
+        )
     }
 
     private var recentConversationLimitBinding: Binding<RecentConversationLimit> {
@@ -63,6 +72,32 @@ struct NotchSettingsView: View {
 
             } header: {
                 Text(appLanguage.localized(chinese: "额度指示器", english: "Quota indicator"))
+            }
+
+            Section {
+                Picker(
+                    appLanguage.localized(chinese: "状态图标", english: "Status icon"),
+                    selection: statusIconStyleBinding
+                ) {
+                    ForEach(StatusIconStyle.allCases) { style in
+                        Label {
+                            Text(style.title)
+                        } icon: {
+                            StatusMark(style: style, size: 16, tint: .primary)
+                        }
+                        .tag(style)
+                    }
+                }
+                .pickerStyle(.radioGroup)
+
+                Text(appLanguage.localized(
+                    chinese: "切换状态图标的外观。有五小时额度时，左侧仍优先显示额度。",
+                    english: "Choose the status mark. When five-hour quota is available, it keeps the left lane."
+                ))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            } header: {
+                Text(appLanguage.localized(chinese: "状态图标", english: "Status icon"))
             }
 
             Section {
