@@ -8,8 +8,9 @@ final class StatusIconThemeTests: XCTestCase {
     @MainActor
     func testThemedCodexMarkKeepsBlackInsideAndColorOnlyOnItsFlowerOutline() throws {
         for remaining in [80.0, 20, 5] {
+            let theme = StatusIconTheme(usage: usage(remaining: remaining))
             let renderer = ImageRenderer(content:
-                StatusMark(style: .codex, size: 18, theme: StatusIconTheme(usage: usage(remaining: remaining)))
+                StatusMark(style: .codex, size: 18, theme: theme)
                     .background(Color.black)
             )
             renderer.scale = 2
@@ -22,21 +23,66 @@ final class StatusIconThemeTests: XCTestCase {
                 XCTAssertLessThan(center.greenComponent, 0.01)
                 XCTAssertLessThan(center.blueComponent, 0.01)
             }
-            var coloredPixels = 0
             var whitePromptPixels = 0
             for y in 0..<bitmap.pixelsHigh {
                 for x in 0..<bitmap.pixelsWide {
                     let color = try XCTUnwrap(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB))
                     let channels = [color.redComponent, color.greenComponent, color.blueComponent]
-                    if try XCTUnwrap(channels.max()) - XCTUnwrap(channels.min()) > 0.05 {
-                        coloredPixels += 1
+                    if (14...22).contains(x), (10...22).contains(y) {
+                        XCTAssertLessThan(
+                            try XCTUnwrap(channels.max()) - XCTUnwrap(channels.min()), 0.01,
+                            "The whole center must stay neutral, including prompt antialiasing"
+                        )
                     }
                     if channels.allSatisfy({ $0 > 0.75 }) { whitePromptPixels += 1 }
                 }
             }
-            XCTAssertGreaterThan(coloredPixels, 25, "The original flower outline stays visible")
-            XCTAssertLessThan(coloredPixels, 400, "Quota color must not fill the flower's center")
+            let coloredArea = try coloredArea(of: bitmap, accent: theme.accent)
+            XCTAssertGreaterThan(coloredArea, 25, "The original flower outline stays visible")
+            XCTAssertLessThan(coloredArea, 400, "Quota color must not fill the flower's center")
             XCTAssertGreaterThan(whitePromptPixels, 25, "The prompt stays white")
+        }
+    }
+
+    // Integrate fractional edge coverage instead of counting every barely
+    // colored antialiased pixel as fully covered. macOS 14 and 26 rasterizers
+    // differ at those edges; the same 400-pixel area ceiling remains enforced.
+    private func coloredArea(of bitmap: NSBitmapImageRep, accent: QuotaColorScale.RGB) throws -> Double {
+        let accentChannels = [accent.red, accent.green, accent.blue]
+        let fullChroma = try XCTUnwrap(accentChannels.max()) - XCTUnwrap(accentChannels.min())
+        XCTAssertGreaterThan(fullChroma, 0)
+        var area = 0.0
+        for y in 0..<bitmap.pixelsHigh {
+            for x in 0..<bitmap.pixelsWide {
+                let color = try XCTUnwrap(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB))
+                let channels = [color.redComponent, color.greenComponent, color.blueComponent]
+                area += min(1, (try XCTUnwrap(channels.max()) - XCTUnwrap(channels.min())) / fullChroma)
+            }
+        }
+        return area
+    }
+
+    @MainActor
+    func testOutlineAreaGuardRejectsAQuotaColoredSolidFlower() throws {
+        let prompt = try XCTUnwrap(CodexMarkAsset.promptTemplateImage)
+        for remaining in [80.0, 20, 5] {
+            let theme = StatusIconTheme(usage: usage(remaining: remaining))
+            let renderer = ImageRenderer(content:
+                ZStack {
+                    StatusMark(style: .codex, size: 18, tint: theme.flowerOutlineColor, monochrome: true)
+                    Image(nsImage: prompt)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .foregroundStyle(Color.white)
+                }
+                .frame(width: 18, height: 18)
+                .background(Color.black)
+            )
+            renderer.scale = 2
+            let bitmap = NSBitmapImageRep(cgImage: try XCTUnwrap(renderer.cgImage))
+            XCTAssertGreaterThan(try coloredArea(of: bitmap, accent: theme.accent), 400,
+                                 "A solid colored flower must fail the outline area ceiling")
         }
     }
 

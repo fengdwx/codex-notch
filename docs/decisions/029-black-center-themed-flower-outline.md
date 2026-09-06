@@ -28,3 +28,12 @@ and colored pixels must be confined to a small part of the flower. The old
 filled implementation fails these assertions. Existing contrast, quota-theme,
 low-quota motion, asset, and geometry checks remain. Run full verification and
 inspect the real notch for outline thickness and motion legibility.
+
+The macOS 14 CI renderer counted 402 non-neutral edge pixels where the local
+macOS 26 renderer remained below the original 400-pixel ceiling. Counting a
+barely colored antialiased pixel as a full pixel made that metric dependent
+on rasterization. Integrate each pixel's chroma relative to the quota accent
+instead, retaining the same 400-pixel coverage ceiling. Also check every pixel
+in the center rectangle for neutrality, and render a deliberately solid-colored
+flower as a negative control that must exceed the ceiling in all three hues.
+This changes the measurement, not the application or the accepted outline.
