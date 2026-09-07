@@ -783,7 +783,7 @@ contracts:
 
   - id: NOTCH-VISIBILITY-047
     title: No-notch displays use the Sword Wanderer endless battle island
-    status: active
+    status: superseded
     statement: >-
       On a display without valid auxiliary notch areas, CodexNotch renders a
       non-activating activity island centered against the physical screen top,
@@ -849,7 +849,7 @@ contracts:
       - docs/decisions/017-mirrored-display-menu-bar-fallback.md
       - "manual: launch the built app on a no-notch Mac, confirm the original Sword Wanderer identity, repeated jumping slimes, visible sword contact and +1 overlap with the next spawn, menu-bar containment, downward hover expansion, collapse reclamation, and a static Reduce Motion state; then enable hardware display mirroring and confirm the panel is absent over ordinary apps while the menu bar exposes the current state, and disable mirroring to confirm live geometry recovery"
     supersedes: [NOTCH-VISIBILITY-046]
-    superseded_by: null
+    superseded_by: NOTCH-VISIBILITY-048
     last_verified_commit: null
 
   - id: EXPANDED-APPEARANCE-009
@@ -1698,3 +1698,27 @@ contracts:
     supersedes: [APP-IDENTITY-007]
     superseded_by: null
     last_verified_commit: e27336c
+
+  - id: NOTCH-VISIBILITY-048
+    title: Floating bars show returned five-hour quota in the left lane
+    status: active
+    statement: Preserve every geometry, battle, visibility, mirroring, motion, and privacy requirement of NOTCH-VISIBILITY-047, replacing only the left lane selection. Both physical-notch and floating-bar layouts show returned five-hour quota on the left, otherwise the selected status icon. Weekly stays on the right and the sword battle stays in the center. Use the existing 30pt floating lane without adding the physical-notch halo. Preserve QUOTA-SEMANTICS-054 status styling whenever the fallback icon is shown.
+    rationale: The installed app received five-hour data but hid it solely because this Mac used the floating-bar route.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [compact-state, non-notch-screens, five-hour-window]
+      exclude: [quota-fetching, window-geometry, battle-animation]
+    examples:
+      positive: With both windows returned, a floating bar shows five-hour remaining on the left and weekly remaining on the right. Without five-hour data, the status icon returns.
+      negative: Hiding returned five-hour quota on a floating bar, inventing a missing value, removing the center battle, or adding a physical-notch halo to the floating bar.
+    guards:
+      - Tests/CodexNotchTests/CompactLeftIndicatorPolicyTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/QuotaRunningHaloMotionTests.swift
+      - docs/decisions/030-floating-five-hour-quota.md
+      - "manual: inspect the floating-bar left value and retained center/right lanes; confirm physical-notch geometry on real hardware"
+    supersedes: [NOTCH-VISIBILITY-047]
+    superseded_by: null
+    last_verified_commit: null

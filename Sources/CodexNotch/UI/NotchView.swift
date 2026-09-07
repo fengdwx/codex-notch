@@ -513,7 +513,7 @@ enum CompactLeftIndicatorPolicy {
         layoutMode: NotchLayoutMode,
         hasFiveHourWindow: Bool
     ) -> Content {
-        if layoutMode == .notch && hasFiveHourWindow {
+        if (layoutMode == .notch || layoutMode == .floatingBar) && hasFiveHourWindow {
             return .fiveHourQuota
         }
         return .appStatus
@@ -614,7 +614,10 @@ private struct CompactNotchView: View {
                     window: fiveHourWindow,
                     activity: icon.quotaActivity,
                     style: quotaDisplayStyle,
-                    layoutMode: .notch
+                    layoutMode: layoutMode,
+                    laneWidth: layoutMode == .floatingBar
+                        ? NotchFloatingBarLayout.appLaneWidth
+                        : NotchCompactLayout.indicatorLaneWidth
                 )
             } else {
                 CompactAppIconView(status: icon, theme: StatusIconTheme(usage: usage))

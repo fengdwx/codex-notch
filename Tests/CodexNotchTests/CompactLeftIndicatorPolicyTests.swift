@@ -22,13 +22,13 @@ final class CompactLeftIndicatorPolicyTests: XCTestCase {
         )
     }
 
-    func testFloatingBarKeepsItsSeparateStatusLane() {
+    func testFloatingBarUsesFiveHourQuotaAndRestoresStatusWithoutIt() {
         XCTAssertEqual(
             CompactLeftIndicatorPolicy.content(
                 layoutMode: .floatingBar,
                 hasFiveHourWindow: true
             ),
-            .appStatus
+            .fiveHourQuota
         )
         XCTAssertEqual(
             CompactLeftIndicatorPolicy.content(
