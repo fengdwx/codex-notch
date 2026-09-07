@@ -42,8 +42,8 @@ final class NotchPanelVisibilityPolicyTests: XCTestCase {
         )
     }
 
-    func testDisabledFloatingBarUsesTheMenuBarRecoveryPath() {
-        XCTAssertTrue(
+    func testDisabledFloatingBarKeepsTheHoverRecoveryPath() {
+        XCTAssertFalse(
             NotchPanelVisibilityPolicy.shouldUseMenuBarFallback(
                 layoutMode: .floatingBar,
                 displayIsEnabled: false
@@ -96,12 +96,25 @@ final class NotchPanelVisibilityPolicyTests: XCTestCase {
                 displayIsEnabled: true
             )
         )
-        XCTAssertFalse(
+        XCTAssertTrue(
             NotchPanelVisibilityPolicy.shouldKeepHiddenHoverSensor(
                 layoutMode: .floatingBar,
                 displayIsEnabled: false
             )
         )
+    }
+
+    func testHiddenFloatingSensorRestoresOnlyWhenRequested() {
+        for requested in [true, false] {
+            XCTAssertEqual(
+                NotchPanelVisibilityPolicy.shouldRestoreAfterApplicationSwitch(
+                    panelIsRequested: requested,
+                    layoutMode: .floatingBar,
+                    displayIsEnabled: false
+                ),
+                requested
+            )
+        }
     }
 
     func testNotchPanelJoinsAnotherAppsFullScreenSpace() {

@@ -1703,7 +1703,7 @@ contracts:
 
   - id: NOTCH-VISIBILITY-048
     title: Floating bars show returned five-hour quota in the left lane
-    status: active
+    status: superseded
     statement: Preserve every geometry, battle, visibility, mirroring, motion, and privacy requirement of NOTCH-VISIBILITY-047, replacing only the left lane selection. Both physical-notch and floating-bar layouts show returned five-hour quota on the left, otherwise the selected status icon. Weekly stays on the right and the sword battle stays in the center. Use the existing 30pt floating lane without adding the physical-notch halo. Preserve QUOTA-SEMANTICS-054 status styling whenever the fallback icon is shown.
     rationale: The installed app received five-hour data but hid it solely because this Mac used the floating-bar route.
     source: user-request
@@ -1722,5 +1722,28 @@ contracts:
       - docs/decisions/030-floating-five-hour-quota.md
       - "manual: inspect the floating-bar left value and retained center/right lanes; confirm physical-notch geometry on real hardware"
     supersedes: [NOTCH-VISIBILITY-047]
+    superseded_by: NOTCH-VISIBILITY-049
+    last_verified_commit: null
+
+  - id: NOTCH-VISIBILITY-049
+    title: Hidden floating bars recover through their original hover area
+    status: active
+    statement: Preserve NOTCH-VISIBILITY-048 quota selection and all inherited geometry, battle, privacy and mirroring behavior. When display is disabled on an ordinary no-notch screen, retain a fully transparent sensor exactly matching the compact floating frame. Hover opens the existing card and its display switch; leaving returns to the invisible sensor until display is enabled. Do not change the saved preference merely on hover. Physical-notch recovery remains unchanged. Hardware mirror and menu-bar-only routes remain panel-free.
+    rationale: Removing the disabled floating panel and setting its sensor frame to zero made hover recovery impossible.
+    source: user-reported-regression
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [non-notch-screens, hidden-state, hover-recovery]
+      exclude: [quota-semantics, battle-animation, physical-notch-geometry]
+    examples:
+      positive: Disable the floating display, move away and return to its previous top-center location to reopen the card; leaving hides it again and enabling display restores the compact bar.
+      negative: Removing the sensor, leaving visible content while hidden, retaining an expanded invisible hit area, or showing a sensor in a hardware mirror set.
+    guards:
+      - Tests/CodexNotchTests/NotchPanelVisibilityPolicyTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/NotchDisplayRoutingTests.swift
+      - "manual: disable, leave, hover to recover, leave to hide, then reenable the floating bar; confirm physical-notch behavior on real hardware"
+    supersedes: [NOTCH-VISIBILITY-048]
     superseded_by: null
     last_verified_commit: null

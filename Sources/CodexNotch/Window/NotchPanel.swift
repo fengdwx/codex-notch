@@ -6,14 +6,13 @@ enum NotchPanelVisibilityPolicy {
         displayIsEnabled: Bool
     ) -> Bool {
         layoutMode == .menuBarFallback
-            || (layoutMode == .floatingBar && !displayIsEnabled)
     }
 
     static func shouldKeepHiddenHoverSensor(
         layoutMode: NotchLayoutMode,
         displayIsEnabled: Bool
     ) -> Bool {
-        layoutMode == .notch && !displayIsEnabled
+        layoutMode != .menuBarFallback && !displayIsEnabled
     }
 
     static func shouldRestoreAfterApplicationSwitch(

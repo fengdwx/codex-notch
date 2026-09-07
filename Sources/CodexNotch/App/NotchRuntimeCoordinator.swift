@@ -663,7 +663,7 @@ final class NotchRuntimeCoordinator {
         metrics: NotchScreenMetrics
     ) {
         let layout = NotchGeometry.layout(metrics: metrics)
-        guard layout.mode == .notch else {
+        guard layout.mode != .menuBarFallback else {
             windowController.showDisplayDisabledFallback()
             return
         }
