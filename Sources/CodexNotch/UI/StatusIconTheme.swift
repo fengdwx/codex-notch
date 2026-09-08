@@ -19,7 +19,7 @@ struct StatusIconTheme: Equatable {
 
     var runningEcho: QuotaColorScale.RGB {
         // A red quota is useful information; a recurring red pulse can read
-        // as an alarm. Keep the outline hue static and activity neutral there.
+        // as an alarm. Keep critical-quota activity neutral.
         quotaLevel == .critical
             ? QuotaColorScale.RGB(red: 0.78, green: 0.78, blue: 0.78)
             : accent
@@ -34,6 +34,6 @@ struct StatusIconTheme: Equatable {
     }
 
     var flowerOutlineColor: Color {
-        Color(red: accent.red, green: accent.green, blue: accent.blue)
+        .white
     }
 }

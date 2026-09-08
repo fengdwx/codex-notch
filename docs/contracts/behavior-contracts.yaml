@@ -1517,7 +1517,7 @@ contracts:
 
   - id: QUOTA-SEMANTICS-054
     title: Keep the Codex flower center black and tint only its outline
-    status: active
+    status: superseded
     statement: >-
       Preserve the original flower silhouette, white prompt, weekly quota theme, icon selection, and motion behavior from QUOTA-SEMANTICS-053. In the live themed Codex mark, keep the interior black and apply the weekly accent only to a narrow flower-shaped outline. Render the unchanged full silhouette in the accent color, cover its inner 88-percent scale with black, and retain the original white prompt above it, all inside the existing 18pt frame. At critical quota the outline stays red without pulsing and the running echo remains neutral white. Keep the completed green checkmark, ChatGPT mark, Settings samples, ring/wave behavior, and all window geometry unchanged.
     rationale: The user clarified that the center should remain black and only the flower pattern should carry the theme color; a colored solid flower changed more of the surface than intended.
@@ -1538,7 +1538,7 @@ contracts:
       - docs/decisions/029-black-center-themed-flower-outline.md
       - "manual: inspect the real notch for a narrow colored flower outline, black center, white prompt, camera clearance, and retained motion cues"
     supersedes: [QUOTA-SEMANTICS-053]
-    superseded_by: null
+    superseded_by: QUOTA-SEMANTICS-055
     last_verified_commit: null
 
   - id: PRIVACY-BOUNDARY-005
@@ -1698,3 +1698,29 @@ contracts:
     supersedes: [APP-IDENTITY-007]
     superseded_by: null
     last_verified_commit: e27336c
+
+
+  - id: QUOTA-SEMANTICS-055
+    title: The Codex flower outline stays white at every quota level
+    status: active
+    statement: >-
+      Preserve the black center, original white prompt, narrow 18pt flower outline geometry, icon selection, and motion lifecycle from QUOTA-SEMANTICS-054. The live Codex foreground outline is now white regardless of weekly quota. Only the running echo retains its existing weekly theme, with neutral white at critical quota; completion keeps the green echo and checkmark. The right quota ring and wave retain their existing quota palette and animations, and Settings brand samples and ChatGPT artwork remain unchanged.
+    rationale: The user asked to change the outer flower outline back to white after viewing the quota-colored outline.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [codex-status-artwork, compact-state]
+      exclude: [quota-values, quota-color-scale, settings-preferences, window-geometry, activity-state-machine, releases]
+    examples:
+      positive: Green, yellow, and red weekly quota all show a white flower outline around the black center and original white prompt.
+      negative: A quota-colored foreground outline, a solid white flower hiding the prompt, or a change to the right ring's colors.
+    guards:
+      - Tests/CodexNotchTests/StatusIconThemeTests.swift
+      - Tests/CodexNotchTests/StatusIconStyleTests.swift
+      - Tests/CodexNotchTests/AppIconAssetTests.swift
+      - docs/decisions/030-white-codex-flower-outline.md
+      - "manual: inspect the white outline and black center on the real notch, including running and completed cues"
+    supersedes: [QUOTA-SEMANTICS-054]
+    superseded_by: null
+    last_verified_commit: null

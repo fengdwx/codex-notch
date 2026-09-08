@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [QUOTA-SEMANTICS-054]
 supersedes: []
-superseded_by: null
+superseded_by: 030-white-codex-flower-outline
 owner: project-maintainer
 created_at: 2026-09-06
 last_verified_commit: null
