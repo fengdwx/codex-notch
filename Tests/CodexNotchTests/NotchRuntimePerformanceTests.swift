@@ -3,11 +3,12 @@ import XCTest
 @testable import CodexNotch
 
 final class NotchRuntimePerformanceTests: XCTestCase {
-    func testSessionAndRecoveryPollingUseLowWakeupIntervals() {
+    func testEventDrivenActivityKeepsOneSecondClocksAndCheapRecoveryPolling() {
         XCTAssertEqual(NotchRuntimeCoordinator.sessionPollInterval, 1)
-        XCTAssertEqual(NotchRuntimeCoordinator.rolloutRescanInterval, 15)
+        XCTAssertEqual(NotchRuntimeCoordinator.rolloutRescanInterval, 5)
         XCTAssertEqual(NotchRuntimeCoordinator.titleRefreshInterval, 15)
-        XCTAssertEqual(RolloutActivityMonitor.eventScanCoalescingInterval, 0.5)
+        XCTAssertEqual(RolloutActivityMonitor.eventScanCoalescingInterval, 0.1)
+        XCTAssertEqual(FSEventChangeSource.deliveryLatency, 0.1)
     }
 
     func testEquivalentViewModelUpdateDoesNotPublishAnotherViewRefresh() {

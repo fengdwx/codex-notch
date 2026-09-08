@@ -12,12 +12,11 @@ struct CodexHomeLocator {
 }
 
 final class NotchRuntimeCoordinator {
-    // Session durations and countdowns display whole seconds. Polling faster
-    // than once a second only redraws the same visible value.
+    // Events publish state immediately. This tick advances whole-second clocks
+    // and performs stale-state cleanup without a faster idle polling loop.
     static let sessionPollInterval: TimeInterval = 1
-    // FSEvents handles normal live updates. This is only a recovery sweep for
-    // dropped/coalesced filesystem events, so it must not be a frequent wakeup.
-    static let rolloutRescanInterval: TimeInterval = 15
+    // Recovery only stats unchanged files; normal events read just changed paths.
+    static let rolloutRescanInterval: TimeInterval = 5
     static let usageRefreshInterval: TimeInterval = 60
     static let titleRefreshInterval: TimeInterval = 15
     static let hoverExpandDelay: TimeInterval = 0.18
@@ -51,6 +50,8 @@ final class NotchRuntimeCoordinator {
     private var activeSessions: [SessionActivity] = []
     private var recentCompletions: [CompletedSession] = []
     private var lastSessionSnapshot: ActiveSessionStoreSnapshot?
+    private var snapshotRequestSequence: UInt64 = 0
+    private var lastAppliedSnapshotSequence: UInt64 = 0
     private var threadTitles: [String: String] = [:]
     private var lastTitleRefreshAt: Date?
     private var titleRefreshInFlight = false
@@ -135,6 +136,10 @@ final class NotchRuntimeCoordinator {
             }
         }
         frontmostMonitor.start()
+        rolloutMonitor.onChange = { [weak self] in
+            guard let self, self.started else { return }
+            self.pollSessions()
+        }
         rolloutMonitor.start()
 
         sessionTimer = Timer.scheduledTimer(
@@ -207,12 +212,16 @@ final class NotchRuntimeCoordinator {
     }
 
     private func pollSessions() {
+        snapshotRequestSequence += 1
+        let sequence = snapshotRequestSequence
         let store = sessionStore
         let now = nowProvider()
         Task {
             let snapshot = await store.snapshot(now: now)
             await MainActor.run { [weak self] in
-                self?.apply(snapshot: snapshot, now: now)
+                guard let self, sequence > self.lastAppliedSnapshotSequence else { return }
+                self.lastAppliedSnapshotSequence = sequence
+                self.apply(snapshot: snapshot, now: now)
             }
         }
     }

@@ -1016,7 +1016,7 @@ contracts:
 
   - id: ACTIVITY-STATE-005
     title: Subagent rollouts do not affect notch activity or conversation history
-    status: active
+    status: superseded
     statement: >-
       A rollout whose session metadata identifies a child through
       `source.subagent.thread_spawn` or a non-empty `parent_thread_id` is
@@ -1045,7 +1045,7 @@ contracts:
       - Tests/CodexNotchTests/ActiveSessionStoreTests.swift
       - "manual: run a top-level task with a child agent, close the child unexpectedly, and confirm only the top-level task controls the notch state"
     supersedes: [ACTIVITY-STATE-004]
-    superseded_by: null
+    superseded_by: ACTIVITY-STATE-006
     last_verified_commit: null
 
   - id: CONVERSATION-TITLE-041
@@ -1722,5 +1722,32 @@ contracts:
       - docs/decisions/030-white-codex-flower-outline.md
       - "manual: inspect the white outline and black center on the real notch, including running and completed cues"
     supersedes: [QUOTA-SEMANTICS-054]
+    superseded_by: null
+    last_verified_commit: null
+
+  - id: ACTIVITY-STATE-006
+    title: Changed rollout files promptly publish ordered activity updates
+    status: active
+    statement: >-
+      Preserve top-level task priority, interrupted-turn supersession, explicit completion matching, child-rollout exclusion, six-hour stale fallback, and 24-hour completion retention from ACTIVITY-STATE-005. Use FSEvents with 0.1-second delivery latency and a bounded 0.1-second coalescing window, process the reported changed JSONL paths, commit store updates in scan order, and notify the main-thread runtime immediately after each store commit. Do not wait for the one-second display-clock tick to publish task state, and reject superseded asynchronous snapshot deliveries. Keep a five-second recovery scan for missed events or a late-created sessions directory. Recovery must skip reading unchanged files based on file identity, size, and modification time. Canonicalize filesystem paths consistently, reset cursors on replacement or truncation, remove deleted rollouts, retain partial lines until complete, and process the newest files first during initial discovery. Root/directory and dropped-event notifications may trigger a full recovery scan. No high-frequency idle poll, quota request increase, private message logging, or new external data source is introduced.
+    rationale: The user reported delayed start and completion indicators and asked for more responsive detection with a measured performance cost. Event-driven state delivery removes deliberate waiting while targeted reads and unchanged-file skips bound the extra recovery work. Log-write delays upstream remain outside this detector's control.
+    source: user-reported-incident
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [rollout-session-monitoring, compact-state, runtime-update-cadence]
+      exclude: [task-termination, quota-semantics, authentication, physical-notch-geometry, releases]
+    examples:
+      positive: Creating a rollout and appending its terminal event both notify the runtime without a recovery or UI timer; an unchanged recovery scan performs no log reads, and an atomic replacement cannot leave the old task active.
+      negative: Waiting for the next display tick after reading a terminal event, rereading unrelated logs on each callback, losing a partial terminal line, applying an older scan after a newer completion, or attributing upstream file-write delays to the polling interval.
+    guards:
+      - Tests/CodexNotchTests/RolloutResponsivenessTests.swift
+      - Tests/CodexNotchTests/RolloutActivityMonitorTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePerformanceTests.swift
+      - Tests/CodexNotchTests/ActiveSessionStoreTests.swift
+      - Tests/CodexNotchTests/RolloutEventParserTests.swift
+      - docs/decisions/031-responsive-rollout-events.md
+      - "manual: compare process CPU under similar activity and measure real filesystem start/terminal notification latency; separately confirm real Codex UI-to-notch transitions"
+    supersedes: [ACTIVITY-STATE-005]
     superseded_by: null
     last_verified_commit: null
