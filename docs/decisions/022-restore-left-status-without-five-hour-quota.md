@@ -1,8 +1,8 @@
 ---
-status: superseded
-contract_ids: [QUOTA-SEMANTICS-054]
+status: active
+contract_ids: [QUOTA-SEMANTICS-055]
 supersedes: []
-superseded_by: 030-floating-five-hour-quota
+superseded_by: null
 owner: project-maintainer
 created_at: 2026-09-04
 last_verified_commit: null

@@ -1,6 +1,6 @@
 ---
 status: active
-contract_ids: [QUOTA-SEMANTICS-054]
+contract_ids: [QUOTA-SEMANTICS-055]
 supersedes: []
 superseded_by: null
 owner: project-maintainer
@@ -15,13 +15,12 @@ accent through `UsageSnapshot.weeklyWindow` and the existing `QuotaColorScale`,
 so quota boundaries and updates match the right ring and wave ball exactly.
 Use neutral gray without weekly data, even when five-hour data exists.
 
-Apply this accent to the Codex flower outline, keep the interior black, and
-draw the unchanged white prompt above it, following
-[decision 029](029-black-center-themed-flower-outline.md). Use the exact
+The Codex foreground now keeps a white outline, black interior, and white
+prompt under [decision 030](030-white-codex-flower-outline.md). Use the exact
 accent for both brands' running echo in healthy and warning bands, including
 its static motion-disabled version. Following the user's concern about an
-alarming red pulse, the critical band keeps its red outline static and
-uses a soft neutral-white running echo. Keep the green completion echo/check
+alarming red pulse, the critical band uses a soft neutral-white running echo.
+Keep the green completion echo/check
 and the white ChatGPT foreground.
 Settings retains its neutral brand sample and adds no new color preference.
 

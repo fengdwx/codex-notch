@@ -2,6 +2,7 @@ import CoreServices
 import Foundation
 
 final class FSEventChangeSource {
+    static let deliveryLatency: TimeInterval = 0.1
     let rootURL: URL
     var onChange: (([URL]) -> Void)?
 
@@ -22,12 +23,28 @@ final class FSEventChangeSource {
             release: nil,
             copyDescription: nil
         )
-        let callback: FSEventStreamCallback = { _, info, _, _, _, _ in
+        let callback: FSEventStreamCallback = { _, info, count, eventPaths, eventFlags, _ in
             guard let info else { return }
             let source = Unmanaged<FSEventChangeSource>
                 .fromOpaque(info)
                 .takeUnretainedValue()
-            source.onChange?([source.rootURL])
+            let recoveryFlags = FSEventStreamEventFlags(
+                kFSEventStreamEventFlagMustScanSubDirs
+                    | kFSEventStreamEventFlagUserDropped
+                    | kFSEventStreamEventFlagKernelDropped
+                    | kFSEventStreamEventFlagEventIdsWrapped
+                    | kFSEventStreamEventFlagRootChanged
+            )
+            let paths = eventPaths.assumingMemoryBound(to: UnsafePointer<CChar>.self)
+            var urls: [URL] = []
+            for index in 0..<count {
+                if eventFlags[index] & recoveryFlags != 0 {
+                    urls = [source.rootURL]
+                    break
+                }
+                urls.append(URL(fileURLWithPath: String(cString: paths[index])))
+            }
+            source.onChange?(urls)
         }
         let paths = [rootURL.path] as CFArray
         let flags = FSEventStreamCreateFlags(
@@ -40,7 +57,7 @@ final class FSEventChangeSource {
             &context,
             paths,
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
-            0.25,
+            Self.deliveryLatency,
             flags
         ) else {
             return
@@ -48,7 +65,11 @@ final class FSEventChangeSource {
 
         stream = newStream
         FSEventStreamSetDispatchQueue(newStream, queue)
-        FSEventStreamStart(newStream)
+        if !FSEventStreamStart(newStream) {
+            FSEventStreamInvalidate(newStream)
+            FSEventStreamRelease(newStream)
+            stream = nil
+        }
     }
 
     func stop() {

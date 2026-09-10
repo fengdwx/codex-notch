@@ -6,7 +6,7 @@ import XCTest
 
 final class StatusIconThemeTests: XCTestCase {
     @MainActor
-    func testThemedCodexMarkKeepsBlackInsideAndColorOnlyOnItsFlowerOutline() throws {
+    func testCodexMarkKeepsBlackInsideAndAWhiteOutlineAtEveryQuotaLevel() throws {
         for remaining in [80.0, 20, 5] {
             let theme = StatusIconTheme(usage: usage(remaining: remaining))
             let renderer = ImageRenderer(content:
@@ -28,42 +28,37 @@ final class StatusIconThemeTests: XCTestCase {
                 for x in 0..<bitmap.pixelsWide {
                     let color = try XCTUnwrap(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB))
                     let channels = [color.redComponent, color.greenComponent, color.blueComponent]
-                    if (14...22).contains(x), (10...22).contains(y) {
-                        XCTAssertLessThan(
-                            try XCTUnwrap(channels.max()) - XCTUnwrap(channels.min()), 0.01,
-                            "The whole center must stay neutral, including prompt antialiasing"
-                        )
-                    }
+                    XCTAssertLessThan(
+                        try XCTUnwrap(channels.max()) - XCTUnwrap(channels.min()), 0.01,
+                        "Both the outline and center must stay neutral at every quota level"
+                    )
                     if channels.allSatisfy({ $0 > 0.75 }) { whitePromptPixels += 1 }
                 }
             }
-            let coloredArea = try coloredArea(of: bitmap, accent: theme.accent)
-            XCTAssertGreaterThan(coloredArea, 25, "The original flower outline stays visible")
-            XCTAssertLessThan(coloredArea, 400, "Quota color must not fill the flower's center")
+            let whiteArea = try whiteArea(of: bitmap)
+            XCTAssertGreaterThan(whiteArea, 100, "The outline must remain visible around the prompt")
+            XCTAssertLessThan(whiteArea, 400, "White must not fill the flower's center")
             XCTAssertGreaterThan(whitePromptPixels, 25, "The prompt stays white")
         }
     }
 
     // Integrate fractional edge coverage instead of counting every barely
-    // colored antialiased pixel as fully covered. macOS 14 and 26 rasterizers
+    // white antialiased pixel as fully covered. macOS 14 and 26 rasterizers
     // differ at those edges; the same 400-pixel area ceiling remains enforced.
-    private func coloredArea(of bitmap: NSBitmapImageRep, accent: QuotaColorScale.RGB) throws -> Double {
-        let accentChannels = [accent.red, accent.green, accent.blue]
-        let fullChroma = try XCTUnwrap(accentChannels.max()) - XCTUnwrap(accentChannels.min())
-        XCTAssertGreaterThan(fullChroma, 0)
+    private func whiteArea(of bitmap: NSBitmapImageRep) throws -> Double {
         var area = 0.0
         for y in 0..<bitmap.pixelsHigh {
             for x in 0..<bitmap.pixelsWide {
                 let color = try XCTUnwrap(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB))
                 let channels = [color.redComponent, color.greenComponent, color.blueComponent]
-                area += min(1, (try XCTUnwrap(channels.max()) - XCTUnwrap(channels.min())) / fullChroma)
+                area += try XCTUnwrap(channels.max())
             }
         }
         return area
     }
 
     @MainActor
-    func testOutlineAreaGuardRejectsAQuotaColoredSolidFlower() throws {
+    func testOutlineAreaGuardRejectsAWhiteSolidFlower() throws {
         let prompt = try XCTUnwrap(CodexMarkAsset.promptTemplateImage)
         for remaining in [80.0, 20, 5] {
             let theme = StatusIconTheme(usage: usage(remaining: remaining))
@@ -81,8 +76,8 @@ final class StatusIconThemeTests: XCTestCase {
             )
             renderer.scale = 2
             let bitmap = NSBitmapImageRep(cgImage: try XCTUnwrap(renderer.cgImage))
-            XCTAssertGreaterThan(try coloredArea(of: bitmap, accent: theme.accent), 400,
-                                 "A solid colored flower must fail the outline area ceiling")
+            XCTAssertGreaterThan(try whiteArea(of: bitmap), 400,
+                                 "A solid white flower must fail the outline area ceiling")
         }
     }
 

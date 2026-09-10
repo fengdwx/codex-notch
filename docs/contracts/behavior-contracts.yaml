@@ -20,6 +20,53 @@ contracts:
     superseded_by: null
     last_verified_commit: null
 
+  - id: NOTCH-VISIBILITY-048
+    title: Floating bars show returned five-hour quota in the left lane
+    status: superseded
+    statement: Preserve every geometry, battle, visibility, mirroring, motion, and privacy requirement of NOTCH-VISIBILITY-047, replacing only the left lane selection. Both physical-notch and floating-bar layouts show returned five-hour quota on the left, otherwise the selected status icon. Weekly stays on the right and the sword battle stays in the center. Use the existing 30pt floating lane without adding the physical-notch halo. Preserve QUOTA-SEMANTICS-054 status styling whenever the fallback icon is shown.
+    rationale: The installed app received five-hour data but hid it solely because this Mac used the floating-bar route.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [compact-state, non-notch-screens, five-hour-window]
+      exclude: [quota-fetching, window-geometry, battle-animation]
+    examples:
+      positive: With both windows returned, a floating bar shows five-hour remaining on the left and weekly remaining on the right. Without five-hour data, the status icon returns.
+      negative: Hiding returned five-hour quota on a floating bar, inventing a missing value, removing the center battle, or adding a physical-notch halo to the floating bar.
+    guards:
+      - Tests/CodexNotchTests/CompactLeftIndicatorPolicyTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/QuotaRunningHaloMotionTests.swift
+      - docs/decisions/030-floating-five-hour-quota.md
+      - "manual: inspect the floating-bar left value and retained center/right lanes; confirm physical-notch geometry on real hardware"
+    supersedes: [NOTCH-VISIBILITY-047]
+    superseded_by: NOTCH-VISIBILITY-049
+    last_verified_commit: null
+
+  - id: NOTCH-VISIBILITY-049
+    title: Hidden floating bars recover through their original hover area
+    status: active
+    statement: Preserve NOTCH-VISIBILITY-048 quota selection and all inherited geometry, battle, privacy and mirroring behavior. When display is disabled on an ordinary no-notch screen, retain a fully transparent sensor exactly matching the compact floating frame. Hover opens the existing card and its display switch; leaving returns to the invisible sensor until display is enabled. Do not change the saved preference merely on hover. Physical-notch recovery remains unchanged. Hardware mirror and menu-bar-only routes remain panel-free.
+    rationale: Removing the disabled floating panel and setting its hidden frame to zero made hover recovery impossible.
+    source: user-reported-regression
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [non-notch-screens, hidden-state, hover-recovery]
+      exclude: [quota-semantics, battle-animation, physical-notch-geometry]
+    examples:
+      positive: Disable the floating display, move away and return to its previous top-center location to reopen the card; leaving hides it again and enabling display restores the compact bar.
+      negative: Removing the sensor, leaving visible content while hidden, retaining an expanded invisible hit area, or showing a sensor in a hardware mirror set.
+    guards:
+      - Tests/CodexNotchTests/NotchPanelVisibilityPolicyTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/NotchDisplayRoutingTests.swift
+      - "manual: disable, leave, hover to recover, leave to hide, then reenable the floating bar; confirm physical-notch behavior on real hardware"
+    supersedes: [NOTCH-VISIBILITY-048]
+    superseded_by: null
+    last_verified_commit: null
+
   - id: NOTCH-LAYOUT-001
     title: Compact island must align with the physical notch safe areas
     status: superseded
@@ -804,7 +851,7 @@ contracts:
 
   - id: NOTCH-VISIBILITY-047
     title: No-notch displays use the Sword Wanderer endless battle island
-    status: superseded
+    status: active
     statement: >-
       On a display without valid auxiliary notch areas, CodexNotch renders a
       non-activating activity island centered against the physical screen top,
@@ -870,7 +917,7 @@ contracts:
       - docs/decisions/017-mirrored-display-menu-bar-fallback.md
       - "manual: launch the built app on a no-notch Mac, confirm the original Sword Wanderer identity, repeated jumping slimes, visible sword contact and +1 overlap with the next spawn, menu-bar containment, downward hover expansion, collapse reclamation, and a static Reduce Motion state; then enable hardware display mirroring and confirm the panel is absent over ordinary apps while the menu bar exposes the current state, and disable mirroring to confirm live geometry recovery"
     supersedes: [NOTCH-VISIBILITY-046]
-    superseded_by: NOTCH-VISIBILITY-048
+    superseded_by: null
     last_verified_commit: null
 
   - id: EXPANDED-APPEARANCE-009
@@ -1037,7 +1084,7 @@ contracts:
 
   - id: ACTIVITY-STATE-005
     title: Subagent rollouts do not affect notch activity or conversation history
-    status: active
+    status: superseded
     statement: >-
       A rollout whose session metadata identifies a child through
       `source.subagent.thread_spawn` or a non-empty `parent_thread_id` is
@@ -1066,7 +1113,7 @@ contracts:
       - Tests/CodexNotchTests/ActiveSessionStoreTests.swift
       - "manual: run a top-level task with a child agent, close the child unexpectedly, and confirm only the top-level task controls the notch state"
     supersedes: [ACTIVITY-STATE-004]
-    superseded_by: null
+    superseded_by: ACTIVITY-STATE-006
     last_verified_commit: null
 
   - id: CONVERSATION-TITLE-041
@@ -1538,7 +1585,7 @@ contracts:
 
   - id: QUOTA-SEMANTICS-054
     title: Keep the Codex flower center black and tint only its outline
-    status: active
+    status: superseded
     statement: >-
       Preserve the original flower silhouette, white prompt, weekly quota theme, icon selection, and motion behavior from QUOTA-SEMANTICS-053. In the live themed Codex mark, keep the interior black and apply the weekly accent only to a narrow flower-shaped outline. Render the unchanged full silhouette in the accent color, cover its inner 88-percent scale with black, and retain the original white prompt above it, all inside the existing 18pt frame. At critical quota the outline stays red without pulsing and the running echo remains neutral white. Keep the completed green checkmark, ChatGPT mark, Settings samples, ring/wave behavior, and all window geometry unchanged.
     rationale: The user clarified that the center should remain black and only the flower pattern should carry the theme color; a colored solid flower changed more of the surface than intended.
@@ -1559,7 +1606,7 @@ contracts:
       - docs/decisions/029-black-center-themed-flower-outline.md
       - "manual: inspect the real notch for a narrow colored flower outline, black center, white prompt, camera clearance, and retained motion cues"
     supersedes: [QUOTA-SEMANTICS-053]
-    superseded_by: null
+    superseded_by: QUOTA-SEMANTICS-055
     last_verified_commit: null
 
   - id: PRIVACY-BOUNDARY-005
@@ -1632,7 +1679,7 @@ contracts:
   - id: PACKAGE-VERIFY-006
     title: A distributable app must come from a verified build
     status: active
-    statement: Any CodexNotch.app claimed to be runnable or distributable must be built from the current worktree and verified through the bundle, Info.plist, and codesign checks; a release ZIP must be generated by the release script. Installed apps must load animation resources from their own Contents/Resources bundle and never rely on a developer build directory. Full verification must decode all four battle images before reading credentials or monitoring sessions.
+    statement: Any CodexNotch.app claimed to be runnable or distributable must be built from the current worktree and verified through the bundle, Info.plist, and codesign checks; a release ZIP must be generated by the release script.
     rationale: Passing source tests does not prove that the app bundle launches or is correctly signed.
     source: technical-constraint
     owner: project-maintainer
@@ -1647,8 +1694,6 @@ contracts:
       - scripts/build_app.sh
       - scripts/verify_app.sh
       - scripts/verify.sh
-      - Tests/CodexNotchTests/AppResourcesTests.swift
-      - docs/decisions/031-installed-resource-bundle.md
     supersedes: []
     superseded_by: null
     last_verified_commit: 0d37196
@@ -1722,49 +1767,55 @@ contracts:
     superseded_by: null
     last_verified_commit: e27336c
 
-  - id: NOTCH-VISIBILITY-048
-    title: Floating bars show returned five-hour quota in the left lane
-    status: superseded
-    statement: Preserve every geometry, battle, visibility, mirroring, motion, and privacy requirement of NOTCH-VISIBILITY-047, replacing only the left lane selection. Both physical-notch and floating-bar layouts show returned five-hour quota on the left, otherwise the selected status icon. Weekly stays on the right and the sword battle stays in the center. Use the existing 30pt floating lane without adding the physical-notch halo. Preserve QUOTA-SEMANTICS-054 status styling whenever the fallback icon is shown.
-    rationale: The installed app received five-hour data but hid it solely because this Mac used the floating-bar route.
+
+  - id: QUOTA-SEMANTICS-055
+    title: The Codex flower outline stays white at every quota level
+    status: active
+    statement: >-
+      Preserve the black center, original white prompt, narrow 18pt flower outline geometry, icon selection, and motion lifecycle from QUOTA-SEMANTICS-054. The live Codex foreground outline is now white regardless of weekly quota. Only the running echo retains its existing weekly theme, with neutral white at critical quota; completion keeps the green echo and checkmark. The right quota ring and wave retain their existing quota palette and animations, and Settings brand samples and ChatGPT artwork remain unchanged.
+    rationale: The user asked to change the outer flower outline back to white after viewing the quota-colored outline.
     source: user-request
     owner: project-maintainer
     risk: medium
     scope:
-      include: [compact-state, non-notch-screens, five-hour-window]
-      exclude: [quota-fetching, window-geometry, battle-animation]
+      include: [codex-status-artwork, compact-state]
+      exclude: [quota-values, quota-color-scale, settings-preferences, window-geometry, activity-state-machine, releases]
     examples:
-      positive: With both windows returned, a floating bar shows five-hour remaining on the left and weekly remaining on the right. Without five-hour data, the status icon returns.
-      negative: Hiding returned five-hour quota on a floating bar, inventing a missing value, removing the center battle, or adding a physical-notch halo to the floating bar.
+      positive: Green, yellow, and red weekly quota all show a white flower outline around the black center and original white prompt.
+      negative: A quota-colored foreground outline, a solid white flower hiding the prompt, or a change to the right ring's colors.
     guards:
-      - Tests/CodexNotchTests/CompactLeftIndicatorPolicyTests.swift
-      - Tests/CodexNotchTests/NotchGeometryTests.swift
-      - Tests/CodexNotchTests/QuotaRunningHaloMotionTests.swift
-      - docs/decisions/030-floating-five-hour-quota.md
-      - "manual: inspect the floating-bar left value and retained center/right lanes; confirm physical-notch geometry on real hardware"
-    supersedes: [NOTCH-VISIBILITY-047]
-    superseded_by: NOTCH-VISIBILITY-049
+      - Tests/CodexNotchTests/StatusIconThemeTests.swift
+      - Tests/CodexNotchTests/StatusIconStyleTests.swift
+      - Tests/CodexNotchTests/AppIconAssetTests.swift
+      - docs/decisions/030-white-codex-flower-outline.md
+      - "manual: inspect the white outline and black center on the real notch, including running and completed cues"
+    supersedes: [QUOTA-SEMANTICS-054]
+    superseded_by: null
     last_verified_commit: null
 
-  - id: NOTCH-VISIBILITY-049
-    title: Hidden floating bars recover through their original hover area
+  - id: ACTIVITY-STATE-006
+    title: Changed rollout files promptly publish ordered activity updates
     status: active
-    statement: Preserve NOTCH-VISIBILITY-048 quota selection and all inherited geometry, battle, privacy and mirroring behavior. When display is disabled on an ordinary no-notch screen, retain a fully transparent sensor exactly matching the compact floating frame. Hover opens the existing card and its display switch; leaving returns to the invisible sensor until display is enabled. Do not change the saved preference merely on hover. Physical-notch recovery remains unchanged. Hardware mirror and menu-bar-only routes remain panel-free.
-    rationale: Removing the disabled floating panel and setting its sensor frame to zero made hover recovery impossible.
-    source: user-reported-regression
+    statement: >-
+      Preserve top-level task priority, interrupted-turn supersession, explicit completion matching, child-rollout exclusion, six-hour stale fallback, and 24-hour completion retention from ACTIVITY-STATE-005. Use FSEvents with 0.1-second delivery latency and a bounded 0.1-second coalescing window, process the reported changed JSONL paths, commit store updates in scan order, and notify the main-thread runtime immediately after each store commit. Do not wait for the one-second display-clock tick to publish task state, and reject superseded asynchronous snapshot deliveries. Keep a five-second recovery scan for missed events or a late-created sessions directory. Recovery must skip reading unchanged files based on file identity, size, and modification time. Canonicalize filesystem paths consistently, reset cursors on replacement or truncation, remove deleted rollouts, retain partial lines until complete, and process the newest files first during initial discovery. Root/directory and dropped-event notifications may trigger a full recovery scan. No high-frequency idle poll, quota request increase, private message logging, or new external data source is introduced.
+    rationale: The user reported delayed start and completion indicators and asked for more responsive detection with a measured performance cost. Event-driven state delivery removes deliberate waiting while targeted reads and unchanged-file skips bound the extra recovery work. Log-write delays upstream remain outside this detector's control.
+    source: user-reported-incident
     owner: project-maintainer
     risk: medium
     scope:
-      include: [non-notch-screens, hidden-state, hover-recovery]
-      exclude: [quota-semantics, battle-animation, physical-notch-geometry]
+      include: [rollout-session-monitoring, compact-state, runtime-update-cadence]
+      exclude: [task-termination, quota-semantics, authentication, physical-notch-geometry, releases]
     examples:
-      positive: Disable the floating display, move away and return to its previous top-center location to reopen the card; leaving hides it again and enabling display restores the compact bar.
-      negative: Removing the sensor, leaving visible content while hidden, retaining an expanded invisible hit area, or showing a sensor in a hardware mirror set.
+      positive: Creating a rollout and appending its terminal event both notify the runtime without a recovery or UI timer; an unchanged recovery scan performs no log reads, and an atomic replacement cannot leave the old task active.
+      negative: Waiting for the next display tick after reading a terminal event, rereading unrelated logs on each callback, losing a partial terminal line, applying an older scan after a newer completion, or attributing upstream file-write delays to the polling interval.
     guards:
-      - Tests/CodexNotchTests/NotchPanelVisibilityPolicyTests.swift
-      - Tests/CodexNotchTests/NotchGeometryTests.swift
-      - Tests/CodexNotchTests/NotchDisplayRoutingTests.swift
-      - "manual: disable, leave, hover to recover, leave to hide, then reenable the floating bar; confirm physical-notch behavior on real hardware"
-    supersedes: [NOTCH-VISIBILITY-048]
+      - Tests/CodexNotchTests/RolloutResponsivenessTests.swift
+      - Tests/CodexNotchTests/RolloutActivityMonitorTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePerformanceTests.swift
+      - Tests/CodexNotchTests/ActiveSessionStoreTests.swift
+      - Tests/CodexNotchTests/RolloutEventParserTests.swift
+      - docs/decisions/031-responsive-rollout-events.md
+      - "manual: compare process CPU under similar activity and measure real filesystem start/terminal notification latency; separately confirm real Codex UI-to-notch transitions"
+    supersedes: [ACTIVITY-STATE-005]
     superseded_by: null
     last_verified_commit: null
