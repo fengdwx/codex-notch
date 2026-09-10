@@ -1,4 +1,25 @@
 contracts:
+  - id: QUOTA-WAVE-055
+    title: Full and empty wave balls match their quota values
+    status: active
+    statement: At 100 percent the wave ball must be completely filled at every horizontal animation phase; at 0 percent or without quota it must contain no liquid. Wave amplitude fades near both endpoints, while partial quota retains its wave, existing Core Animation cadence, motion settings, colors, and geometry. Apply this to both floating and physical-notch indicators.
+    rationale: A fixed wave amplitude leaves troughs at full quota and crests at empty quota, contradicting the displayed value.
+    source: user-reported-incident
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [wave-ball, compact-state, non-notch-screens, notch-screens]
+      exclude: [quota-fetching, ring, window-geometry]
+    examples:
+      positive: Full quota remains filled throughout wave translation and half quota retains a visible wave surface.
+      negative: Full quota exposes a trough, empty quota retains liquid, or partial quota loses its wave.
+    guards:
+      - Tests/CodexNotchTests/QuotaWaveBoundaryTests.swift
+      - "manual: inspect full, empty and partial wave balls with motion enabled and Reduce Motion on real hardware"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null
+
   - id: NOTCH-LAYOUT-001
     title: Compact island must align with the physical notch safe areas
     status: superseded

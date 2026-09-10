@@ -372,7 +372,10 @@ final class QuotaWaveLayerView: QuotaAnimatedLayerView {
         fillProgress: CGFloat
     ) -> CGPath {
         let level = size.height * fillProgress
-        let amplitude = max(0.8, size.height * 0.075)
+        // Keep the same path topology for level interpolation, but fade the
+        // wave to zero at full/empty quota so translation cannot expose gaps.
+        let edgeDistance = size.height * min(fillProgress, 1 - fillProgress)
+        let amplitude = min(max(0.8, size.height * 0.075), edgeDistance)
         let path = CGMutablePath()
         path.move(to: CGPoint(x: 0, y: 0))
         path.addLine(to: CGPoint(x: 0, y: level))
