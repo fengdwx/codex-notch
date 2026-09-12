@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [NOTCH-VISIBILITY-050]
 supersedes: [015-no-notch-task-status-island]
-superseded_by: null
+superseded_by: 034-floating-center-styles
 owner: project-maintainer
 created_at: 2026-08-10
 ---

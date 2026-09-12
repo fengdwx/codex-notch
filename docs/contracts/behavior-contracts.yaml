@@ -1,4 +1,110 @@
 contracts:
+  - id: FLOATING-CENTER-051
+    title: Floating bars offer signatures, orbit, elapsed time and thin light flow
+    status: active
+    statement: >-
+      Preserve the screen routing, mirrored-display visibility, top attachment,
+      212pt width, measured compact height, 8pt outer insets, 30pt quota lanes,
+      136pt center lane, five-hour priority, weekly quota, transparent hover
+      recovery, navigation and privacy requirements of NOTCH-VISIBILITY-050.
+      Replace its mandatory battle scene with four persistent local choices:
+      signature (default), orbit with signature, primary-task elapsed time,
+      and a thin 96x3pt light flow. Unknown preferences use signature. Custom
+      text shows at most 12 complete characters on one line; empty text uses
+      Codex and long rendered text truncates within the existing lane. Use
+      regular-weight 11pt system monospaced text with restrained contrast.
+      Elapsed time comes from the displayed primary task start and the existing
+      one-second clock, returning to signature when idle or complete. Orbit
+      and flow use visible-only Core Animation at the existing preferred 8 FPS,
+      only for a running collapsed surface with motion allowed; stop on task
+      completion, expansion, hiding, detachment, disabled animation or Reduce
+      Motion. Keep static status cues. Do not render the legacy battle or add
+      a center on physical-notch layouts. Preserve old battle assets/tests as
+      historical regression coverage. Card transitions follow NOTCH-MOTION-004.
+    rationale: The user rejected the busy battle, fog and thick light bars, chose four alternatives, and requested calmer typography.
+    source: user-selected-designs
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [floating-bar, settings, center-motion, custom-text, timer]
+      exclude: [quota-semantics, physical-notch-center, third-party-features, releases]
+    examples:
+      positive: Change all four options live, restart with the selection and text retained, and finish a task to see motion stop and the timer return to the signature.
+      negative: An endless battle, mist, thick bar, invented timer, lost setting, split emoji, motion behind the expanded card, or a changed camera-safe layout.
+    guards:
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/NotchDisplayRoutingTests.swift
+      - Tests/CodexNotchTests/CompactLeftIndicatorPolicyTests.swift
+      - docs/decisions/034-floating-center-styles.md
+      - "manual: change and restart all center choices; inspect real running/completed/idle, long Chinese text, Reduce Motion, mirror visibility and downward hover behavior"
+    supersedes: [NOTCH-VISIBILITY-050]
+    superseded_by: null
+    last_verified_commit: null
+
+  - id: NOTCH-MOTION-004
+    title: A top-anchored spring expands inside a fixed temporary canvas
+    status: active
+    statement: >-
+      With app animations enabled and Reduce Motion off, animate the visible
+      card from its fixed top center: expansion has a restrained spring rebound
+      and collapse is critically damped to protect the compact camera-safe
+      minimum. Prepare one temporary canvas with 8pt side and bottom clearance
+      for expansion. Reclaim that clearance after expansion and reclaim the
+      expanded canvas after collapse. Repeated clock updates must not postpone
+      settlement; reversing direction cancels stale settlement. Never resize
+      NSPanel frame by frame, move the screen-top anchor, or retain off-card
+      mouse interception after settlement. Host animated SwiftUI inside an
+      AppKit canvas so content animation cannot resize the owning panel.
+      Keep the compact header outside detail fades. Details retain their final
+      layout width during the shell transition, appear after expansion starts,
+      and fade out early during collapse; interpolate the outer corner radius.
+      Disabled motion and hidden recovery
+      settle immediately. Preserve the static green completion cue and absence
+      of quota fireworks from NOTCH-LAYOUT-038.
+    rationale: The user now requests elastic opening and closing like the referenced demonstration, superseding the earlier static-transition preference.
+    source: user-request
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [notch-screens, floating-bar, hover-expand, hover-collapse, canvas-settlement]
+      exclude: [quota-semantics, completion-firework, frame-per-frame-panel-resizing]
+    examples:
+      positive: Hover reveals a springy card downward, leave to smoothly collapse, and hover again during collapse without a stale frame shrinking the reopened card.
+      negative: An upward burst, shrinking into the camera, clipping the rebound, delayed settlement from clock ticks, animation under Reduce Motion, or transparent canvas intercepting clicks after collapse.
+    guards:
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePerformanceTests.swift
+      - docs/decisions/035-spring-card-transitions.md
+      - "manual: repeatedly hover/leave/reenter, confirm top anchoring and final frame recovery; verify motion off and Reduce Motion on real hardware"
+    supersedes: [NOTCH-MOTION-003]
+    superseded_by: null
+    last_verified_commit: null
+
+  - id: SETTINGS-PREFERENCES-018
+    title: Language, history, motion and floating center settings apply live
+    status: active
+    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-051. Card transitions now follow the motion preference and Reduce Motion under NOTCH-MOTION-004; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
+    rationale: Center choices need live visual comparison and persistence, and the newly requested spring transition supersedes the earlier always-static exception.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [settings, floating-center, language, recent-conversations, motion]
+      exclude: [quota-semantics, privacy-data, releases]
+    examples:
+      positive: Select orbit and enter a signature, see the change immediately, restart with both retained, and disable animations to stop orbit while preserving the text and task state.
+      negative: Saving only after restart, losing custom text, changing task data, hiding state with animation off, or restoring completion fireworks.
+    guards:
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePreferencesTests.swift
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - "manual: change styles, text, language and motion preferences, then restart and verify persistence"
+    supersedes: [SETTINGS-PREFERENCES-017]
+    superseded_by: null
+    last_verified_commit: null
+
   - id: QUOTA-WAVE-055
     title: Full and empty wave balls match their quota values
     status: active
@@ -632,7 +738,7 @@ contracts:
 
   - id: NOTCH-MOTION-003
     title: Expansion and collapse switch immediately inside the fixed canvas
-    status: active
+    status: superseded
     statement: Hover expansion and collapse must change the visible top-anchored card immediately, regardless of the app animation setting. The controller still prepares the final transparent canvas before an expanded state is applied, and it reclaims unused transparent canvas immediately after collapse so no off-card region intercepts the mouse. The outer window must not resize frame by frame, flicker, expand upward, or burst from the middle of the physical notch.
     rationale: The fixed-canvas boundary remains necessary to avoid historical AppKit and SwiftUI layout crashes, but the user no longer wants a visible card transition. An animation-free state switch also avoids transient layout and compositing work while keeping the same geometry and interaction model.
     source: user-requested-performance-simplification
@@ -650,7 +756,7 @@ contracts:
       - docs/decisions/005-static-card-transitions-and-completion-cue.md
       - "manual: hover-expand and collapse on physical-notch hardware and confirm both switches are immediate"
     supersedes: [NOTCH-MOTION-002]
-    superseded_by: null
+    superseded_by: NOTCH-MOTION-004
     last_verified_commit: null
 
   - id: NOTCH-VISIBILITY-040
@@ -922,7 +1028,7 @@ contracts:
 
   - id: NOTCH-VISIBILITY-050
     title: Mirrored and ordinary no-notch displays keep the activity island visible
-    status: active
+    status: superseded
     statement: >-
       On a display without valid auxiliary notch areas, CodexNotch renders a
       non-activating activity island centered against the current NSScreen top,
@@ -992,7 +1098,7 @@ contracts:
       - docs/decisions/033-mirrored-display-floating-island.md
       - "manual: launch the built app on a no-notch Mac, confirm the original Sword Wanderer identity, repeated jumping slimes, visible sword contact and +1 overlap with the next spawn, menu-bar containment, downward hover expansion, collapse reclamation, and a static Reduce Motion state; then enable hardware display mirroring and confirm the top-centered island remains visible, hover expands downward, display-off hides it while hover can reopen the card without changing the saved preference, and disabling mirroring restores live geometry"
     supersedes: [NOTCH-VISIBILITY-049]
-    superseded_by: null
+    superseded_by: FLOATING-CENTER-051
     last_verified_commit: null
 
   - id: EXPANDED-APPEARANCE-009
@@ -1063,7 +1169,7 @@ contracts:
 
   - id: SETTINGS-PREFERENCES-017
     title: Language, recent-conversation, and animation settings apply immediately
-    status: active
+    status: superseded
     statement: Settings must offer Chinese and English app languages and apply the selected language immediately to the settings window, notch content, and menu-bar fallback. Settings must offer 0 through 5 recent conversations; selecting 0 hides the recent-conversations section while preserving quota, active-task, and completion state. Settings must also offer an animations toggle that is enabled by default and applies immediately; disabling it stops continuous quota motion and remaining pulses while preserving static running and completed cues. Card surface transitions and the quota completion firework remain unavailable in either setting.
     rationale: Users need readable interface choices without restarting the app. Recent-conversation visibility should control only the optional list, while the animation preference should reduce visual distraction and continuous rendering cost without suppressing the primary quota or activity signal.
     source: user-request-and-issue-2
@@ -1082,7 +1188,7 @@ contracts:
       - Tests/CodexNotchTests/NotchTextTests.swift
       - "manual: switch language, set recent-conversation count to 0, and disable animations on a running app"
     supersedes: []
-    superseded_by: null
+    superseded_by: SETTINGS-PREFERENCES-018
     last_verified_commit: null
 
   - id: APP-UPDATE-001

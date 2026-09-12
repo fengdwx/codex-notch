@@ -11,6 +11,10 @@ struct NotchSettingsView: View {
     private var appLanguageRaw = AppLanguage.defaultLanguage.rawValue
     @AppStorage(AppAnimationPreference.storageKey)
     private var animationsEnabled = AppAnimationPreference.defaultEnabled
+    @AppStorage(FloatingCenterStyle.storageKey)
+    private var floatingCenterStyleRaw = FloatingCenterStyle.defaultStyle.rawValue
+    @AppStorage(FloatingCenterText.storageKey)
+    private var floatingCenterText = FloatingCenterText.defaultText
     @State private var updateState: UpdatePresentationState = .idle
     @State private var isCheckingForUpdates = false
 
@@ -98,6 +102,40 @@ struct NotchSettingsView: View {
                 .foregroundStyle(.secondary)
             } header: {
                 Text(appLanguage.localized(chinese: "状态图标", english: "Status icon"))
+            }
+
+            Section {
+                Picker(
+                    appLanguage.localized(chinese: "显示样式", english: "Style"),
+                    selection: Binding(
+                        get: { FloatingCenterStyle.fromStoredValue(floatingCenterStyleRaw) },
+                        set: { floatingCenterStyleRaw = $0.rawValue }
+                    )
+                ) {
+                    ForEach(FloatingCenterStyle.allCases) { style in
+                        Text(style.title(for: appLanguage)).tag(style)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                TextField(
+                    appLanguage.localized(chinese: "自定义文字", english: "Custom text"),
+                    text: $floatingCenterText,
+                    prompt: Text(FloatingCenterText.defaultText)
+                )
+                .onChange(of: floatingCenterText) { _, value in
+                    let limited = String(value.prefix(FloatingCenterText.maximumCharacters))
+                    if limited != value { floatingCenterText = limited }
+                }
+
+                Text(appLanguage.localized(
+                    chinese: "最多 12 个字符，留空显示 Codex。适用于无刘海或镜像屏幕的中间区域；计时对应当前主任务，空闲或完成后显示签名。轨道和流光仅在任务运行且卡片收起时播放。",
+                    english: "Up to 12 characters; blank uses Codex. Applies to the center of floating bars on displays without a notch, including mirrors. The timer follows the primary task and returns to your signature when idle or complete. Orbit and flow animate only while a task is running and the card is collapsed."
+                ))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            } header: {
+                Text(appLanguage.localized(chinese: "浮动横条中间区域", english: "Floating bar center"))
             }
 
             Section {

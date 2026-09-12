@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [NOTCH-MOTION-003, NOTCH-LAYOUT-038]
 supersedes: [001-fixed-canvas-notch-motion]
-superseded_by: null
+superseded_by: 035-spring-card-transitions
 owner: project-maintainer
 created_at: 2026-07-23
 last_verified_commit: null

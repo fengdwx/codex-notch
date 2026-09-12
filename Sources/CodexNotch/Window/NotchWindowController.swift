@@ -20,6 +20,7 @@ final class NotchWindowController: NSWindowController {
     private var statusItem: NSStatusItem?
     private var deferredFrameWorkItem: DispatchWorkItem?
     private var deferredFrameIdentifier: UUID?
+    private var lastPreparedTargetFrame: NSRect?
     private var requestedLayoutMode: NotchLayoutMode = .menuBarFallback
 
     private var appLanguage: AppLanguage {
@@ -42,12 +43,16 @@ final class NotchWindowController: NSWindowController {
     func setRootView<Content: View>(_ rootView: Content) {
         guard let panel = window as? NotchPanel else { return }
         let hostingView = NSHostingView(rootView: AnyView(rootView))
-        // The panel owns this view directly. Keeping it out of Auto Layout's
-        // intrinsic-size negotiation prevents a window resize from re-entering
-        // SwiftUI's text measurement while the notch is expanding.
+        // A hosting view used directly as window.contentView can drive animated
+        // window sizing on macOS 26 even with sizingOptions disabled. A plain
+        // AppKit canvas keeps panel geometry owned by this controller while
+        // SwiftUI animates only the surface inside it.
+        let canvas = NSView(frame: panel.contentView?.bounds ?? .zero)
         hostingView.sizingOptions = []
+        hostingView.frame = canvas.bounds
         hostingView.autoresizingMask = [.width, .height]
-        panel.contentView = hostingView
+        canvas.addSubview(hostingView)
+        panel.contentView = canvas
         self.hostingView = hostingView
     }
 
@@ -70,10 +75,21 @@ final class NotchWindowController: NSWindowController {
 
         requestedLayoutMode = layout.mode
         hideFallbackMenu()
-        let frame = layout.frame(for: state)
+        let targetFrame = layout.frame(for: state)
         let wasVisible = panel.isVisible
         let wasIgnoringMouseEvents = panel.ignoresMouseEvents
-        cancelDeferredFrameSettlement()
+        let changesTarget = lastPreparedTargetFrame != targetFrame
+            || !wasVisible
+            || (deferredFrameWorkItem == nil && panel.frame != targetFrame)
+        if changesTarget || !animationsEnabled { cancelDeferredFrameSettlement() }
+        lastPreparedTargetFrame = targetFrame
+        let isExpanded: Bool
+        if case .expanded = state { isExpanded = true } else { isExpanded = false }
+        let frame = changesTarget
+            ? NotchPresentationMotion.canvasFrame(
+                for: targetFrame, isExpanded: isExpanded, animationsEnabled: animationsEnabled
+            )
+            : (deferredFrameWorkItem == nil ? targetFrame : panel.frame)
 
         let setsFrameImmediately = shouldSetFrameImmediately(
             from: panel.frame,
@@ -133,6 +149,9 @@ final class NotchWindowController: NSWindowController {
             return
         }
 
+        // A clock/event refresh of the same target must not postpone settlement.
+        guard deferredFrameWorkItem == nil else { return }
+
         let identifier = UUID()
         deferredFrameIdentifier = identifier
         let workItem = DispatchWorkItem { [weak self, weak panel] in
@@ -146,8 +165,11 @@ final class NotchWindowController: NSWindowController {
             self.deferredFrameWorkItem = nil
         }
         deferredFrameWorkItem = workItem
+        let delay: TimeInterval
+        if case .expanded = state { delay = NotchPresentationMotion.expandDuration }
+        else { delay = NotchPresentationMotion.collapseDuration }
         DispatchQueue.main.asyncAfter(
-            deadline: .now() + NotchPresentationMotion.collapseDuration,
+            deadline: .now() + delay,
             execute: workItem
         )
     }

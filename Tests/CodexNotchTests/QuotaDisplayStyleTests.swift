@@ -128,8 +128,9 @@ final class QuotaDisplayStyleTests: XCTestCase {
         )
     }
 
-    func testExpandedCardSurfaceTransitionsStayDisabled() {
-        XCTAssertFalse(
+    func testExpandedCardSurfaceTransitionsRespectTheMotionPreference() {
+        // NOTCH-MOTION-004 supersedes the old always-static contract.
+        XCTAssertTrue(
             NotchPresentationMotion.shouldAnimateSurface(
                 changesSurface: true,
                 animationsEnabled: true
@@ -141,6 +142,9 @@ final class QuotaDisplayStyleTests: XCTestCase {
                 animationsEnabled: true
             )
         )
+        XCTAssertFalse(NotchPresentationMotion.shouldAnimateSurface(
+            changesSurface: true, animationsEnabled: false
+        ))
     }
 
     func testCompletionParticlesUseSymmetricFullCircleLayers() throws {

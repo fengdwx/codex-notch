@@ -1,6 +1,6 @@
 ---
 status: active
-contract_ids: [NOTCH-VISIBILITY-050]
+contract_ids: [FLOATING-CENTER-051]
 supersedes: [017-mirrored-display-menu-bar-fallback, 032-floating-hover-recovery]
 superseded_by: null
 owner: project-maintainer

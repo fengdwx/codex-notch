@@ -447,7 +447,10 @@ final class NotchRuntimeCoordinator {
     }
 
     private var animationsEnabled: Bool {
-        runtimePreferences.animationsEnabled
+        AppAnimationPreference.allowsMotion(
+            animationsEnabled: runtimePreferences.animationsEnabled,
+            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        )
     }
 
     private var runtimePreferences: NotchRuntimePreferences {

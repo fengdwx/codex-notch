@@ -239,7 +239,7 @@ struct NotchView: View {
         _model = ObservedObject(wrappedValue: model)
     }
 
-    var body: some View {
+    private var compactContent: some View {
         Group {
             switch model.state {
             case .hidden:
@@ -281,6 +281,8 @@ struct NotchView: View {
                         ),
                     usage: usage,
                     quotaDisplayStyle: quotaDisplayStyle,
+                    runningStartedAt: primary.startedAt,
+                    now: model.now,
                     action: { model.onOpenThread(primary.threadID) }
                 )
             case let .completedCompact(session, usage):
@@ -301,24 +303,47 @@ struct NotchView: View {
                     action: { model.onOpenThread(session.threadID) }
                 )
             case let .expanded(content):
-                ExpandedNotchView(
-                    content: content,
-                    now: model.now,
-                    layoutMode: model.layoutMode,
-                    cameraSafeAreaInset: model.cameraSafeAreaInset,
-                    compactWidth: model.compactWidth,
-                    compactHeight: model.compactHeight,
-                    quotaDisplayStyle: quotaDisplayStyle,
-                    language: appLanguage,
-                    isResetScheduleExpanded: model.isResetScheduleExpanded,
-                    onActivateChatGPT: model.onActivateChatGPT,
-                    onOpenThread: model.onOpenThread,
-                    onResetScheduleExpandedChanged: model.onResetScheduleExpandedChanged,
-                    notchDisplayEnabled: notchDisplayEnabled,
-                    onNotchDisplayEnabledChanged: { notchDisplayEnabled = $0 }
-                )
-                .transition(.opacity)
+                expandedView(content: content).header
             }
+        }
+    }
+
+    private func expandedView(content: ExpandedContent) -> ExpandedNotchView {
+        ExpandedNotchView(
+            content: content,
+            now: model.now,
+            layoutMode: model.layoutMode,
+            cameraSafeAreaInset: model.cameraSafeAreaInset,
+            compactWidth: model.compactWidth,
+            compactHeight: model.compactHeight,
+            quotaDisplayStyle: quotaDisplayStyle,
+            language: appLanguage,
+            isResetScheduleExpanded: model.isResetScheduleExpanded,
+            onActivateChatGPT: model.onActivateChatGPT,
+            onOpenThread: model.onOpenThread,
+            onResetScheduleExpandedChanged: model.onResetScheduleExpandedChanged,
+            notchDisplayEnabled: notchDisplayEnabled,
+            onNotchDisplayEnabledChanged: { notchDisplayEnabled = $0 }
+        )
+    }
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            if case let .expanded(content) = model.state {
+                expandedView(content: content)
+                    // Lay out details at their final size. The outer surface
+                    // reveals them without squeezing text and progress bars.
+                    .frame(
+                        width: model.surfaceSize.width,
+                        height: model.surfaceSize.height,
+                        alignment: .top
+                    )
+                    .transition(motionEnabled ? NotchPresentationMotion.detailTransition : .identity)
+            }
+
+            compactContent
+                .frame(width: model.compactWidth, height: model.compactHeight)
+                .transition(.identity)
         }
         // The panel is already at its final size before this state changes.
         // Animate this one visible surface from the compact island downward;
@@ -435,6 +460,14 @@ struct NotchSurfaceShape: Shape {
     var shoulderDepth: CGFloat
     var bottomRadius: CGFloat
 
+    var animatableData: AnimatablePair<CGFloat, CGFloat> {
+        get { AnimatablePair(shoulderDepth, bottomRadius) }
+        set {
+            shoulderDepth = newValue.first
+            bottomRadius = newValue.second
+        }
+    }
+
     func path(in rect: CGRect) -> Path {
         if layoutMode == .floatingBar {
             return NotchAttachedShape(
@@ -543,6 +576,9 @@ private struct CompactNotchView: View {
     let subtitle: String
     let usage: UsageSnapshot?
     let quotaDisplayStyle: QuotaDisplayStyle
+    var runningStartedAt: Date? = nil
+    var now: Date = .now
+    var isExpanded = false
     let action: () -> Void
     @Environment(\.notchAppLanguage) private var language
 
@@ -565,7 +601,12 @@ private struct CompactNotchView: View {
                         height: compactHeight
                     )
 
-                SwordWandererBattleView(compactHeight: compactHeight)
+                FloatingCenterView(
+                    activity: icon.quotaActivity,
+                    startedAt: runningStartedAt,
+                    now: now,
+                    isExpanded: isExpanded
+                )
                     .frame(
                         width: NotchFloatingBarLayout.battleLaneWidth,
                         height: compactHeight
@@ -1328,27 +1369,24 @@ private struct ExpandedNotchView: View {
     let onNotchDisplayEnabledChanged: (Bool) -> Void
 
     var body: some View {
-        ZStack(alignment: .top) {
-            detailContent
+        detailContent
+    }
 
-            // Keep the original compact island visible at the top. The detail
-            // body is revealed underneath it as the panel's bottom edge grows.
-            CompactNotchView(
-                layoutMode: layoutMode,
-                compactHeight: compactHeight,
-                icon: headerIcon,
-                title: headerTitle,
-                subtitle: headerSubtitle,
-                usage: content.usage,
-                quotaDisplayStyle: quotaDisplayStyle,
-                action: headerAction
-            )
-            .frame(
-                width: compactWidth,
-                height: compactHeight
-            )
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    var header: some View {
+        CompactNotchView(
+            layoutMode: layoutMode,
+            compactHeight: compactHeight,
+            icon: headerIcon,
+            title: headerTitle,
+            subtitle: headerSubtitle,
+            usage: content.usage,
+            quotaDisplayStyle: quotaDisplayStyle,
+            runningStartedAt: content.sessions.first?.startedAt,
+            now: now,
+            isExpanded: true,
+            action: headerAction
+        )
+        .frame(width: compactWidth, height: compactHeight)
     }
 
     private var detailContent: some View {
