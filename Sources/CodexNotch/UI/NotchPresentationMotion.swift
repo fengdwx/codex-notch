@@ -5,11 +5,11 @@ enum NotchPresentationMotion {
     static let expandDuration: TimeInterval = 0.65
     static let collapseDuration: TimeInterval = 0.50
 
-    // Keep the accepted opening. The reference close briefly passes its target
-    // before returning; the surface frame bounds that excursion around icons.
+    // Let the outer shell land and rebound, while content keeps a stable scale.
+    // The surface frame bounds both opening and closing excursions.
     static let expand = Animation.spring(
-        response: 0.42,
-        dampingFraction: 0.80,
+        response: 0.48,
+        dampingFraction: 0.68,
         blendDuration: 0
     )
     static let collapseCurve = UnitCurve.bezier(
@@ -19,28 +19,28 @@ enum NotchPresentationMotion {
     static let collapse = Animation.timingCurve(collapseCurve, duration: collapseDuration)
     private static let contentResize = Animation.spring(response: 0.45, dampingFraction: 1, blendDuration: 0)
 
+    // Render type at its final size throughout. The shell supplies the elastic
+    // movement; a small translation/reveal avoids visibly resampling glyphs.
     static let detailTransition: AnyTransition = .asymmetric(
-        insertion: .scale(scale: 0.8, anchor: .top)
-            .combined(with: .opacity)
-            .animation(.smooth(duration: 0.35)),
-        removal: dissolve
+        insertion: .modifier(
+            active: NotchContentAppearance(opacity: 0, offsetY: -4, blurRadius: 1.5),
+            identity: .visible
+        ).animation(.easeOut(duration: 0.24).delay(0.035)),
+        removal: .modifier(
+            active: NotchContentAppearance(opacity: 0, offsetY: -6, blurRadius: 3),
+            identity: .visible
+        ).animation(.easeOut(duration: 0.18))
     )
 
-    // Only the returning compact header dissolves in. Removing it on opening
-    // remains immediate, so the previously accepted opening is unchanged.
+    // Keep the returning status recognizable as the details leave. It should
+    // be crisp well before the shell's compression/return, without a blank bar.
     static let compactReturnTransition: AnyTransition = .asymmetric(
-        insertion: dissolve.animation(.easeOut(duration: 0.30).delay(0.06)),
+        insertion: .modifier(
+            active: NotchContentAppearance(opacity: 0.65, offsetY: 0, blurRadius: 1),
+            identity: .visible
+        ).animation(.easeOut(duration: 0.16)),
         removal: .identity
     )
-
-    private static let dissolve: AnyTransition = .opacity
-        .animation(.easeOut(duration: 0.25))
-        .combined(with: .modifier(
-            active: NotchContentBlur(radius: 6),
-            identity: NotchContentBlur(radius: 0)
-        ).animation(.easeOut(duration: 0.30)))
-        .combined(with: .scale(scale: 0.96, anchor: .top)
-            .animation(.smooth(duration: 0.35)))
 
     static func animation(forExpanding isExpanding: Bool, isCollapsingCard: Bool) -> Animation {
         if isExpanding { return expand }
@@ -62,10 +62,18 @@ enum NotchPresentationMotion {
     }
 }
 
-private struct NotchContentBlur: ViewModifier {
-    let radius: CGFloat
+private struct NotchContentAppearance: ViewModifier {
+    let opacity: Double
+    let offsetY: CGFloat
+    let blurRadius: CGFloat
+
+    static let visible = Self(opacity: 1, offsetY: 0, blurRadius: 0)
+
     func body(content: Content) -> some View {
-        content.blur(radius: radius)
+        content
+            .offset(y: offsetY)
+            .blur(radius: blurRadius)
+            .opacity(opacity)
     }
 }
 
@@ -76,13 +84,16 @@ struct NotchAnimatedSurfaceFrame: ViewModifier, Animatable {
     var size: CGSize
     let compactSize: CGSize
     let layoutMode: NotchLayoutMode
+    var expandedLimit: CGSize? = nil
 
     var animatableData: AnimatablePair<CGFloat, CGFloat> {
         get { AnimatablePair(size.width, size.height) }
         set { size = CGSize(width: newValue.first, height: newValue.second) }
     }
 
-    static func visibleSize(_ proposed: CGSize, compact: CGSize, mode: NotchLayoutMode) -> CGSize {
+    static func visibleSize(
+        _ proposed: CGSize, compact: CGSize, mode: NotchLayoutMode, expandedLimit: CGSize? = nil
+    ) -> CGSize {
         func dimension(_ value: CGFloat, minimum: CGFloat, allowance: CGFloat) -> CGFloat {
             guard value < minimum else { return value }
             guard allowance > 0 else { return minimum }
@@ -90,16 +101,27 @@ struct NotchAnimatedSurfaceFrame: ViewModifier, Animatable {
             return minimum - allowance * tanh((minimum - value) / allowance)
         }
         let floating = mode == .floatingBar
-        return CGSize(
+        var result = CGSize(
             width: dimension(proposed.width, minimum: compact.width,
                              allowance: floating ? compact.width * 0.008 : 0),
             height: dimension(proposed.height, minimum: compact.height,
                               allowance: floating ? compact.height * 0.06 : 0)
         )
+        if let target = expandedLimit {
+            // Keep the landing inside the canvas's existing 8pt clearance even
+            // for tall cards. Only the shell moves; detail layout stays fixed.
+            if result.width > target.width {
+                result.width = target.width + 6 * tanh((result.width - target.width) / 6)
+            }
+            if result.height > target.height {
+                result.height = target.height + 8 * tanh((result.height - target.height) / 8)
+            }
+        }
+        return result
     }
 
     func body(content: Content) -> some View {
-        let visible = Self.visibleSize(size, compact: compactSize, mode: layoutMode)
+        let visible = Self.visibleSize(size, compact: compactSize, mode: layoutMode, expandedLimit: expandedLimit)
         content.frame(width: visible.width, height: visible.height, alignment: .top)
     }
 }

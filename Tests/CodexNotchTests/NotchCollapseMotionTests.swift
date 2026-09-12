@@ -3,6 +3,58 @@ import XCTest
 @testable import CodexNotch
 
 final class NotchCollapseMotionTests: XCTestCase {
+    @MainActor
+    func testExpandedContentShrinkKeepsItsFullStartingFrameThroughClockUpdates() {
+        let compact = CGSize(width: 212, height: 30)
+        let tall = CGSize(width: 420, height: 580)
+        let short = CGSize(width: 420, height: 320)
+        let state = NotchPresentationState.expanded(ExpandedContent(
+            sessions: [], conversations: [], headerConversation: nil, usage: nil
+        ))
+        let now = Date(timeIntervalSince1970: 1_789_200_000)
+        let model = NotchViewModel(state: state, now: now, layoutMode: .floatingBar,
+                                   compactWidth: compact.width, compactHeight: compact.height,
+                                   surfaceSize: tall)
+        model.update(state: state, now: now, layoutMode: .floatingBar,
+                     compactWidth: compact.width, compactHeight: compact.height,
+                     surfaceSize: short)
+        model.update(state: state, now: now.addingTimeInterval(1), layoutMode: .floatingBar,
+                     compactWidth: compact.width, compactHeight: compact.height,
+                     surfaceSize: short)
+        for height: CGFloat in [580, 500, 400, 320] {
+            let proposed = CGSize(width: 420, height: height)
+            XCTAssertEqual(NotchAnimatedSurfaceFrame.visibleSize(
+                proposed, compact: compact, mode: .floatingBar,
+                expandedLimit: model.surfaceExpansionLimit
+            ), proposed, "Landing clearance must not skip the start of a content-height reduction")
+        }
+    }
+
+    func testOpeningLandingStaysInsideTheCanvasForShortAndTallCards() {
+        let compact = CGSize(width: 212, height: 30)
+        for height: CGFloat in [200, 320, 580, 850] {
+            let target = CGSize(width: 420, height: height)
+            let targetFrame = CGRect(x: 750, y: 1080 - height, width: target.width, height: height)
+            let canvas = NotchPresentationMotion.canvasFrame(for: targetFrame, isExpanded: true, animationsEnabled: true)
+            for excess: CGFloat in [2, 8, 20, 80] {
+                let visible = NotchAnimatedSurfaceFrame.visibleSize(
+                    CGSize(width: target.width + excess, height: height + excess),
+                    compact: compact, mode: .floatingBar, expandedLimit: target
+                )
+                XCTAssertGreaterThan(visible.width, target.width)
+                XCTAssertGreaterThan(visible.height, target.height)
+                XCTAssertLessThanOrEqual(visible.width - target.width, 6)
+                XCTAssertLessThanOrEqual(visible.height - target.height, 8)
+                let surface = CGRect(x: targetFrame.midX - visible.width / 2,
+                                     y: targetFrame.maxY - visible.height,
+                                     width: visible.width, height: visible.height)
+                XCTAssertTrue(canvas.contains(surface), "The landing must never hit the native window edge")
+                XCTAssertEqual(surface.maxY, targetFrame.maxY)
+                XCTAssertEqual(surface.midX, targetFrame.midX)
+            }
+        }
+    }
+
     func testCloseMatchesRecordedTravelAndReturnsAfterPassingTheTarget() {
         // User's 30 FPS reference: 319px expanded, 74px at the trough,
         // then 79px settled. Time starts approximately at 3.983s.

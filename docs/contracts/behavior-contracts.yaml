@@ -20,7 +20,7 @@ contracts:
       completion, expansion, hiding, detachment, disabled animation or Reduce
       Motion. Keep static status cues. Do not render the legacy battle or add
       a center on physical-notch layouts. Preserve old battle assets/tests as
-      historical regression coverage. Card transitions follow NOTCH-MOTION-005.
+      historical regression coverage. Card transitions follow NOTCH-MOTION-006.
     rationale: The user rejected the busy battle, fog and thick light bars, chose four alternatives, and requested calmer typography.
     source: user-selected-designs
     owner: project-maintainer
@@ -89,7 +89,7 @@ contracts:
 
   - id: NOTCH-MOTION-005
     title: Measured collapse with a bounded return and content dissolve
-    status: active
+    status: superseded
     statement: >-
       Preserve the accepted opening spring and insertion transition. With motion
       enabled, close the card using the reference demonstration's 0.5s curve:
@@ -126,13 +126,56 @@ contracts:
       - docs/decisions/036-measured-collapse-motion.md
       - "manual: record native collapse and reentry; confirm blur, compact header return, final frame recovery, physical camera clearance and Reduce Motion"
     supersedes: [NOTCH-MOTION-004]
+    superseded_by: NOTCH-MOTION-006
+    last_verified_commit: null
+
+  - id: NOTCH-MOTION-006
+    title: Stable type with a gentle shell landing rebound
+    status: active
+    statement: >-
+      Preserve NOTCH-MOTION-005 collapse curve, settled dimensions, top-center
+      anchor, bounded floating compression, physical camera-safe floor, native canvas
+      isolation, completion-driven reclamation, reentry and motion-disable behavior.
+      Let the opening shell land with a small overshoot and damped return. Smoothly
+      limit the extra width to 6pt total and height to 8pt so the landing stays
+      inside the existing temporary canvas even for tall cards. Keep the full
+      starting frame when an expanded card shrinks because its content changes;
+      landing limits must not truncate that transition or change on clock ticks.
+      Keep detail typography at its final scale throughout opening and closing.
+      Reveal details with a small upward starting offset and light blur/opacity
+      transition after a short delay; do not scale whole lines from 80 percent.
+      On close, details move slightly upward and fade with reduced blur before
+      the shell reaches its compact return. The returning compact header starts
+      mostly visible with only light blur and becomes crisp early; never leave
+      an empty strip waiting for status icons to reappear. Do not change fonts,
+      font weights, quota semantics, settings or task behavior.
+      Disabled motion and Reduce Motion retain immediate, legible static cues.
+    rationale: The user requested quieter text motion, a more coordinated collapse and a slight rebound when the opening shell reaches its destination.
+    source: user-request
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [notch-screens, floating-bar, opening-landing, detail-insertion, detail-removal, compact-header-return]
+      exclude: [collapse-curve-changes, typography-restyle, quota-semantics, task-data]
+    examples:
+      positive: Letters keep the same size while the shell expands and gently rebounds; closing details fade away while the compact status is already recognizable before the return.
+      negative: A zooming paragraph, clipped opening rebound, a jump when content height decreases, heavy blurry status symbols, an empty returning bar, or clipped icons.
+    guards:
+      - Tests/CodexNotchTests/NotchCollapseMotionTests.swift
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePerformanceTests.swift
+      - Tests/CodexNotchTests/NotchMotionCaptureTests.swift
+      - docs/decisions/037-stable-type-motion.md
+      - "manual: record native opening/closing for stable glyph size, bounded landing rebound, early compact header clarity and rapid reentry; confirm physical notch and Reduce Motion"
+    supersedes: [NOTCH-MOTION-005]
     superseded_by: null
     last_verified_commit: null
 
   - id: SETTINGS-PREFERENCES-018
     title: Language, history, motion and floating center settings apply live
     status: active
-    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-051. Card transitions now follow the motion preference and Reduce Motion under NOTCH-MOTION-005; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
+    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-051. Card transitions now follow the motion preference and Reduce Motion under NOTCH-MOTION-006; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
     rationale: Center choices need live visual comparison and persistence, and the newly requested spring transition supersedes the earlier always-static exception.
     source: user-request
     owner: project-maintainer

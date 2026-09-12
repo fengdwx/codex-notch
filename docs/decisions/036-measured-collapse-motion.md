@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [NOTCH-MOTION-005, SETTINGS-PREFERENCES-018, NOTCH-LAYOUT-038]
 supersedes: [035-spring-card-transitions]
-superseded_by: null
+superseded_by: 037-stable-type-motion
 owner: project-maintainer
 created_at: 2026-09-13
 ---

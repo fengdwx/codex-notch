@@ -11,6 +11,7 @@ final class NotchViewModel: ObservableObject {
     @Published private(set) var surfaceSize: CGSize
     @Published private(set) var isResetScheduleExpanded = false
     @Published private(set) var animationsEnabled: Bool
+    @Published private(set) var surfaceExpansionLimit: CGSize?
 
     var onOpenThread: (String) -> Void
     var onActivateChatGPT: () -> Void
@@ -42,6 +43,7 @@ final class NotchViewModel: ObservableObject {
         self.compactHeight = compactHeight
         self.surfaceSize = surfaceSize
         self.animationsEnabled = animationsEnabled
+        self.surfaceExpansionLimit = Self.isExpanded(state) ? surfaceSize : nil
         self.onOpenThread = onOpenThread
         self.onActivateChatGPT = onActivateChatGPT
         self.onHoverChanged = onHoverChanged
@@ -85,7 +87,17 @@ final class NotchViewModel: ObservableObject {
             || self.compactHeight != compactHeight
             || self.isResetScheduleExpanded != isResetScheduleExpanded
 
+        // A content-height reduction must start at the previous full size.
+        // Keep this ceiling through clock refreshes until another surface move.
+        let nextExpansionLimit = willBeExpanded ? CGSize(
+            width: max(self.surfaceSize.width, surfaceSize.width),
+            height: max(self.surfaceSize.height, surfaceSize.height)
+        ) : nil
+
         let applyUpdate = {
+            if changesSurface && self.surfaceExpansionLimit != nextExpansionLimit {
+                self.surfaceExpansionLimit = nextExpansionLimit
+            }
             if self.state != state { self.state = state }
             if self.now != resolvedNow { self.now = resolvedNow }
             if self.layoutMode != layoutMode { self.layoutMode = layoutMode }
@@ -368,7 +380,8 @@ struct NotchView: View {
         .modifier(NotchAnimatedSurfaceFrame(
             size: surfaceSize,
             compactSize: isHidden ? .zero : CGSize(width: model.compactWidth, height: model.compactHeight),
-            layoutMode: model.layoutMode
+            layoutMode: model.layoutMode,
+            expandedLimit: model.surfaceExpansionLimit
         ))
         .contentShape(surfaceShape)
         .background {
