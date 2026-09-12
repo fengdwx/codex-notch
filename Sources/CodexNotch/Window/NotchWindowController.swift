@@ -225,14 +225,6 @@ final class NotchWindowController: NSWindowController {
         showFallbackMenu(for: .hidden, includesShowNotchAction: true)
     }
 
-    /// Hardware display mirroring has no stable physical-notch coordinate
-    /// space. Keep current task and quota actions in the menu bar without
-    /// placing a floating island over mirrored application content.
-    func showMenuBarFallback(for state: NotchPresentationState) {
-        hideNotchPanel()
-        showFallbackMenu(for: state)
-    }
-
     private func restoreNotchPanelAfterApplicationSwitch(displayIsEnabled: Bool) {
         guard NotchPanelVisibilityPolicy.shouldRestoreAfterApplicationSwitch(
             panelIsRequested: requestedLayoutMode != .menuBarFallback,

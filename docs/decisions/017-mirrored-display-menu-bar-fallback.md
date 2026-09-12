@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [NOTCH-VISIBILITY-047]
 supersedes: []
-superseded_by: null
+superseded_by: 032-mirrored-display-floating-island
 owner: project-maintainer
 created_at: 2026-08-21
 ---

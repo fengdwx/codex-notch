@@ -783,7 +783,7 @@ contracts:
 
   - id: NOTCH-VISIBILITY-047
     title: No-notch displays use the Sword Wanderer endless battle island
-    status: active
+    status: superseded
     statement: >-
       On a display without valid auxiliary notch areas, CodexNotch renders a
       non-activating activity island centered against the physical screen top,
@@ -849,6 +849,76 @@ contracts:
       - docs/decisions/017-mirrored-display-menu-bar-fallback.md
       - "manual: launch the built app on a no-notch Mac, confirm the original Sword Wanderer identity, repeated jumping slimes, visible sword contact and +1 overlap with the next spawn, menu-bar containment, downward hover expansion, collapse reclamation, and a static Reduce Motion state; then enable hardware display mirroring and confirm the panel is absent over ordinary apps while the menu bar exposes the current state, and disable mirroring to confirm live geometry recovery"
     supersedes: [NOTCH-VISIBILITY-046]
+    superseded_by: NOTCH-VISIBILITY-048
+    last_verified_commit: null
+
+  - id: NOTCH-VISIBILITY-048
+    title: Mirrored and ordinary no-notch displays keep the activity island visible
+    status: active
+    statement: >-
+      On a display without valid auxiliary notch areas, CodexNotch renders a
+      non-activating activity island centered against the current NSScreen top,
+      including hardware mirror sets. The mirror master's live coordinate
+      space determines the geometry; mirroring alone must not hide the island
+      or select menu-bar fallback. Connecting, disconnecting, or changing the
+      mirror master recomputes physical-notch or floating-bar geometry from
+      current NSScreen metrics without reusing a saved notch rectangle.
+      When the menu bar reserves at least 24pt, the compact island height must
+      not exceed that measured menu-bar height and is capped at 30pt; when the
+      menu bar is auto-hidden, a 28pt fallback remains top-attached. The island
+      keeps its 212pt width, 8pt outer safety insets, 30pt left Codex-status
+      lane, 136pt center animation lane, and 30pt right weekly-quota lane. The
+      center lane renders the bundled, validated v2 Sword Wanderer pet without
+      redrawing its face, hair, clothing, palette, or proportions. While app
+      animations are enabled and Reduce Motion is disabled, green slimes
+      continuously jump in from the right, the wanderer draws and swings a
+      sword at the impact point, each defeated slime compresses into a small
+      amber hit spark and raises a clear +1, and the next slime enters before
+      the previous score disappears. The
+      wanderer keeps a focused forward gaze throughout the loop while a small
+      set of right-facing full-body key poses shows the sheath, weight shift,
+      step-through, and return into the strike. The short sword remains visible
+      in hand, rises vertically with a brief hold, then crosses in one fast
+      strike and leaves one short follow-through; sword timing, body weight
+      shift, and a restrained horizontal lunge carry the attack without turning
+      the head or changing the gaze direction. The low-pixel loop samples at no
+      more than 12 frames per second and relies on clear pose holds plus one
+      compact impact spark rather than continuous trails or dense frame changes.
+      Disabled app animations
+      or Reduce Motion show one readable static encounter and must not leave a
+      TimelineView running. The resolved task title remains in the button's
+      accessibility label but is not rendered in the compact center lane.
+      Content stays inside the lower-corner envelope. Hover expansion grows
+      only downward from the same top edge, reserves the measured compact
+      height, and reclaims the transparent canvas after collapse. Display-off
+      recovery remains in the menu bar. Valid physical-notch geometry,
+      camera-safe indicators, hidden-notch recovery, quota semantics, task
+      navigation, privacy boundaries, full-screen Space participation, and
+      panel z-order remain unchanged.
+    rationale: >-
+      Real-machine diagnosis showed that hardware mirroring to a 1920x1080
+      Mi Monitor deliberately hid the enabled island. The user requested that
+      it remain visible while mirroring. Reusing the existing floating-bar
+      layout preserves its menu-bar containment, animation, and interaction.
+    source: user-request-after-real-machine-review
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [non-notch-screens, external-displays, hardware-mirroring, menu-bar-height, sword-wanderer, battle-animation, expanded-state, full-screen-spaces]
+      exclude: [physical-notch-geometry, quota-semantics, activity-state-machine, pet-package-mutation]
+    examples:
+      positive: A no-notch Mac shows the original Sword Wanderer at the left of the center lane, the head stays focused forward while four readable low-pixel poses crouch, step through, strike, and recover, crisp pixel slimes squash before jumping and on landing, a short warm sword meets each slime with one fast amber hit spark, +1 rises as the next slime enters, and the entire island remains within the measured menu-bar boundary. A mirrored 1920x1080 display with a 30pt menu bar and no auxiliary areas shows a 212x30pt island centered at x=960 with its top at y=1080; removing mirroring automatically restores the route selected from the current NSScreen areas.
+      negative: Hiding an enabled island solely because the display is mirrored, reusing the built-in display's old notch rectangle in the mirror master's coordinate space, redrawing the wanderer's face, showing the former bald pixel knight, turning the head away from the incoming slimes or using a rear-facing head frame, using a long cyan sword or large slash arc, using smooth glossy vector slimes, making the sword disappear between strikes, skipping the vertical raise before the forward strike, waiting for the whole kill effect to end before spawning the next slime, omitting +1, running a timeline under Reduce Motion, crossing the rounded lower corners, or changing the physical-notch path.
+    guards:
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/NotchDisplayRoutingTests.swift
+      - Tests/CodexNotchTests/SwordWandererBattleMotionTests.swift
+      - Tests/CodexNotchTests/NotchPanelVisibilityPolicyTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePerformanceTests.swift
+      - docs/decisions/016-sword-wanderer-battle-island.md
+      - docs/decisions/032-mirrored-display-floating-island.md
+      - "manual: launch the built app on a no-notch Mac, confirm the original Sword Wanderer identity, repeated jumping slimes, visible sword contact and +1 overlap with the next spawn, menu-bar containment, downward hover expansion, collapse reclamation, and a static Reduce Motion state; then enable hardware display mirroring and confirm the top-centered island remains visible, hover expands downward, display-off still hides it with menu-bar recovery, and disabling mirroring restores live geometry"
+    supersedes: [NOTCH-VISIBILITY-047]
     superseded_by: null
     last_verified_commit: null
 

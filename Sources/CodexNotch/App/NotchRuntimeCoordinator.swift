@@ -546,15 +546,6 @@ final class NotchRuntimeCoordinator {
             return
         }
 
-        if NotchDisplayRouting.shouldSuppressFloatingIsland(
-            layoutMode: baseLayout.mode,
-            displayIsInHardwareMirrorSet: NotchDisplayRouting.isInHardwareMirrorSet(
-                screen: screen
-            )
-        ) {
-            return renderHardwareMirrorFallback(now: renderDate)
-        }
-
         if NotchPanelVisibilityPolicy.shouldKeepHiddenHoverSensor(
             layoutMode: baseLayout.mode,
             displayIsEnabled: preferences.notchDisplayEnabled
@@ -639,31 +630,6 @@ final class NotchRuntimeCoordinator {
             state: displayState,
             animationsEnabled: animationsEnabled
         )
-    }
-
-    private func renderHardwareMirrorFallback(now: Date) {
-        resetHoverState()
-        let displayState = NotchPresentationReducer.reduce(
-            NotchPresentationInput(
-                now: now,
-                isChatGPTFrontmost: isChatGPTFrontmost,
-                activeSessions: activeSessions,
-                recentCompletions: recentCompletions,
-                usage: usage,
-                isHovered: false
-            )
-        ).limitingRecentConversations(to: recentConversationLimit)
-
-        viewModel.update(
-            state: displayState,
-            now: now,
-            layoutMode: .menuBarFallback,
-            compactWidth: 0,
-            compactHeight: 0,
-            surfaceSize: .zero,
-            animationsEnabled: false
-        )
-        windowController.showMenuBarFallback(for: displayState)
     }
 
     private func renderHiddenHoverSensor(
