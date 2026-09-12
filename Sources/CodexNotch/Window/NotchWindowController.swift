@@ -21,6 +21,8 @@ final class NotchWindowController: NSWindowController {
     private var deferredFrameWorkItem: DispatchWorkItem?
     private var deferredFrameIdentifier: UUID?
     private var lastPreparedTargetFrame: NSRect?
+    private var canvasTransitionIdentifier = UUID()
+    private var awaitingSurfaceCompletion = false
     private var requestedLayoutMode: NotchLayoutMode = .menuBarFallback
 
     private var appLanguage: AppLanguage {
@@ -60,17 +62,18 @@ final class NotchWindowController: NSWindowController {
     /// first, then let SwiftUI animate the visible island inside that stable
     /// canvas. Repeatedly resizing an NSPanel during a SwiftUI layout pass is
     /// both visually rough and prone to re-entrant layout crashes.
+    @discardableResult
     func prepare(
         layout: NotchLayout,
         state: NotchPresentationState,
         animationsEnabled: Bool = AppAnimationPreference.defaultEnabled
-    ) {
-        guard let panel = window as? NotchPanel else { return }
+    ) -> UUID {
+        guard let panel = window as? NotchPanel else { return canvasTransitionIdentifier }
 
         if layout.mode == .menuBarFallback {
             hideNotchPanel()
             showFallbackMenu(for: state)
-            return
+            return canvasTransitionIdentifier
         }
 
         requestedLayoutMode = layout.mode
@@ -80,8 +83,11 @@ final class NotchWindowController: NSWindowController {
         let wasIgnoringMouseEvents = panel.ignoresMouseEvents
         let changesTarget = lastPreparedTargetFrame != targetFrame
             || !wasVisible
-            || (deferredFrameWorkItem == nil && panel.frame != targetFrame)
-        if changesTarget || !animationsEnabled { cancelDeferredFrameSettlement() }
+            || (deferredFrameWorkItem == nil && !awaitingSurfaceCompletion && panel.frame != targetFrame)
+        if changesTarget || !animationsEnabled {
+            cancelDeferredFrameSettlement()
+            canvasTransitionIdentifier = UUID()
+        }
         lastPreparedTargetFrame = targetFrame
         let isExpanded: Bool
         if case .expanded = state { isExpanded = true } else { isExpanded = false }
@@ -89,7 +95,7 @@ final class NotchWindowController: NSWindowController {
             ? NotchPresentationMotion.canvasFrame(
                 for: targetFrame, isExpanded: isExpanded, animationsEnabled: animationsEnabled
             )
-            : (deferredFrameWorkItem == nil ? targetFrame : panel.frame)
+            : (deferredFrameWorkItem == nil && !awaitingSurfaceCompletion ? targetFrame : panel.frame)
 
         let setsFrameImmediately = shouldSetFrameImmediately(
             from: panel.frame,
@@ -97,7 +103,7 @@ final class NotchWindowController: NSWindowController {
             wasVisible: wasVisible
         )
         if setsFrameImmediately {
-            panel.setFrame(frame, display: true)
+            applyCanvasFrame(frame)
         }
         panel.ignoresMouseEvents = false
         if wasVisible {
@@ -120,6 +126,7 @@ final class NotchWindowController: NSWindowController {
                 panel.animator().alphaValue = 1
             }
         }
+        return canvasTransitionIdentifier
     }
 
     /// Once the SwiftUI surface has visibly collapsed, remove the unused clear
@@ -127,7 +134,8 @@ final class NotchWindowController: NSWindowController {
     func settleFrame(
         layout: NotchLayout,
         state: NotchPresentationState,
-        animationsEnabled: Bool = AppAnimationPreference.defaultEnabled
+        animationsEnabled: Bool = AppAnimationPreference.defaultEnabled,
+        animationWillComplete: Bool = false
     ) {
         guard NotchPanelFramePolicy.shouldSettleAfterCollapse(
             layoutMode: layout.mode
@@ -145,22 +153,30 @@ final class NotchWindowController: NSWindowController {
             changesSurface: true,
             animationsEnabled: animationsEnabled
         ) else {
-            panel.setFrame(targetFrame, display: true)
+            cancelDeferredFrameSettlement()
+            applyCanvasFrame(targetFrame)
             return
         }
+
+        if animationWillComplete {
+            cancelDeferredFrameSettlement()
+            awaitingSurfaceCompletion = true
+            return
+        }
+        // Same-target clock updates must not finish an in-flight surface.
+        guard !awaitingSurfaceCompletion else { return }
 
         // A clock/event refresh of the same target must not postpone settlement.
         guard deferredFrameWorkItem == nil else { return }
 
         let identifier = UUID()
         deferredFrameIdentifier = identifier
-        let workItem = DispatchWorkItem { [weak self, weak panel] in
+        let workItem = DispatchWorkItem { [weak self] in
             guard let self,
-                  let panel,
                   self.deferredFrameIdentifier == identifier else {
                 return
             }
-            panel.setFrame(targetFrame, display: true)
+            self.applyCanvasFrame(targetFrame)
             self.deferredFrameIdentifier = nil
             self.deferredFrameWorkItem = nil
         }
@@ -172,6 +188,32 @@ final class NotchWindowController: NSWindowController {
             deadline: .now() + delay,
             execute: workItem
         )
+    }
+
+    func finishSurfaceAnimation(identifier: UUID, targetFrame: NSRect) {
+        guard identifier == canvasTransitionIdentifier,
+              targetFrame == lastPreparedTargetFrame else { return }
+        cancelDeferredFrameSettlement()
+        applyCanvasFrame(targetFrame)
+    }
+
+    private func applyCanvasFrame(_ frame: NSRect) {
+        guard let panel = window as? NotchPanel, panel.frame != frame else { return }
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0
+                context.allowsImplicitAnimation = false
+                panel.setFrame(frame, display: false)
+                // Resolve the old compact surface in the new canvas before
+                // the caller starts a SwiftUI animation. Otherwise its old
+                // local x coordinate is animated after the window moved left.
+                panel.contentView?.layoutSubtreeIfNeeded()
+                hostingView?.layoutSubtreeIfNeeded()
+                panel.displayIfNeeded()
+            }
+        }
     }
 
     private func shouldDeferFrameSettlement(from current: NSRect, to target: NSRect) -> Bool {
@@ -186,6 +228,7 @@ final class NotchWindowController: NSWindowController {
         deferredFrameWorkItem?.cancel()
         deferredFrameWorkItem = nil
         deferredFrameIdentifier = nil
+        awaitingSurfaceCompletion = false
     }
 
     private func shouldSetFrameImmediately(
@@ -205,6 +248,7 @@ final class NotchWindowController: NSWindowController {
     func hideNotchPanel() {
         requestedLayoutMode = .menuBarFallback
         cancelDeferredFrameSettlement()
+        canvasTransitionIdentifier = UUID()
         guard let panel = window as? NotchPanel else { return }
         panel.ignoresMouseEvents = true
         panel.orderOut(nil)

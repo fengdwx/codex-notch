@@ -17,7 +17,8 @@ Restore a SwiftUI spring for actual surface changes when motion is allowed.
 Expansion uses response 0.48/damping 0.80; collapse uses response 0.38/damping 1
 to avoid undershooting the camera-safe compact width. The controller allocates
 one temporary canvas with 8pt side/bottom clearance, preserving its top-center
-anchor, and settles after 0.65s expanding or 0.60s collapsing. The displayed
+anchor. Runtime settlement waits for SwiftUI's `.removed` animation completion;
+the 0.65s/0.60s delays remain only for callers without a completion signal. The displayed
 surface retains the existing target geometry. Repeated updates to the same
 target do not reset settlement; reversing direction cancels the previous work.
 Global animation off and macOS Reduce Motion use immediate frame settlement.
@@ -37,6 +38,21 @@ separate from the detail transition and lay out details at the expanded target
 size. Reveal them with a 0.18s fade after a 0.10s delay; remove them with a 0.10s
 fade while the shell collapses. Interpolate the outer corner radius too. The
 source recordings remain local review artifacts, not bundled application data.
+
+Follow-up feedback identified a left-origin expansion and an abrupt final
+collapse frame. A native hosting test reproduced the first issue with the old
+canvas setter: widening 212pt to 436pt moved the content's screen center 112pt
+left before SwiftUI re-laid it out. Resolve and display the existing surface
+inside an unanimated canvas transaction before updating its animated state.
+Reclaim the canvas only after the runtime's `.removed` completion, rather than
+guessing when a spring's tail has finished. A transition identifier rejects
+stale completions even after returning to the same target size. Clock updates
+retain the current wait. Motion-disabled and hidden states still settle directly.
+
+Guards cover the pre-animation content center, callback-driven recovery after
+the former timeout, stale callbacks, and actual SwiftUI completion with a running
+conversation's repeating status indicator. The old setter fails the center guard;
+the prepared-layout setter passes.
 
 Preserve fixed-canvas hosting, downward-only alignment, no frame-by-frame panel
 resize, and the prohibition on quota completion fireworks. Do not reproduce

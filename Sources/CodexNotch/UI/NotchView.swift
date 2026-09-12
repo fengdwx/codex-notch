@@ -48,6 +48,7 @@ final class NotchViewModel: ObservableObject {
         self.onResetScheduleExpandedChanged = onResetScheduleExpandedChanged
     }
 
+    @discardableResult
     func update(
         state: NotchPresentationState,
         now: Date,
@@ -60,8 +61,9 @@ final class NotchViewModel: ObservableObject {
             height: NotchCompactLayout.height
         ),
         isResetScheduleExpanded: Bool = false,
-        animationsEnabled: Bool = AppAnimationPreference.defaultEnabled
-    ) {
+        animationsEnabled: Bool = AppAnimationPreference.defaultEnabled,
+        onSurfaceAnimationCompleted: (() -> Void)? = nil
+    ) -> Bool {
         let resolvedNow = Self.secondPrecision(now)
         let changesModel = self.state != state
             || self.now != resolvedNow
@@ -72,7 +74,7 @@ final class NotchViewModel: ObservableObject {
             || self.surfaceSize != surfaceSize
             || self.isResetScheduleExpanded != isResetScheduleExpanded
             || self.animationsEnabled != animationsEnabled
-        guard changesModel else { return }
+        guard changesModel else { return false }
 
         let wasExpanded = Self.isExpanded(self.state)
         let willBeExpanded = Self.isExpanded(state)
@@ -108,9 +110,15 @@ final class NotchViewModel: ObservableObject {
             let expands = surfaceSize.height > self.surfaceSize.height + 0.5
                 || surfaceSize.width > self.surfaceSize.width + 0.5
                 || (isResetScheduleExpanded && !self.isResetScheduleExpanded)
-            withAnimation(NotchPresentationMotion.animation(forExpanding: expands)) {
+            withAnimation(
+                NotchPresentationMotion.animation(forExpanding: expands),
+                completionCriteria: .removed
+            ) {
                 applyUpdate()
+            } completion: {
+                onSurfaceAnimationCompleted?()
             }
+            return true
         } else if changesSurface || !animationsEnabled {
             var transaction = Transaction(animation: nil)
             transaction.disablesAnimations = true
@@ -120,6 +128,7 @@ final class NotchViewModel: ObservableObject {
         } else {
             applyUpdate()
         }
+        return false
     }
 
     func updateClock(now: Date) {

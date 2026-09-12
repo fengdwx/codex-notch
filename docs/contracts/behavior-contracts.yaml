@@ -51,7 +51,10 @@ contracts:
       and collapse is critically damped to protect the compact camera-safe
       minimum. Prepare one temporary canvas with 8pt side and bottom clearance
       for expansion. Reclaim that clearance after expansion and reclaim the
-      expanded canvas after collapse. Repeated clock updates must not postpone
+      expanded canvas after collapse. Resolve the existing content's screen
+      center before starting the animated state update. Runtime reclamation
+      waits for the entire SwiftUI animation to finish, including its tail;
+      stale completions cannot settle a newer transition. Repeated clock updates must not postpone
       settlement; reversing direction cancels stale settlement. Never resize
       NSPanel frame by frame, move the screen-top anchor, or retain off-card
       mouse interception after settlement. Host animated SwiftUI inside an

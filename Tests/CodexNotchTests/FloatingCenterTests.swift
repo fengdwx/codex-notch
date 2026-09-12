@@ -5,6 +5,11 @@ import XCTest
 @testable import CodexNotch
 
 final class FloatingCenterTests: XCTestCase {
+    private struct CenterProbe: NSViewRepresentable {
+        let view: NSView
+        func makeNSView(context: Context) -> NSView { view }
+        func updateNSView(_ nsView: NSView, context: Context) {}
+    }
     func testChoicesAndSignatureSurviveRestartWithoutChangingRuntimeDataPreferences() throws {
         let suite = "FloatingCenterTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -107,30 +112,116 @@ final class FloatingCenterTests: XCTestCase {
             mode: .floatingBar, centerX: compact.midX, hoverSensorFrame: compact,
             compactFrame: compact, quotaExpandedFrame: expanded, expandedFrame: expanded
         )
+        let session = SessionActivity(
+            threadID: "motion-test", turnID: "turn-1", title: "Motion review",
+            cwd: nil, originator: nil, startedAt: .now, lastActivityAt: .now
+        )
         let states: [NotchPresentationState] = [
             .quotaCompact(nil),
-            .expanded(ExpandedContent(sessions: [], conversations: [], headerConversation: nil, usage: nil)),
-            .quotaCompact(nil)
+            .expanded(ExpandedContent(
+                sessions: [session],
+                conversations: [ConversationSummary(session: session, activity: .running(startedAt: session.startedAt))],
+                headerConversation: nil, usage: nil
+            )),
+            .workingCompact(primary: session, count: 1, usage: nil)
         ]
         for state in states {
             let target = layout.frame(for: state)
-            controller.prepare(layout: layout, state: state, animationsEnabled: true)
+            let identifier = controller.prepare(layout: layout, state: state, animationsEnabled: true)
             let preparedFrame = panel.frame
-            model.update(
+            var completed = false
+            let animated = model.update(
                 state: state, now: .now, layoutMode: .floatingBar,
                 compactWidth: compact.width, compactHeight: compact.height,
-                surfaceSize: target.size, animationsEnabled: true
+                surfaceSize: target.size, animationsEnabled: true,
+                onSurfaceAnimationCompleted: {
+                    completed = true
+                    controller.finishSurfaceAnimation(identifier: identifier, targetFrame: target)
+                }
+            )
+            controller.settleFrame(
+                layout: layout, state: state, animationsEnabled: true,
+                animationWillComplete: animated
             )
             // Exercise the real SwiftUI surface, not an empty hosting view.
-            for _ in 0..<5 {
+            for _ in 0..<100 {
                 panel.contentView?.layoutSubtreeIfNeeded()
                 try await Task.sleep(for: .milliseconds(20))
+                if completed { break }
                 XCTAssertEqual(panel.frame, preparedFrame, "SwiftUI must animate inside the controller-owned canvas")
             }
-            controller.settleFrame(layout: layout, state: state, animationsEnabled: true)
-            try await Task.sleep(for: .milliseconds(700))
+            XCTAssertTrue(completed, "The actual SwiftUI completion must release the temporary canvas")
             XCTAssertEqual(panel.frame, target)
         }
+    }
+
+    @MainActor
+    func testPrepareResolvesTheContentScreenCenterBeforeAnimationBegins() throws {
+        _ = NSApplication.shared
+        let controller = NotchWindowController()
+        let marker = NSView()
+        controller.setRootView(
+            CenterProbe(view: marker)
+                .frame(width: 212, height: 30)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        )
+        let panel = try XCTUnwrap(controller.window)
+        defer { controller.hideNotchPanel() }
+        let compact = NSRect(x: -10_000, y: 1_000, width: 212, height: 30)
+        let expanded = NSRect(x: -10_104, y: 750, width: 420, height: 280)
+        let layout = NotchLayout(
+            mode: .floatingBar, centerX: compact.midX, hoverSensorFrame: compact,
+            compactFrame: compact, quotaExpandedFrame: expanded, expandedFrame: expanded
+        )
+        controller.prepare(layout: layout, state: .quotaCompact(nil), animationsEnabled: false)
+        panel.contentView?.layoutSubtreeIfNeeded()
+        let before = panel.convertToScreen(marker.convert(marker.bounds, to: nil)).midX
+        XCTAssertEqual(before, compact.midX, accuracy: 0.5)
+        controller.prepare(layout: layout, state: .expanded(ExpandedContent(
+            sessions: [], conversations: [], headerConversation: nil, usage: nil
+        )), animationsEnabled: true)
+        // No model update or extra layout pass: prepare itself must establish
+        // the stable screen-space center before the animated transaction.
+        let after = panel.convertToScreen(marker.convert(marker.bounds, to: nil)).midX
+        XCTAssertEqual(after, before, accuracy: 0.5)
+    }
+
+    @MainActor
+    func testCanvasWaitsForCompletionAndIgnoresAnOlderMatchingTarget() async throws {
+        _ = NSApplication.shared
+        let controller = NotchWindowController()
+        controller.setRootView(Color.clear)
+        let panel = try XCTUnwrap(controller.window)
+        defer { controller.hideNotchPanel() }
+        let compact = NSRect(x: -10_000, y: 1_000, width: 212, height: 30)
+        let expanded = NSRect(x: -10_104, y: 750, width: 420, height: 280)
+        let layout = NotchLayout(
+            mode: .floatingBar, centerX: compact.midX, hoverSensorFrame: compact,
+            compactFrame: compact, quotaExpandedFrame: expanded, expandedFrame: expanded
+        )
+        let largeState = NotchPresentationState.expanded(ExpandedContent(
+            sessions: [], conversations: [], headerConversation: nil, usage: nil
+        ))
+        let smallState = NotchPresentationState.quotaCompact(nil)
+        let first = controller.prepare(layout: layout, state: largeState, animationsEnabled: true)
+        controller.settleFrame(layout: layout, state: largeState, animationWillComplete: true)
+        controller.finishSurfaceAnimation(identifier: first, targetFrame: expanded)
+        let closing = controller.prepare(layout: layout, state: smallState, animationsEnabled: true)
+        controller.settleFrame(layout: layout, state: smallState, animationWillComplete: true)
+        try await Task.sleep(for: .milliseconds(750))
+        XCTAssertEqual(panel.frame, expanded, "Elapsed time alone must never cut off the final animation frames")
+        XCTAssertEqual(controller.prepare(layout: layout, state: smallState), closing)
+        controller.settleFrame(layout: layout, state: smallState)
+        XCTAssertEqual(panel.frame, expanded, "A clock refresh must not reclaim the canvas")
+
+        let reopened = controller.prepare(layout: layout, state: largeState, animationsEnabled: true)
+        controller.settleFrame(layout: layout, state: largeState, animationWillComplete: true)
+        let padded = panel.frame
+        controller.finishSurfaceAnimation(identifier: closing, targetFrame: compact)
+        controller.finishSurfaceAnimation(identifier: first, targetFrame: expanded)
+        XCTAssertEqual(panel.frame, padded, "Stale callbacks must not affect a later transition to the same target")
+        controller.finishSurfaceAnimation(identifier: reopened, targetFrame: expanded)
+        XCTAssertEqual(panel.frame, expanded)
     }
 
     @MainActor

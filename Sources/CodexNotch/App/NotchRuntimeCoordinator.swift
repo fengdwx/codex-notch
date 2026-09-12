@@ -610,12 +610,12 @@ final class NotchRuntimeCoordinator {
         // The controller allocates the final canvas before the SwiftUI state
         // changes. That lets the island grow within one stable window instead
         // of animating the NSPanel itself.
-        windowController.prepare(
+        let transitionIdentifier = windowController.prepare(
             layout: layout,
             state: displayState,
             animationsEnabled: animationsEnabled
         )
-        viewModel.update(
+        let animationWillComplete = viewModel.update(
             state: displayState,
             now: renderDate,
             layoutMode: layout.mode,
@@ -626,12 +626,18 @@ final class NotchRuntimeCoordinator {
             compactHeight: layout.compactFrame.height,
             surfaceSize: targetFrame.size,
             isResetScheduleExpanded: isResetScheduleExpanded,
-            animationsEnabled: animationsEnabled
+            animationsEnabled: animationsEnabled,
+            onSurfaceAnimationCompleted: { [weak windowController] in
+                windowController?.finishSurfaceAnimation(
+                    identifier: transitionIdentifier, targetFrame: targetFrame
+                )
+            }
         )
         windowController.settleFrame(
             layout: layout,
             state: displayState,
-            animationsEnabled: animationsEnabled
+            animationsEnabled: animationsEnabled,
+            animationWillComplete: animationWillComplete
         )
     }
 
@@ -679,12 +685,12 @@ final class NotchRuntimeCoordinator {
     ) {
         let layout = NotchGeometry.layout(metrics: metrics)
         let targetFrame = layout.frame(for: displayState)
-        windowController.prepare(
+        let transitionIdentifier = windowController.prepare(
             layout: layout,
             state: displayState,
             animationsEnabled: animationsEnabled
         )
-        viewModel.update(
+        let animationWillComplete = viewModel.update(
             state: displayState,
             now: now,
             layoutMode: layout.mode,
@@ -695,12 +701,18 @@ final class NotchRuntimeCoordinator {
             compactHeight: layout.compactFrame.height,
             surfaceSize: targetFrame.size,
             isResetScheduleExpanded: false,
-            animationsEnabled: animationsEnabled
+            animationsEnabled: animationsEnabled,
+            onSurfaceAnimationCompleted: { [weak windowController] in
+                windowController?.finishSurfaceAnimation(
+                    identifier: transitionIdentifier, targetFrame: targetFrame
+                )
+            }
         )
         windowController.settleFrame(
             layout: layout,
             state: displayState,
-            animationsEnabled: animationsEnabled
+            animationsEnabled: animationsEnabled,
+            animationWillComplete: animationWillComplete
         )
     }
 
