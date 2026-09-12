@@ -20,7 +20,7 @@ contracts:
       completion, expansion, hiding, detachment, disabled animation or Reduce
       Motion. Keep static status cues. Do not render the legacy battle or add
       a center on physical-notch layouts. Preserve old battle assets/tests as
-      historical regression coverage. Card transitions follow NOTCH-MOTION-006.
+      historical regression coverage. Card transitions follow NOTCH-READABILITY-007.
     rationale: The user rejected the busy battle, fog and thick light bars, chose four alternatives, and requested calmer typography.
     source: user-selected-designs
     owner: project-maintainer
@@ -131,7 +131,7 @@ contracts:
 
   - id: NOTCH-MOTION-006
     title: Stable type with a gentle shell landing rebound
-    status: active
+    status: superseded
     statement: >-
       Preserve NOTCH-MOTION-005 collapse curve, settled dimensions, top-center
       anchor, bounded floating compression, physical camera-safe floor, native canvas
@@ -169,13 +169,57 @@ contracts:
       - docs/decisions/037-stable-type-motion.md
       - "manual: record native opening/closing for stable glyph size, bounded landing rebound, early compact header clarity and rapid reentry; confirm physical notch and Reduce Motion"
     supersedes: [NOTCH-MOTION-005]
+    superseded_by: NOTCH-READABILITY-007
+    last_verified_commit: null
+
+  - id: NOTCH-READABILITY-007
+    title: Lighter expanded typography on a continuous black surface
+    status: active
+    statement: >-
+      Preserve NOTCH-MOTION-006 opening rebound, collapse curve, stable text
+      transitions, canvas preparation and completion, reentry, compact geometry,
+      camera-safe floor and motion-disable behavior. Supersede its font-styling
+      freeze only for expanded detail content. Use regular system typography,
+      with medium weight and brighter text for the displayed primary running
+      task. Other tasks remain legible at lower emphasis. Keep secondary text
+      at the existing 60 percent white contrast, and keep all exact quota values,
+      timestamps, second-level countdowns, reset-credit details, status cues,
+      task ordering, language and zero-through-five history preferences.
+      Remove the list's constant inner card and separators; use spacing to group
+      content on the black surface. Reset details and footer controls retain only
+      subtle neutral fills without enclosing borders. The display toggle keeps
+      its green enabled icon and accessible On/Off state. Quota bars remain
+      proportional to the real values, with a thinner stroke in their existing
+      layout slot. Preserve window dimensions, header artwork, row hit heights,
+      control heights, native controls, accessibility labels and pressed feedback. Do not introduce fonts,
+      dependencies, settings, hidden information or new interaction flows.
+    rationale: The user approved trying lighter type, fewer nested surfaces and clearer visual priorities after comparing the expanded card with Vibe Island.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [expanded-card, typography, visual-hierarchy, quota-progress-style, footer-style]
+      exclude: [motion-curves, window-geometry, compact-artwork, quota-semantics, task-data, releases]
+    examples:
+      positive: The current task reads first on an uninterrupted black surface, while Chinese titles, both quota windows, exact reset times and every existing action remain readable and available.
+      negative: Faint unreadable text, clipped Chinese or reset rows, hidden quota information, changes to compact indicators, a missing display-state cue, or a changed opening rebound.
+    guards:
+      - Tests/CodexNotchTests/NotchTextTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/NotchPresentationReducerTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePreferencesTests.swift
+      - Tests/CodexNotchTests/NotchCollapseMotionTests.swift
+      - Tests/CodexNotchTests/NotchMotionCaptureTests.swift
+      - docs/decisions/038-clean-expanded-typography.md
+      - "manual: record normal, dense Chinese/mixed-state and unavailable-quota fixtures; inspect title truncation, exact timestamps, controls and retained motion; confirm physical-notch legibility and hover interaction"
+    supersedes: [NOTCH-MOTION-006]
     superseded_by: null
     last_verified_commit: null
 
   - id: SETTINGS-PREFERENCES-018
     title: Language, history, motion and floating center settings apply live
     status: active
-    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-051. Card transitions now follow the motion preference and Reduce Motion under NOTCH-MOTION-006; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
+    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-051. Card transitions now follow the motion preference and Reduce Motion under NOTCH-READABILITY-007; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
     rationale: Center choices need live visual comparison and persistence, and the newly requested spring transition supersedes the earlier always-static exception.
     source: user-request
     owner: project-maintainer

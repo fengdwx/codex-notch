@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [NOTCH-MOTION-006, SETTINGS-PREFERENCES-018, NOTCH-LAYOUT-038]
 supersedes: [036-measured-collapse-motion]
-superseded_by: null
+superseded_by: 038-clean-expanded-typography
 owner: project-maintainer
 created_at: 2026-09-13
 ---
