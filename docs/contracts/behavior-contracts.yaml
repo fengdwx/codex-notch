@@ -1,4 +1,72 @@
 contracts:
+  - id: QUOTA-WAVE-055
+    title: Full and empty wave balls match their quota values
+    status: active
+    statement: At 100 percent the wave ball must be completely filled at every horizontal animation phase; at 0 percent or without quota it must contain no liquid. Wave amplitude fades near both endpoints, while partial quota retains its wave, existing Core Animation cadence, motion settings, colors, and geometry. Apply this to both floating and physical-notch indicators.
+    rationale: A fixed wave amplitude leaves troughs at full quota and crests at empty quota, contradicting the displayed value.
+    source: user-reported-incident
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [wave-ball, compact-state, non-notch-screens, notch-screens]
+      exclude: [quota-fetching, ring, window-geometry]
+    examples:
+      positive: Full quota remains filled throughout wave translation and half quota retains a visible wave surface.
+      negative: Full quota exposes a trough, empty quota retains liquid, or partial quota loses its wave.
+    guards:
+      - Tests/CodexNotchTests/QuotaWaveBoundaryTests.swift
+      - "manual: inspect full, empty and partial wave balls with motion enabled and Reduce Motion on real hardware"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null
+
+  - id: NOTCH-VISIBILITY-048
+    title: Floating bars show returned five-hour quota in the left lane
+    status: superseded
+    statement: Preserve every geometry, battle, visibility, mirroring, motion, and privacy requirement of NOTCH-VISIBILITY-047, replacing only the left lane selection. Both physical-notch and floating-bar layouts show returned five-hour quota on the left, otherwise the selected status icon. Weekly stays on the right and the sword battle stays in the center. Use the existing 30pt floating lane without adding the physical-notch halo. Preserve QUOTA-SEMANTICS-054 status styling whenever the fallback icon is shown.
+    rationale: The installed app received five-hour data but hid it solely because this Mac used the floating-bar route.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [compact-state, non-notch-screens, five-hour-window]
+      exclude: [quota-fetching, window-geometry, battle-animation]
+    examples:
+      positive: With both windows returned, a floating bar shows five-hour remaining on the left and weekly remaining on the right. Without five-hour data, the status icon returns.
+      negative: Hiding returned five-hour quota on a floating bar, inventing a missing value, removing the center battle, or adding a physical-notch halo to the floating bar.
+    guards:
+      - Tests/CodexNotchTests/CompactLeftIndicatorPolicyTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/QuotaRunningHaloMotionTests.swift
+      - docs/decisions/030-floating-five-hour-quota.md
+      - "manual: inspect the floating-bar left value and retained center/right lanes; confirm physical-notch geometry on real hardware"
+    supersedes: [NOTCH-VISIBILITY-047]
+    superseded_by: NOTCH-VISIBILITY-049
+    last_verified_commit: null
+
+  - id: NOTCH-VISIBILITY-049
+    title: Hidden floating bars recover through their original hover area
+    status: superseded
+    statement: Preserve NOTCH-VISIBILITY-048 quota selection and all inherited geometry, battle, privacy and mirroring behavior. When display is disabled on an ordinary no-notch screen, retain a fully transparent sensor exactly matching the compact floating frame. Hover opens the existing card and its display switch; leaving returns to the invisible sensor until display is enabled. Do not change the saved preference merely on hover. Physical-notch recovery remains unchanged. Hardware mirror and menu-bar-only routes remain panel-free.
+    rationale: Removing the disabled floating panel and setting its hidden frame to zero made hover recovery impossible.
+    source: user-reported-regression
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [non-notch-screens, hidden-state, hover-recovery]
+      exclude: [quota-semantics, battle-animation, physical-notch-geometry]
+    examples:
+      positive: Disable the floating display, move away and return to its previous top-center location to reopen the card; leaving hides it again and enabling display restores the compact bar.
+      negative: Removing the sensor, leaving visible content while hidden, retaining an expanded invisible hit area, or showing a sensor in a hardware mirror set.
+    guards:
+      - Tests/CodexNotchTests/NotchPanelVisibilityPolicyTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/NotchDisplayRoutingTests.swift
+      - "manual: disable, leave, hover to recover, leave to hide, then reenable the floating bar; confirm physical-notch behavior on real hardware"
+    supersedes: [NOTCH-VISIBILITY-048]
+    superseded_by: NOTCH-VISIBILITY-050
+    last_verified_commit: null
+
   - id: NOTCH-LAYOUT-001
     title: Compact island must align with the physical notch safe areas
     status: superseded
@@ -852,7 +920,7 @@ contracts:
     superseded_by: NOTCH-VISIBILITY-048
     last_verified_commit: null
 
-  - id: NOTCH-VISIBILITY-048
+  - id: NOTCH-VISIBILITY-050
     title: Mirrored and ordinary no-notch displays keep the activity island visible
     status: active
     statement: >-
@@ -866,7 +934,7 @@ contracts:
       When the menu bar reserves at least 24pt, the compact island height must
       not exceed that measured menu-bar height and is capped at 30pt; when the
       menu bar is auto-hidden, a 28pt fallback remains top-attached. The island
-      keeps its 212pt width, 8pt outer safety insets, 30pt left Codex-status
+      keeps its 212pt width, 8pt outer safety insets, 30pt left five-hour-quota or status
       lane, 136pt center animation lane, and 30pt right weekly-quota lane. The
       center lane renders the bundled, validated v2 Sword Wanderer pet without
       redrawing its face, hair, clothing, palette, or proportions. While app
@@ -890,8 +958,13 @@ contracts:
       accessibility label but is not rendered in the compact center lane.
       Content stays inside the lower-corner envelope. Hover expansion grows
       only downward from the same top edge, reserves the measured compact
-      height, and reclaims the transparent canvas after collapse. Display-off
-      recovery remains in the menu bar. Valid physical-notch geometry,
+      height, and reclaims the transparent canvas after collapse. Preserve
+      NOTCH-VISIBILITY-048 five-hour quota selection in the left lane, using
+      the selected status icon only when that window is absent. Disabling the
+      display retains NOTCH-VISIBILITY-049's transparent compact-sized hover
+      sensor on ordinary and mirrored floating screens; hovering opens the
+      card without changing the saved preference, and leaving hides it again.
+      Only menu-bar-only layouts remain panel-free. Valid physical-notch geometry,
       camera-safe indicators, hidden-notch recovery, quota semantics, task
       navigation, privacy boundaries, full-screen Space participation, and
       panel z-order remain unchanged.
@@ -916,9 +989,9 @@ contracts:
       - Tests/CodexNotchTests/NotchPanelVisibilityPolicyTests.swift
       - Tests/CodexNotchTests/NotchRuntimePerformanceTests.swift
       - docs/decisions/016-sword-wanderer-battle-island.md
-      - docs/decisions/032-mirrored-display-floating-island.md
-      - "manual: launch the built app on a no-notch Mac, confirm the original Sword Wanderer identity, repeated jumping slimes, visible sword contact and +1 overlap with the next spawn, menu-bar containment, downward hover expansion, collapse reclamation, and a static Reduce Motion state; then enable hardware display mirroring and confirm the top-centered island remains visible, hover expands downward, display-off still hides it with menu-bar recovery, and disabling mirroring restores live geometry"
-    supersedes: [NOTCH-VISIBILITY-047]
+      - docs/decisions/033-mirrored-display-floating-island.md
+      - "manual: launch the built app on a no-notch Mac, confirm the original Sword Wanderer identity, repeated jumping slimes, visible sword contact and +1 overlap with the next spawn, menu-bar containment, downward hover expansion, collapse reclamation, and a static Reduce Motion state; then enable hardware display mirroring and confirm the top-centered island remains visible, hover expands downward, display-off hides it while hover can reopen the card without changing the saved preference, and disabling mirroring restores live geometry"
+    supersedes: [NOTCH-VISIBILITY-049]
     superseded_by: null
     last_verified_commit: null
 

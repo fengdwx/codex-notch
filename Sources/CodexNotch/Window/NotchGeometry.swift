@@ -318,12 +318,18 @@ enum NotchGeometry {
         // The no-notch path uses the same fixed-canvas and downward expansion
         // model, but attaches directly to the physical screen top. Its compact
         // width is independent of the camera-gap width used by notch hardware.
-        // There is no hidden hover sensor here: when the user disables the
-        // display, the menu-bar action is the recovery path.
+        // Keep only the original compact hit area while hidden so hovering
+        // back to the same location can reopen the existing card.
         return NotchLayout(
             mode: .floatingBar,
             centerX: centerX,
-            hoverSensorFrame: .zero,
+            hoverSensorFrame: frame(
+                centeredAt: centerX,
+                size: compactIslandSize,
+                screenFrame: metrics.frame,
+                visibleFrame: metrics.visibleFrame,
+                topInset: 0
+            ),
             compactFrame: frame(
                 centeredAt: centerX,
                 size: compactIslandSize,

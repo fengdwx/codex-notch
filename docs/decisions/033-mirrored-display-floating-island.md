@@ -1,7 +1,7 @@
 ---
 status: active
-contract_ids: [NOTCH-VISIBILITY-048]
-supersedes: [017-mirrored-display-menu-bar-fallback]
+contract_ids: [NOTCH-VISIBILITY-050]
+supersedes: [017-mirrored-display-menu-bar-fallback, 032-floating-hover-recovery]
 superseded_by: null
 owner: project-maintainer
 created_at: 2026-09-12
@@ -25,7 +25,8 @@ suppressed the floating island in that topology; the user requested visibility.
   centered at the live screen top and contained within its measured menu bar.
 - Continue to use valid auxiliary areas for physical-notch geometry. Screen
   parameter changes recompute geometry without retaining an old notch frame.
-- Preserve display-off recovery, downward expansion, canvas reclamation,
+- Preserve v0.1.16 five-hour quota selection and transparent hover recovery
+  when display is off, including on mirrors. Preserve downward expansion, canvas reclamation,
   animation preferences, quota and activity semantics, and Space participation.
 - Replace the old suppression assertions under the explicitly superseding
   contract with mirror-master geometry and visibility-policy regression guards.
@@ -48,7 +49,7 @@ covers tests, build, bundle, and signature. The running installed app must be
 checked on the current mirror set; returning to a physical notch and animation
 or hover behavior not observed live must be reported as unverified.
 
-## Verification on 2026-09-12
+## Initial verification on 2026-09-12 (before integrating v0.1.16)
 
 - `./scripts/verify.sh` passed: 68 contracts, 181 tests, release build, bundle,
   and signature checks.
@@ -59,3 +60,20 @@ or hover behavior not observed live must be reported as unverified.
   The native app screenshot showed the status mark, battle scene, and quota.
 - Physical-notch recovery after leaving mirroring, hover expansion/collapse,
   and animation smoothness remain unverified on hardware in this change.
+
+## v0.1.17 release verification
+
+- Integrated remote v0.1.16 before packaging, preserving its five-hour quota,
+  transparent hover sensor, installed resource lookup, and quota wave fixes.
+  Contract 050 supersedes 049; released contract IDs 048 and 049 remain intact.
+- The initial mirror display-off guard exposed the old menu-bar recovery
+  assumption. Updated it under contract 050 to require the compact-sized hover
+  sensor, retain it across app switches, and reject an expanded hidden frame.
+- Full verification passed with 71 contracts and 185 tests. Release packaging
+  verified the ZIP, DMG checksum, mounted app, Applications shortcut, signatures,
+  and bundled animation resources.
+- Installed the verified ZIP as v0.1.17. Its executable matches the built app.
+  A fresh app screenshot and WindowServer query again confirmed the 212x30
+  island at (854, 0), fully opaque, on the active 1920x1080 hardware mirror.
+- The physical-notch and hover/animation hardware checks listed above remain
+  outstanding and are explicitly included in the release notes.

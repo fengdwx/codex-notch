@@ -1,6 +1,6 @@
 ---
 status: active
-contract_ids: [NOTCH-VISIBILITY-048]
+contract_ids: [NOTCH-VISIBILITY-050]
 supersedes: [015-no-notch-task-status-island]
 superseded_by: null
 owner: project-maintainer

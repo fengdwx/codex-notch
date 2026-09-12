@@ -10,6 +10,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindowObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if CommandLine.arguments.contains("--verify-bundled-resources") {
+            // Exit before reading credentials or starting session monitoring.
+            let valid = SwordWandererAsset.pixelSize == CGSize(width: 1_536, height: 2_288)
+                && SwordWandererAsset.swordImage != nil
+                && SwordWandererAsset.slimeImage != nil
+                && SwordWandererAsset.hitSparkImage != nil
+            print(valid ? "Bundled resources verified" : "Bundled resources missing or invalid")
+            exit(valid ? 0 : 1)
+        }
         NSApp.setActivationPolicy(.accessory)
         observeSettingsWindowActivation()
         runtimeCoordinator = NotchRuntimeCoordinator()

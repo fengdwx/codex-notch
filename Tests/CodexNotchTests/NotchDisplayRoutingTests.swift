@@ -3,7 +3,8 @@ import XCTest
 @testable import CodexNotch
 
 final class NotchDisplayRoutingTests: XCTestCase {
-    // NOTCH-VISIBILITY-048 supersedes the former mirror-suppression contract.
+    // NOTCH-VISIBILITY-050 supersedes mirror suppression while retaining
+    // v0.1.16's five-hour quota and transparent hover recovery.
     // These are the live Mi Monitor mirror-master metrics from the incident.
     private var mirrorMasterMetrics: NotchScreenMetrics {
         NotchScreenMetrics(
@@ -33,7 +34,7 @@ final class NotchDisplayRoutingTests: XCTestCase {
     func testMirroredIslandStillHonorsDisplayOffAndAppSwitchRecovery() {
         let layout = NotchGeometry.layout(metrics: mirrorMasterMetrics)
 
-        XCTAssertTrue(
+        XCTAssertFalse(
             NotchPanelVisibilityPolicy.shouldUseMenuBarFallback(
                 layoutMode: layout.mode,
                 displayIsEnabled: false
@@ -46,13 +47,21 @@ final class NotchDisplayRoutingTests: XCTestCase {
                 displayIsEnabled: true
             )
         )
-        XCTAssertFalse(
+        XCTAssertTrue(
             NotchPanelVisibilityPolicy.shouldRestoreAfterApplicationSwitch(
                 panelIsRequested: true,
                 layoutMode: layout.mode,
                 displayIsEnabled: false
             )
         )
+        XCTAssertTrue(
+            NotchPanelVisibilityPolicy.shouldKeepHiddenHoverSensor(
+                layoutMode: layout.mode,
+                displayIsEnabled: false
+            )
+        )
+        XCTAssertEqual(layout.frame(for: .hidden), layout.compactFrame)
+        XCTAssertNotEqual(layout.frame(for: .hidden), layout.expandedFrame)
     }
 
     func testLeavingMirrorMasterUsesFreshPhysicalNotchGeometry() {

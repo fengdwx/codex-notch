@@ -17,12 +17,12 @@ Record decisions here only when they affect active behavior contracts, could be 
 | [013-no-notch-floating-bar](013-no-notch-floating-bar.md) | superseded | `NOTCH-VISIBILITY-044` | Show the same status surface as a top-center floating bar on displays without a physical notch |
 | [014-top-attached-no-notch-activity-island](014-top-attached-no-notch-activity-island.md) | superseded | `NOTCH-VISIBILITY-045` | Attach a compact, state-driven activity island to the screen top on displays without a physical notch |
 | [015-no-notch-task-status-island](015-no-notch-task-status-island.md) | superseded | `NOTCH-VISIBILITY-046` | Fit a task-title status island inside the measured menu-bar height on displays without a physical notch |
-| [016-sword-wanderer-battle-island](016-sword-wanderer-battle-island.md) | active | `NOTCH-VISIBILITY-048` | Reuse the validated local Sword Wanderer pet for an overlapping endless slime battle loop |
+| [016-sword-wanderer-battle-island](016-sword-wanderer-battle-island.md) | active | `NOTCH-VISIBILITY-050` | Reuse the validated local Sword Wanderer pet for an overlapping endless slime battle loop |
 | [017-mirrored-display-menu-bar-fallback](017-mirrored-display-menu-bar-fallback.md) | superseded | `NOTCH-VISIBILITY-047` | Keep no-notch islands out of mirrored ordinary app content while preserving live geometry recovery |
 | [018-running-notch-marquee](018-running-notch-marquee.md) | superseded | `QUOTA-SEMANTICS-043` | Add a restrained layer-backed outline marquee to the running physical-notch compact surface |
 | [019-low-cadence-notch-marquee](019-low-cadence-notch-marquee.md) | superseded | `QUOTA-SEMANTICS-044` | Bridge low-cadence outer-edge marquee steps with delayed fading copies |
 | [020-running-notch-breathing-light](020-running-notch-breathing-light.md) | superseded | `QUOTA-SEMANTICS-045` | Use a centered breathing light for the running physical-notch state |
 | [021-visible-quota-halo-running-cue](021-visible-quota-halo-running-cue.md) | active | `QUOTA-SEMANTICS-046` | Put the running cue behind the real visible compact quota indicators |
-| [032-mirrored-display-floating-island](032-mirrored-display-floating-island.md) | active | `NOTCH-VISIBILITY-048` | Keep the enabled island visible in the mirror master's current coordinate space |
+| [033-mirrored-display-floating-island](033-mirrored-display-floating-island.md) | active | `NOTCH-VISIBILITY-050` | Keep the enabled island visible in the mirror master's current coordinate space |
 
 New decisions must include `status`, `contract_ids`, rejected alternatives, and consequences. When a decision changes, retain the old document and point to the new one with `superseded_by`.

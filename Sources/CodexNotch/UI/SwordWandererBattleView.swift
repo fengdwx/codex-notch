@@ -6,7 +6,7 @@ enum SwordWandererAsset {
     static let rows = 11
 
     static let atlasImage: NSImage? = {
-        guard let url = Bundle.module.url(
+        guard let url = AppResources.bundle()?.url(
             forResource: "sword-wanderer",
             withExtension: "webp"
         ) else {
@@ -34,7 +34,7 @@ enum SwordWandererAsset {
     }()
 
     private static func image(named name: String, extension fileExtension: String) -> NSImage? {
-        guard let url = Bundle.module.url(
+        guard let url = AppResources.bundle()?.url(
             forResource: name,
             withExtension: fileExtension
         ) else {
