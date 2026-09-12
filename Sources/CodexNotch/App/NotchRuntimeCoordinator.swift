@@ -286,11 +286,9 @@ final class NotchRuntimeCoordinator {
 
     private func applyResolvedTitles(_ titles: [String: String]) {
         let visibleIDs = Set(visibleThreadIDs)
-        let visibleTitles = titles.filter { visibleIDs.contains($0.key) }
-        guard !visibleTitles.isEmpty else { return }
-
-        var resolvedTitles = threadTitles
-        resolvedTitles.merge(visibleTitles) { _, newer in newer }
+        // This is a full lookup for the visible set. Drop names rejected by the
+        // reader so unavailable/invalid metadata returns to the project label.
+        let resolvedTitles = titles.filter { visibleIDs.contains($0.key) }
         guard resolvedTitles != threadTitles else { return }
         threadTitles = resolvedTitles
 

@@ -1,4 +1,69 @@
 contracts:
+  - id: CONVERSATION-TITLE-042
+    title: Use the latest Codex name and reject prompt transport text
+    status: active
+    statement: >-
+      Join the immutable rollout thread ID to the latest appended thread_name
+      in CODEX_HOME/session_index.jsonl, then fall back to a short threads.title
+      from the read-only state_5.sqlite database. Read only title metadata;
+      never query first_user_message or preview, open message bodies for titles,
+      modify Codex files, or persist a separate title cache. Observe index and
+      SQLite WAL changes within the existing refresh cadence. Decode numeric
+      and common named HTML entities as plain text, collapse whitespace, and
+      reject known attachment/prompt wrappers or names longer than 96 characters
+      instead of truncating a whole initial prompt. Missing or invalid names
+      use the existing project label; navigation retains the original thread ID.
+      Malformed index records must not prevent other names or database fallback.
+    rationale: The mirrored-display screenshot showed attachment headers and escaped spaces because the database retained an initial prompt while Codex stored the actual task name in its local name index.
+    source: user-reported-incident-and-local-metadata-verification
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [thread-title-reader, local-title-index, active-task-rows, recent-conversations, accessibility-labels]
+      exclude: [message-bodies, codex-data-mutation, thread-navigation, quota-semantics]
+    examples:
+      positive: An indexed short name replaces an attachment wrapper in SQLite, an appended rename replaces the old name, and an encoded space displays as a space.
+      negative: Showing a Files mentioned by the user header, interpreting title text as HTML, retaining full prompts, reading message-derived columns, or changing any source file.
+    guards:
+      - Tests/CodexNotchTests/CodexThreadTitleReaderTests.swift
+      - Tests/CodexNotchTests/RolloutEventParserTests.swift
+      - docs/decisions/039-task-names-and-floating-icon-alignment.md
+      - "manual: restart the installed app and confirm its active and recent labels use the same short names as Codex; inspect the runtime log for unexpected content"
+    supersedes: [CONVERSATION-TITLE-041]
+    superseded_by: null
+    last_verified_commit: null
+
+  - id: FLOATING-ICON-052
+    title: Center the complete floating status mark within its indicator lane
+    status: active
+    statement: >-
+      Preserve FLOATING-CENTER-051 geometry and center choices. On floating
+      bars, including mirrored displays, render a 20pt app mark with a smaller
+      9pt completion badge and center their combined visible bounds in the
+      existing 22pt indicator slot. App and quota containers use the measured
+      floating compact height. Retain the right weekly ring, five-hour priority,
+      neutral center signature, static completion cue, current motion and all
+      physical-notch mark sizes, badge placement and camera-safe geometry.
+    rationale: The prior floating mark was lighter than the quota ring and its large lower-right badge shifted the composite toward the bottom corner.
+    source: user-reported-mirrored-display-appearance
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [floating-bar, mirrored-displays, completed-status-mark, compact-alignment]
+      exclude: [physical-notch-layout, surface-animation, center-styles, icon-artwork, window-routing]
+    examples:
+      positive: A completed floating mark and weekly quota share the same vertical center, and the completion badge remains legible within the existing compact surface.
+      negative: Centering only the flower while the badge hangs below it, growing the island, changing the physical-notch lane, or losing the reduced-motion completion cue.
+    guards:
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/CompactLeftIndicatorPolicyTests.swift
+      - Tests/CodexNotchTests/NotchMotionCaptureTests.swift
+      - docs/decisions/039-task-names-and-floating-icon-alignment.md
+      - "manual: compare native completed and running fixtures, then inspect the mirrored-display app; physical-notch placement still requires real-notch confirmation"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null
+
   - id: FLOATING-CENTER-051
     title: Floating bars offer signatures, orbit, elapsed time and thin light flow
     status: active
@@ -1433,7 +1498,7 @@ contracts:
 
   - id: CONVERSATION-TITLE-041
     title: Recent conversations use Codex thread summaries, never rollout message bodies
-    status: active
+    status: superseded
     statement: Recent and active conversation rows resolve their title by joining the immutable rollout thread ID to the matching `threads.title` value in `CODEX_HOME/state_5.sqlite`. CodexNotch opens that database read-only, caches only the short normalized summary for the current process, and ignores every rollout `user_message` payload. If the database is unavailable, locked, or lacks the thread, the row falls back to its project-name label without retaining a substitute title.
     rationale: A thread may contain several user turns. Treating the newest rollout message as its title overwrote the intended conversation label and exposed message bodies in the UI.
     source: user-reported-incident
@@ -1451,7 +1516,7 @@ contracts:
       - Tests/CodexNotchTests/ActiveSessionStoreTests.swift
       - "manual: complete a multi-turn real Codex thread and confirm its expanded-card title matches Codex, not the last follow-up"
     supersedes: []
-    superseded_by: null
+    superseded_by: CONVERSATION-TITLE-042
     last_verified_commit: null
 
   - id: QUOTA-SEMANTICS-004
@@ -1924,9 +1989,32 @@ contracts:
     superseded_by: QUOTA-SEMANTICS-055
     last_verified_commit: null
 
-  - id: PRIVACY-BOUNDARY-005
+  - id: PRIVACY-BOUNDARY-006
     title: Local authentication and conversation content must not be persisted or exposed
     status: active
+    statement: Authentication tokens are used only in process memory; they must not be written to the repository, app cache, or logs; user-message bodies must not be displayed or recorded; recent rows may use only Codex's short `session_index.jsonl` thread_name or fallback `threads.title` metadata from read-only local lookups under CONVERSATION-TITLE-042; the no-notch fallback must not broaden content exposure.
+    rationale: The app reads local ChatGPT/Codex login state and session logs, so minimizing exposure is a non-negotiable boundary.
+    source: technical-constraint
+    owner: project-maintainer
+    risk: critical
+    scope:
+      include: [auth-reader, usage-client, rollout-monitor, thread-title-reader, logs, fallback-menu]
+      exclude: [user-provided project names and thread identifiers needed for navigation]
+    examples:
+      positive: The Authorization header from a usage request does not enter logs; the expanded list shows only read-only Codex summary titles and project names.
+      negative: Committing auth.json, printing a token, caching the complete usage response, querying `first_user_message`, or displaying a user-message body.
+    guards:
+      - Tests/CodexNotchTests/CodexAuthReaderTests.swift
+      - Tests/CodexNotchTests/CodexThreadTitleReaderTests.swift
+      - "manual: sensitive-diff and runtime-log review until a dedicated secret scanner exists"
+    supersedes: [PRIVACY-BOUNDARY-005]
+    superseded_by: null
+    last_verified_commit: null
+
+
+  - id: PRIVACY-BOUNDARY-005
+    title: Local authentication and conversation content must not be persisted or exposed
+    status: superseded
     statement: Authentication tokens are used only in process memory; they must not be written to the repository, app cache, or logs; user-message bodies must not be displayed or recorded; recent rows may use only Codex's short `threads.title` summary from a read-only local-state lookup; the no-notch fallback must not broaden content exposure.
     rationale: The app reads local ChatGPT/Codex login state and session logs, so minimizing exposure is a non-negotiable boundary.
     source: technical-constraint
@@ -1943,7 +2031,7 @@ contracts:
       - Tests/CodexNotchTests/CodexThreadTitleReaderTests.swift
       - "manual: sensitive-diff and runtime-log review until a dedicated secret scanner exists"
     supersedes: []
-    superseded_by: null
+    superseded_by: PRIVACY-BOUNDARY-006
     last_verified_commit: 0d37196
 
   - id: PRIVACY-APP-BUNDLE-039

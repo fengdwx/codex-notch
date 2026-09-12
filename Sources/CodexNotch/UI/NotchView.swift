@@ -647,7 +647,8 @@ private struct CompactNotchView: View {
                     activity: icon.quotaActivity,
                     style: quotaDisplayStyle,
                     layoutMode: .floatingBar,
-                    laneWidth: NotchFloatingBarLayout.quotaLaneWidth
+                    laneWidth: NotchFloatingBarLayout.quotaLaneWidth,
+                    compactHeight: compactHeight
                 )
             }
             .padding(.horizontal, NotchFloatingBarLayout.horizontalInset)
@@ -688,14 +689,20 @@ private struct CompactNotchView: View {
                     layoutMode: layoutMode,
                     laneWidth: layoutMode == .floatingBar
                         ? NotchFloatingBarLayout.appLaneWidth
-                        : NotchCompactLayout.indicatorLaneWidth
+                        : NotchCompactLayout.indicatorLaneWidth,
+                    compactHeight: compactHeight
                 )
             } else {
-                CompactAppIconView(status: icon, theme: StatusIconTheme(usage: usage))
+                compactAppIcon
             }
         case .appStatus:
-            CompactAppIconView(status: icon, theme: StatusIconTheme(usage: usage))
+            compactAppIcon
         }
+    }
+
+    private var compactAppIcon: some View {
+        CompactAppIconView(status: icon, theme: StatusIconTheme(usage: usage),
+                           layoutMode: layoutMode, compactHeight: compactHeight)
     }
 
     private var accessibilityText: String {
@@ -711,22 +718,28 @@ private struct CompactNotchView: View {
 private struct CompactAppIconView: View {
     let status: CompactNotchView.IconKind
     let theme: StatusIconTheme
+    let layoutMode: NotchLayoutMode
+    let compactHeight: CGFloat
     @Environment(\.notchStatusIconStyle) private var iconStyle
+
+    private var isFloating: Bool { layoutMode == .floatingBar }
+    private var markSize: CGFloat { isFloating ? 20 : NotchCompactLayout.appMarkSize }
 
     var body: some View {
         Group {
             switch status {
             case .working:
-                RunningStatusIcon(iconStyle: iconStyle, size: NotchCompactLayout.appMarkSize, theme: theme)
+                RunningStatusIcon(iconStyle: iconStyle, size: markSize, theme: theme)
             case .completed:
-                CompletedStatusIcon(iconStyle: iconStyle, size: NotchCompactLayout.appMarkSize, theme: theme)
+                CompletedStatusIcon(iconStyle: iconStyle, size: markSize, theme: theme,
+                                    badgeDiameter: isFloating ? 9 : 11, centersComposite: isFloating)
             case .quota:
-                StatusMark(style: iconStyle, size: NotchCompactLayout.appMarkSize, theme: theme)
+                StatusMark(style: iconStyle, size: markSize, theme: theme)
             }
         }
         .frame(
             width: NotchCompactLayout.indicatorDiameter,
-            height: NotchCompactLayout.height
+            height: compactHeight
         )
         .accessibilityHidden(true)
     }
@@ -738,6 +751,7 @@ private struct CompactQuotaView: View {
     let style: QuotaDisplayStyle
     let layoutMode: NotchLayoutMode
     var laneWidth = NotchCompactLayout.indicatorLaneWidth
+    var compactHeight = NotchCompactLayout.height
 
     @Environment(\.notchMotionEnabled) private var motionEnabled
 
@@ -765,7 +779,7 @@ private struct CompactQuotaView: View {
             .frame(maxWidth: .infinity, alignment: .center)
             .frame(
                 width: laneWidth,
-                height: NotchCompactLayout.height,
+                height: compactHeight,
                 alignment: .center
             )
             .accessibilityHidden(true)
@@ -790,6 +804,15 @@ private struct CompletedStatusIcon: View {
     let iconStyle: StatusIconStyle
     let size: CGFloat
     let theme: StatusIconTheme
+    var badgeDiameter: CGFloat = 11
+    var centersComposite = false
+
+    private var compositeOffset: CGFloat {
+        guard centersComposite else { return 0 }
+        // Include the badge's 1pt border when centering the whole visible mark.
+        let overhang = max(0, 6 + (badgeDiameter + 1) / 2 - size / 2)
+        return -overhang / 2
+    }
 
     var body: some View {
         ZStack {
@@ -803,9 +826,9 @@ private struct CompletedStatusIcon: View {
             StatusMark(style: iconStyle, size: size, theme: theme)
 
             Image(systemName: "checkmark")
-                .font(.system(size: 6.5, weight: .black))
+                .font(.system(size: badgeDiameter * 6.5 / 11, weight: .black))
                 .foregroundStyle(Color.black)
-                .frame(width: 11, height: 11)
+                .frame(width: badgeDiameter, height: badgeDiameter)
                 .background(NotchPalette.success, in: Circle())
                 .overlay {
                     Circle()
@@ -813,6 +836,7 @@ private struct CompletedStatusIcon: View {
                 }
                 .offset(x: 6, y: 6)
         }
+        .offset(x: compositeOffset, y: compositeOffset)
         .frame(width: size, height: size)
         .onAppear {
             guard motionEnabled else { return }

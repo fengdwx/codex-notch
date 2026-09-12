@@ -5,7 +5,7 @@ import XCTest
 
 /// Opt-in visual fixture using the production view and panel, with synthetic data.
 /// NOTCH_MOTION_CAPTURE=/absolute/path.mov swift test --filter NotchMotionCaptureTests
-/// Add NOTCH_MOTION_CAPTURE_SCENARIO=dense or empty for readability checks.
+/// Add NOTCH_MOTION_CAPTURE_SCENARIO=dense, empty or completed for visual checks.
 final class NotchMotionCaptureTests: XCTestCase {
     @MainActor
     func testRecordOpeningCollapseAndReentry() async throws {
@@ -17,6 +17,7 @@ final class NotchMotionCaptureTests: XCTestCase {
         let scenario = ProcessInfo.processInfo.environment["NOTCH_MOTION_CAPTURE_SCENARIO"]
         let dense = scenario == "dense"
         let empty = scenario == "empty"
+        let completed = scenario == "completed"
         let expandedHeight = dense
             ? NotchExpandedLayout.taskContentSize(conversationCount: 5, isResetScheduleExpanded: true,
                                                   resetCreditCount: 3, hasFiveHourWindow: true).height + 30
@@ -53,15 +54,16 @@ final class NotchMotionCaptureTests: XCTestCase {
             windows: windows, resetCreditsAvailable: credits.count, resetCredits: credits, fetchedAt: now
         )
         let conversations = sessions.enumerated().map { index, session in
-            ConversationSummary(session: session, activity: dense && index > 1
+            ConversationSummary(session: session, activity: completed || (dense && index > 1)
                                 ? .completed(completedAt: now.addingTimeInterval(-300))
                                 : .running(startedAt: session.startedAt))
         }
-        let content = ExpandedContent(sessions: empty ? [] : Array(sessions.prefix(dense ? 2 : sessions.count)),
+        let content = ExpandedContent(sessions: empty || completed ? [] : Array(sessions.prefix(dense ? 2 : sessions.count)),
                                       conversations: empty ? [] : conversations,
                                       headerConversation: nil, usage: usage)
         let closed = empty ? NotchPresentationState.quotaCompact(nil)
-            : .workingCompact(primary: sessions[0], count: content.sessions.count, usage: usage)
+            : (completed ? .completedCompact(sessions[0], usage: usage)
+               : .workingCompact(primary: sessions[0], count: content.sessions.count, usage: usage))
         let opened = NotchPresentationState.expanded(content)
         let model = NotchViewModel()
         let controller = NotchWindowController()

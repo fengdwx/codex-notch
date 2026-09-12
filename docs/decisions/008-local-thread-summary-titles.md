@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [CONVERSATION-TITLE-041, PRIVACY-BOUNDARY-005, ACTIVITY-STATE-004]
 supersedes: []
-superseded_by: null
+superseded_by: 039-task-names-and-floating-icon-alignment.md
 owner: project-maintainer
 created_at: 2026-07-26
 last_verified_commit: null
