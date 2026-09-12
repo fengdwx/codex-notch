@@ -8,22 +8,23 @@ enum NotchPresentationMotion {
     // Expansion has a restrained rebound inside a slightly larger canvas.
     // Collapse is critically damped so it never shrinks into the camera gap.
     static let expand = Animation.spring(
-        response: 0.48,
+        response: 0.42,
         dampingFraction: 0.80,
         blendDuration: 0
     )
     static let collapse = Animation.spring(
-        response: 0.38,
+        response: 0.45,
         dampingFraction: 1,
         blendDuration: 0
     )
 
-    // Keep content timing independent from the spring: reveal after the shell
-    // starts opening, and clear the details before the shell finishes closing.
-    static let detailTransition: AnyTransition = .asymmetric(
-        insertion: .opacity.animation(.easeOut(duration: 0.18).delay(0.10)),
-        removal: .opacity.animation(.easeOut(duration: 0.10))
-    )
+    // Move the laid-out detail layer with the shell. A delayed insertion and
+    // 0.10s removal left an empty black slab for most of each transition.
+    // Top-anchored scaling preserves text layout while visually gathering it
+    // toward the compact header; opacity finishes over the same movement.
+    static let detailTransition: AnyTransition = .scale(scale: 0.8, anchor: .top)
+        .combined(with: .opacity)
+        .animation(.smooth(duration: 0.35))
 
     static func animation(forExpanding isExpanding: Bool) -> Animation {
         isExpanding ? expand : collapse

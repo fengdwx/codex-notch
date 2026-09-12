@@ -60,8 +60,9 @@ contracts:
       mouse interception after settlement. Host animated SwiftUI inside an
       AppKit canvas so content animation cannot resize the owning panel.
       Keep the compact header outside detail fades. Details retain their final
-      layout width during the shell transition, appear after expansion starts,
-      and fade out early during collapse; interpolate the outer corner radius.
+      layout width during the shell transition. Scale details gently from the
+      top while fading them with the shell, without a delayed blank opening or
+      a fast cut to an empty black card on collapse; interpolate the outer corner radius.
       Disabled motion and hidden recovery
       settle immediately. Preserve the static green completion cue and absence
       of quota fireworks from NOTCH-LAYOUT-038.
@@ -79,6 +80,7 @@ contracts:
       - Tests/CodexNotchTests/FloatingCenterTests.swift
       - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
       - Tests/CodexNotchTests/NotchRuntimePerformanceTests.swift
+      - Tests/CodexNotchTests/NotchMotionCaptureTests.swift
       - docs/decisions/035-spring-card-transitions.md
       - "manual: repeatedly hover/leave/reenter, confirm top anchoring and final frame recovery; verify motion off and Reduce Motion on real hardware"
     supersedes: [NOTCH-MOTION-003]
