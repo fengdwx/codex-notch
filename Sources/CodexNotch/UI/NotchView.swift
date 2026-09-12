@@ -111,7 +111,9 @@ final class NotchViewModel: ObservableObject {
                 || surfaceSize.width > self.surfaceSize.width + 0.5
                 || (isResetScheduleExpanded && !self.isResetScheduleExpanded)
             withAnimation(
-                NotchPresentationMotion.animation(forExpanding: expands),
+                NotchPresentationMotion.animation(
+                    forExpanding: expands, isCollapsingCard: wasExpanded && !willBeExpanded
+                ),
                 completionCriteria: .removed
             ) {
                 applyUpdate()
@@ -350,18 +352,24 @@ struct NotchView: View {
                     .transition(motionEnabled ? NotchPresentationMotion.detailTransition : .identity)
             }
 
-            compactContent
-                .frame(width: model.compactWidth, height: model.compactHeight)
-                .transition(.identity)
+            if isExpanded {
+                compactContent
+                    .frame(width: model.compactWidth, height: model.compactHeight)
+                    .transition(.identity)
+            } else {
+                compactContent
+                    .frame(width: model.compactWidth, height: model.compactHeight)
+                    .transition(motionEnabled ? NotchPresentationMotion.compactReturnTransition : .identity)
+            }
         }
         // The panel is already at its final size before this state changes.
         // Animate this one visible surface from the compact island downward;
         // clear canvas around it never becomes part of the notch itself.
-        .frame(
-            width: surfaceSize.width,
-            height: surfaceSize.height,
-            alignment: .top
-        )
+        .modifier(NotchAnimatedSurfaceFrame(
+            size: surfaceSize,
+            compactSize: isHidden ? .zero : CGSize(width: model.compactWidth, height: model.compactHeight),
+            layoutMode: model.layoutMode
+        ))
         .contentShape(surfaceShape)
         .background {
             NotchSurfaceBackground(

@@ -20,7 +20,7 @@ contracts:
       completion, expansion, hiding, detachment, disabled animation or Reduce
       Motion. Keep static status cues. Do not render the legacy battle or add
       a center on physical-notch layouts. Preserve old battle assets/tests as
-      historical regression coverage. Card transitions follow NOTCH-MOTION-004.
+      historical regression coverage. Card transitions follow NOTCH-MOTION-005.
     rationale: The user rejected the busy battle, fog and thick light bars, chose four alternatives, and requested calmer typography.
     source: user-selected-designs
     owner: project-maintainer
@@ -44,7 +44,7 @@ contracts:
 
   - id: NOTCH-MOTION-004
     title: A top-anchored spring expands inside a fixed temporary canvas
-    status: active
+    status: superseded
     statement: >-
       With app animations enabled and Reduce Motion off, animate the visible
       card from its fixed top center: expansion has a restrained spring rebound
@@ -84,13 +84,55 @@ contracts:
       - docs/decisions/035-spring-card-transitions.md
       - "manual: repeatedly hover/leave/reenter, confirm top anchoring and final frame recovery; verify motion off and Reduce Motion on real hardware"
     supersedes: [NOTCH-MOTION-003]
+    superseded_by: NOTCH-MOTION-005
+    last_verified_commit: null
+
+  - id: NOTCH-MOTION-005
+    title: Measured collapse with a bounded return and content dissolve
+    status: active
+    statement: >-
+      Preserve the accepted opening spring and insertion transition. With motion
+      enabled, close the card using the reference demonstration's 0.5s curve:
+      gather quickly, briefly pass the compact target, then return to rest.
+      A floating bar may compress by less than 6 percent in height and 0.8 percent
+      in width with a smooth bound; its centered 22pt icons remain contained.
+      Physical-notch surfaces must never compress below their compact camera-safe
+      width or height. Keep the screen-top center fixed throughout. Details keep
+      their layout and dissolve with a 6pt blur, 0.96 scale and opacity; the compact
+      header returns with a short blur/fade instead of an abrupt content swap.
+      Expanded reset-detail resizing retains its existing spring.
+      Preserve NOTCH-MOTION-004 fixed temporary canvas preparation, native hosting
+      isolation, completion-driven reclamation, stale-completion rejection,
+      clock-update stability and reentry behavior. Never resize NSPanel per frame.
+      Reclaim off-card hit areas after motion finishes. Disabled motion, Reduce
+      Motion and hidden recovery settle immediately with static state cues.
+      Preserve quota semantics and the absence of completion fireworks.
+    rationale: The user accepted opening but requested the dynamic collapse in the supplied reference recording; its measured undershoot and return supersede a critically damped close.
+    source: user-request-and-recording
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [notch-screens, floating-bar, hover-collapse, hover-reentry, canvas-settlement]
+      exclude: [opening-redesign, quota-semantics, task-data, frame-per-frame-panel-resizing]
+    examples:
+      positive: The floating island closes into a slight compression, recovers smoothly, and shows its compact icons while a quick reentry continues to open.
+      negative: A monotonic close with no return, a blank compact bar until settlement, clipped icons, movement of the top center, stale canvas recovery, or motion under Reduce Motion.
+    guards:
+      - Tests/CodexNotchTests/NotchCollapseMotionTests.swift
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePerformanceTests.swift
+      - Tests/CodexNotchTests/NotchMotionCaptureTests.swift
+      - docs/decisions/036-measured-collapse-motion.md
+      - "manual: record native collapse and reentry; confirm blur, compact header return, final frame recovery, physical camera clearance and Reduce Motion"
+    supersedes: [NOTCH-MOTION-004]
     superseded_by: null
     last_verified_commit: null
 
   - id: SETTINGS-PREFERENCES-018
     title: Language, history, motion and floating center settings apply live
     status: active
-    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-051. Card transitions now follow the motion preference and Reduce Motion under NOTCH-MOTION-004; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
+    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-051. Card transitions now follow the motion preference and Reduce Motion under NOTCH-MOTION-005; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
     rationale: Center choices need live visual comparison and persistence, and the newly requested spring transition supersedes the earlier always-static exception.
     source: user-request
     owner: project-maintainer
