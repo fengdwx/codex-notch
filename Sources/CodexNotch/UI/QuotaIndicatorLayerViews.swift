@@ -15,6 +15,7 @@ class QuotaAnimatedLayerView: NSView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        needsLayout = true
         stopObservingWindow()
 
         if let window {
@@ -28,6 +29,11 @@ class QuotaAnimatedLayerView: NSView {
         }
 
         refreshLayerAnimation()
+    }
+
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        needsLayout = true
     }
 
     override func viewWillMove(toSuperview newSuperview: NSView?) {
@@ -147,7 +153,8 @@ final class QuotaGradientLayerView: QuotaAnimatedLayerView {
     override func layout() {
         super.layout()
         CATransaction.performWithoutAnimation {
-            gradientLayer.bounds = bounds
+            gradientLayer.contentsScale = window?.backingScaleFactor ?? layer?.contentsScale ?? 1
+            gradientLayer.bounds = CGRect(origin: .zero, size: bounds.size)
             gradientLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
         }
     }

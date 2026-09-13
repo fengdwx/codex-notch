@@ -105,6 +105,40 @@ contracts:
     superseded_by: null
     last_verified_commit: null
 
+  - id: QUOTA-ALIGNMENT-056
+    title: Quota layers stay concentric in offset and resized hosts
+    status: active
+    statement: >-
+      Preserve SETTINGS-MOTION-021 and all inherited quota values, colors,
+      trim direction, dimensions, positions, glint timing, halo timing and
+      visibility gates. Gradient and halo content use layer-local zero-origin
+      bounds, positioned at the hosting view's bounds center. A nonzero view
+      bounds origin must not be applied twice. The halo remains circular in a
+      rectangular host and stays concentric with the quota ring. Preserve
+      the hosting window's pixel density for managed gradient and halo layers,
+      refreshing after attachment or backing-scale changes. Preserve
+      the independent inner glint, readable number, existing clearance,
+      fixed-canvas transitions and animation removal when inactive.
+    rationale: The user reported a pale ring displaced from the quota indicator; the halo duplicated a nonzero hosting bounds origin in both its frame and path.
+    source: user-reported-incident
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [quota-layer-geometry, running-halo, inner-ring-glint]
+      exclude: [window-geometry, quota-values, task-state, animation-redesign, releases]
+    examples:
+      positive: Offset and resized hosts preserve one center for the quota gradient, inner glint and circular halo, including after repeated layout.
+      negative: Applying the view bounds origin to the path a second time moves the pale halo away from the quota ring or stretches it into an ellipse.
+    guards:
+      - Tests/CodexNotchTests/QuotaRingAlignmentTests.swift
+      - Tests/CodexNotchTests/AdditiveRunningMotionTests.swift
+      - Tests/CodexNotchTests/QuotaRunningHaloMotionTests.swift
+      - docs/decisions/054-concentric-quota-layers.md
+      - "manual: inspect the actual running notch at multiple glint phases and after hover expansion/collapse; confirm the inner glint and outer halo share the quota center"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null
+
   - id: CI-VERIFICATION-001
     title: Verify release source with a supported SDK before publication
     status: active

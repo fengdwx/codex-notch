@@ -1257,7 +1257,7 @@ private struct QuotaWaveBall: View {
     }
 }
 
-private struct QuotaRing: View {
+struct QuotaRing: View {
     let style: QuotaDisplayStyle
     let window: UsageWindow?
     let activity: QuotaRingActivity

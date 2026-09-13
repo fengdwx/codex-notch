@@ -108,14 +108,23 @@ final class QuotaRunningHaloLayerView: QuotaAnimatedLayerView {
             QuotaRunningHaloMotion.visualDiameter,
             min(bounds.width, bounds.height)
         )
-        let inset = (
-            min(bounds.width, bounds.height) - diameter
-        ) / 2 + QuotaRunningHaloMotion.lineWidth / 2
-        let pathRect = bounds.insetBy(dx: inset, dy: inset)
+        // AppKit's view bounds may have a nonzero origin. The shape path is
+        // local to its own layer, so applying that origin to both the frame
+        // and path would move the halo away from the quota's center.
+        let localBounds = CGRect(origin: .zero, size: bounds.size)
+        let pathDiameter = diameter - QuotaRunningHaloMotion.lineWidth
+        let pathRect = CGRect(
+            x: localBounds.midX - pathDiameter / 2,
+            y: localBounds.midY - pathDiameter / 2,
+            width: pathDiameter,
+            height: pathDiameter
+        )
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        haloLayer.frame = bounds
+        haloLayer.contentsScale = window?.backingScaleFactor ?? layer?.contentsScale ?? 1
+        haloLayer.bounds = localBounds
+        haloLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
         haloLayer.path = CGPath(ellipseIn: pathRect, transform: nil)
         CATransaction.commit()
     }
