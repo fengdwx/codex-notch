@@ -244,7 +244,7 @@ final class FloatingCenterTests: XCTestCase {
                 let start = try XCTUnwrap(shimmer.fromValue as? NSNumber).doubleValue
                 let end = try XCTUnwrap(shimmer.toValue as? NSNumber).doubleValue
                 XCTAssertEqual(end - start, size.width, accuracy: 0.001)
-                XCTAssertEqual(shimmer.duration, 6, "Use the requested slower cadence")
+                XCTAssertEqual(shimmer.duration, 5, "Use the requested slightly faster cadence")
                 XCTAssertTrue(CATransform3DIsIdentity(root.transform), "Only the masked light moves; glyph geometry stays fixed")
             }
             view.viewWillMove(toWindow: nil)

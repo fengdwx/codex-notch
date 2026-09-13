@@ -125,7 +125,7 @@ final class FloatingCenterLayerView: QuotaAnimatedLayerView {
             animation.fromValue = 0
             animation.toValue = bounds.width
             animation.timingFunction = CAMediaTimingFunction(name: .linear)
-            animation.duration = 6
+            animation.duration = 5
             animation.repeatCount = .infinity
             animation.preferredFrameRateRange = QuotaLayerAnimationPolicy.frameRateRange
             target.add(animation, forKey: Self.animationKey)

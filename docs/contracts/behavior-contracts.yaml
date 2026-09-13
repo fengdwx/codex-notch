@@ -175,7 +175,7 @@ contracts:
 
   - id: FLOATING-CENTER-055
     title: Signature light moves continuously without an all-dim interval
-    status: active
+    status: superseded
     statement: >-
       Preserve FLOATING-CENTER-054 state behavior, six-second cadence, text
       styling and geometry, static status dot, settings and visibility gates.
@@ -202,6 +202,34 @@ contracts:
       - docs/decisions/042-seamless-signature-light.md
       - "manual: record more than one full cycle and inspect short, Chinese and custom text for smooth motion and no dark gap"
     supersedes: [FLOATING-CENTER-054]
+    superseded_by: FLOATING-CENTER-056
+    last_verified_commit: null
+
+  - id: FLOATING-CENTER-056
+    title: Seamless signature light repeats every five seconds
+    status: active
+    statement: >-
+      Preserve FLOATING-CENTER-055 seamless gradient, illumination floor,
+      constant motion, typography, geometry, static status dot and all-state
+      continuity. Shorten only the signature period from six to five seconds
+      at the user's request. Clock and task-state updates retain the phase;
+      expansion, hiding, detachment, disabled animations and Reduce Motion
+      still stop it. Retain existing frame cadence, settings and other styles.
+    rationale: After accepting the continuous light, the user requested a slightly faster sweep.
+    source: user-confirmed-design-adjustment
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [floating-bar, personal-signature, center-motion]
+      exclude: [quota-semantics, icon-artwork, card-transitions, task-data, physical-notch-center, releases]
+    examples:
+      positive: The same seamless light completes one text-width in five seconds, including while completed or idle.
+      negative: A new pause or dark interval, changed text brightness or geometry, or speeding up another center style.
+    guards:
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - docs/decisions/043-faster-signature-light.md
+      - "manual: record more than one five-second cycle in the installed floating bar and confirm continuous movement"
+    supersedes: [FLOATING-CENTER-055]
     superseded_by: null
     last_verified_commit: null
 
@@ -382,7 +410,7 @@ contracts:
   - id: SETTINGS-PREFERENCES-018
     title: Language, history, motion and floating center settings apply live
     status: active
-    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-055. Card transitions now follow the motion preference and Reduce Motion under NOTCH-READABILITY-007; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
+    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-056. Card transitions now follow the motion preference and Reduce Motion under NOTCH-READABILITY-007; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
     rationale: Center choices need live visual comparison and persistence, and the newly requested spring transition supersedes the earlier always-static exception.
     source: user-request
     owner: project-maintainer

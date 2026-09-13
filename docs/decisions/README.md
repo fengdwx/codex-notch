@@ -26,6 +26,7 @@ Record decisions here only when they affect active behavior contracts, could be 
 | [033-mirrored-display-floating-island](033-mirrored-display-floating-island.md) | active | `NOTCH-VISIBILITY-050` | Keep the enabled island visible in the mirror master's current coordinate space |
 | [040-running-signature-shimmer](040-running-signature-shimmer.md) | superseded | `FLOATING-CENTER-053` | Restore a soft masked text highlight while retaining signature geometry and motion gates |
 | [041-continuous-signature-shimmer](041-continuous-signature-shimmer.md) | superseded | `FLOATING-CENTER-054` | Keep personal signatures shimmering slowly through running, completion and idle |
-| [042-seamless-signature-light](042-seamless-signature-light.md) | active | `FLOATING-CENTER-055` | Move a repeating light band at constant speed without pauses or dark intervals |
+| [042-seamless-signature-light](042-seamless-signature-light.md) | superseded | `FLOATING-CENTER-055` | Move a repeating light band at constant speed without pauses or dark intervals |
+| [043-faster-signature-light](043-faster-signature-light.md) | active | `FLOATING-CENTER-056` | Shorten the seamless signature light period to five seconds |
 
 New decisions must include `status`, `contract_ids`, rejected alternatives, and consequences. When a decision changes, retain the old document and point to the new one with `superseded_by`.
