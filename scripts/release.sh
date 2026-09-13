@@ -59,5 +59,6 @@ rmdir "$DMG_MOUNT_DIR"
 DMG_MOUNT_DIR=""
 
 shasum -a 256 "$DMG_PATH" | tee "$DMG_PATH.sha256"
+"$ROOT_DIR/scripts/sign_update.sh" "$ARCHIVE_PATH" "$DIST_DIR/appcast.xml"
 echo "Release ZIP: $ARCHIVE_PATH"
 echo "Release DMG: $DMG_PATH"

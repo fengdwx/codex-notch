@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.2.0</string>
+	<string>0.2.1</string>
 	<key>CFBundleVersion</key>
-	<string>18</string>
+	<string>19</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>LSUIElement</key>
@@ -28,5 +28,19 @@
 	<true/>
 	<key>NSPrefersDisplaySafeAreaCompatibilityMode</key>
 	<false/>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/fengdwx/codex-notch/main/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>0wa4TuNxXo0ma15P80Q9RnMijqRTPB6zmL+LPopSoU8=</string>
+	<key>SUEnableAutomaticChecks</key>
+	<false/>
+	<key>SUAutomaticallyUpdate</key>
+	<false/>
+	<key>SUAllowsAutomaticUpdates</key>
+	<false/>
+	<key>SUEnableSystemProfiling</key>
+	<false/>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
 </dict>
 </plist>

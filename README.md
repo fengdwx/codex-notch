@@ -23,6 +23,11 @@ Your browser, IDE, or any other app can be frontmost—your quota remains visibl
 
 <p align="center"><sub>Real app capture with English product callouts: weekly quota, exact reset time, every reset-credit expiry, cross-app visibility, and live task status.</sub></p>
 
+## New in 0.2.1
+
+- Bring an already-open Settings window back to the front.
+- Download, verify, install, and relaunch updates inside the app. Install 0.2.1 manually once when upgrading from an earlier version.
+
 ## New in 0.2.0
 
 - Gentle hover feedback, a spring opening with a small landing rebound, and a smoother collapse.
@@ -99,7 +104,7 @@ Hover over the physical notch and use **Settings** at the lower-right of the exp
 - Choose a floating-bar center style and set a signature of up to 12 characters
 - Choose Chinese or English for the app interface (English by default)
 - Show 0–5 recent conversations in the expanded card
-- Manually check the latest stable release and open its GitHub download page
+- Check for stable updates and download, install, and relaunch inside the app (from 0.2.1)
 - Apply changes immediately and save them locally
 - Respect Reduce Motion while preserving static status cues
 
@@ -123,7 +128,7 @@ Displays without a notch, including mirrored displays, use a floating bar center
 - Task state is parsed only from rollout JSONL files in `CODEX_HOME/sessions`.
 - Conversation labels use the latest short `thread_name` in `CODEX_HOME/session_index.jsonl`, falling back to `threads.title` in read-only `CODEX_HOME/state_5.sqlite`. Rollout message bodies, `first_user_message`, and `preview` are ignored when resolving titles.
 - CodexNotch never records Authorization headers, complete usage responses, user-message bodies, or conversation-title caches.
-- The manual update check reads only public GitHub release metadata; it sends no Codex credentials, quota data, task data, or user content.
+- Manual update checks read a public GitHub appcast and download signed release archives; they send no Codex credentials, quota data, task data, or user content.
 
 The usage endpoint is an internal ChatGPT endpoint and its fields may change. If it fails, CodexNotch keeps the last successful quota while task monitoring continues.
 
@@ -144,7 +149,7 @@ Create distributable ZIP and DMG archives:
 ./scripts/release.sh
 ```
 
-The release script runs tests, builds the release app, validates its code signature, produces ZIP and DMG archives plus SHA-256 files, and mounts the DMG to verify its bundled app. The DMG improves installation flow; it does not replace Developer ID signing or notarization. To skip signing entirely:
+The release script runs tests, builds the release app, validates its code signature, produces ZIP and DMG archives plus SHA-256 files, mounts the DMG to verify its bundled app, and signs the ZIP to generate an update feed using the publisher’s Keychain. See [the publisher update workflow](docs/updating.md). The DMG improves installation flow; it does not replace Developer ID signing or notarization. To skip signing entirely:
 
 ```sh
 SIGN_IDENTITY=none ./scripts/build_app.sh
@@ -154,7 +159,7 @@ SIGN_IDENTITY=none ./scripts/build_app.sh
 
 ## Current boundaries
 
-CodexNotch is currently in its 0.x release series. It does not terminate Codex tasks, estimate cost, sync to the cloud, send remote notifications, automatically download or install updates, animate a pet, or support Mac App Store distribution. ChatGPT Classic is not a monitored target.
+CodexNotch is currently in its 0.x release series. It does not terminate Codex tasks, estimate cost, sync to the cloud, send remote notifications, download or install updates without user action, animate a pet, or support Mac App Store distribution. ChatGPT Classic is not a monitored target.
 
 ## License
 

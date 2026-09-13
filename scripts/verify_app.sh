@@ -16,6 +16,31 @@ INFO_PLIST="$APP_PATH/Contents/Info.plist"
 
 plutil -lint "$INFO_PLIST"
 
+FRAMEWORK="$APP_PATH/Contents/Frameworks/Sparkle.framework"
+[[ -L "$FRAMEWORK/Versions/Current" && -x "$FRAMEWORK/Sparkle" ]] || {
+    echo "error: Sparkle framework or its symlinks are missing" >&2; exit 1;
+}
+[[ -s "$APP_PATH/Contents/Resources/Sparkle-LICENSE.txt" ]] || {
+    echo "error: Sparkle third-party notices missing" >&2; exit 1;
+}
+[[ -x "$FRAMEWORK/Versions/B/Autoupdate" ]] || {
+    echo "error: Sparkle installer helper missing" >&2; exit 1;
+}
+[[ "$(plutil -extract SUFeedURL raw -o - "$INFO_PLIST")" == "https://raw.githubusercontent.com/fengdwx/codex-notch/main/appcast.xml" ]] || {
+    echo "error: unexpected update feed" >&2; exit 1;
+}
+[[ -n "$(plutil -extract SUPublicEDKey raw -o - "$INFO_PLIST")" ]] || {
+    echo "error: update verification public key missing" >&2; exit 1;
+}
+for FLAG in SUEnableAutomaticChecks SUAutomaticallyUpdate SUAllowsAutomaticUpdates SUEnableSystemProfiling; do
+    [[ "$(plutil -extract "$FLAG" raw -o - "$INFO_PLIST")" == "false" ]] || {
+        echo "error: $FLAG must be false" >&2; exit 1;
+    }
+done
+[[ "$(plutil -extract SUVerifyUpdateBeforeExtraction raw -o - "$INFO_PLIST")" == "true" ]] || {
+    echo "error: updates must be verified before extraction" >&2; exit 1;
+}
+
 ICON_NAME="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$INFO_PLIST" 2>/dev/null || true)"
 ICON_PATH="$APP_PATH/Contents/Resources/${ICON_NAME}.icns"
 [[ "$ICON_NAME" == "CodexNotch" ]] || {

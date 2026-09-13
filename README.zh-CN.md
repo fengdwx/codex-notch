@@ -23,6 +23,11 @@
 
 <p align="center"><sub>真实 App 演示：周额度、精确重置时间、全部重置额度到期时间、跨应用持续可见，以及任务运行状态。</sub></p>
 
+## 0.2.1 更新
+
+- 设置窗口已打开时，再次点击设置会将它带到前面。
+- 在应用内下载、校验、安装更新并重启。从旧版本升级时，请先手动安装一次 0.2.1。
+
 ## 0.2.0 更新
 
 - 悬停时轻微预撑，展开后带一点回弹，收回过渡更连贯。
@@ -99,7 +104,7 @@ CodexNotch 默认读取 `~/.codex`。如果你的 Codex 使用其他目录，可
 - 选择浮动条中间样式，并设置最多 12 个字符的个人签名
 - 选择中文或英文界面（默认英文）
 - 设置展开卡片显示的最近对话数量（0–5，设置为 0 可隐藏最近对话）
-- 手动检查最新正式版本，并打开 GitHub 下载页
+- 检查最新正式版本，在应用内下载、安装并重启（0.2.1 起支持）
 - 修改后立即生效，并保存在本机
 - 开启 Reduce Motion 后保留静态状态，减少动态效果
 
@@ -123,7 +128,7 @@ CodexNotch 默认读取 `~/.codex`。如果你的 Codex 使用其他目录，可
 - 任务状态只解析本地 `CODEX_HOME/sessions` 中的 rollout JSONL 文件。
 - 对话标题按 thread ID 优先匹配 `CODEX_HOME/session_index.jsonl` 中最新的简短 `thread_name`，再回退到只读 `CODEX_HOME/state_5.sqlite` 中的 `threads.title`；解析标题时不读取 rollout 消息正文、`first_user_message` 或 `preview`。
 - 不记录 Authorization header、完整 usage 响应、用户消息正文或对话标题缓存。
-- 手动检查更新只读取 GitHub 的公开 Release 元数据，不发送 Codex 凭据、额度数据、任务数据或用户内容。
+- 手动检查更新读取 GitHub 公开更新列表，并下载经过签名的安装包；不发送 Codex 凭据、额度数据、任务数据或用户内容。
 
 usage 接口属于 ChatGPT 内部接口，字段未来可能变化。接口异常时会保留最后一次成功额度，任务监听仍会继续工作。
 
@@ -144,7 +149,7 @@ open dist/CodexNotch.app
 ./scripts/release.sh
 ```
 
-脚本会运行测试、构建 release `.app`、校验代码签名，生成 ZIP、DMG 及各自的 SHA-256 文件，并挂载 DMG 验证其中的应用。DMG 改善安装流程，但不等同于 Developer ID 签名或苹果公证。只想跳过签名时可使用：
+脚本会运行测试、构建 release `.app`、校验代码签名，生成 ZIP、DMG 及各自的 SHA-256 文件，挂载 DMG 验证其中的应用，并使用发布者钥匙串为 ZIP 签名、生成更新列表。具体步骤见[更新发布流程](docs/updating.md)。DMG 改善安装流程，但不等同于 Developer ID 签名或苹果公证。只想跳过签名时可使用：
 
 ```sh
 SIGN_IDENTITY=none ./scripts/build_app.sh
@@ -154,7 +159,7 @@ SIGN_IDENTITY=none ./scripts/build_app.sh
 
 ## 当前边界
 
-CodexNotch 目前处于 0.x 版本阶段，不提供终止 Codex 任务、成本统计、云同步、远程通知、自动下载安装、宠物动画或 Mac App Store 分发。ChatGPT Classic 不属于监听目标。
+CodexNotch 目前处于 0.x 版本阶段，不提供终止 Codex 任务、成本统计、云同步、远程通知、未经用户操作自动下载安装、宠物动画或 Mac App Store 分发。ChatGPT Classic 不属于监听目标。
 
 ## 开源许可
 

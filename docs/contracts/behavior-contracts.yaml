@@ -1,4 +1,38 @@
 contracts:
+  - id: APP-UPDATE-002
+    title: Manually initiated signed updates install inside the app
+    status: active
+    statement: >-
+      Check for Updates must use one retained Sparkle updater to check the public
+      stable appcast and offer download, signature verification, installation,
+      and relaunch inside the app. Checks and downloads are manually initiated;
+      profiling is disabled. Only public release information is exchanged, with
+      no Codex credentials, conversations, or quota data. Invalid archives must
+      be rejected before extraction and leave the installed app intact. Release
+      packaging must sign archives with the project key in the publisher's
+      Keychain and produce an appcast; no private key belongs in the repository,
+      app, or release assets. Existing versions without Sparkle need one manual
+      installation of the first updater-enabled release.
+    rationale: The user requested native download and installation and explicitly authorized generating and storing a dedicated publisher signing key locally.
+    source: user-request
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [settings, update-check, packaging, update-signing, app-installation]
+      exclude: [apple-developer-account, notarization, unattended-background-updates, quota-fetching, task-monitoring]
+    examples:
+      positive: A manual check offers a newer stable build, installs its valid signed archive and relaunches it with preferences preserved; a modified archive is rejected with the current app still usable.
+      negative: Opening a browser instead of installing, sending login data to the update server, embedding a private key, or replacing an app with an unverified download.
+    guards:
+      - scripts/verify_app.sh
+      - scripts/sign_update.sh
+      - Tests/CodexNotchTests/AppUpdaterConfigurationTests.swift
+      - Tests/CodexNotchTests/UpdateArchiveVerificationTests.swift
+      - "manual: exercise Sparkle download/install/relaunch from a lower build and reject a tampered archive without replacing it"
+    supersedes: [APP-UPDATE-001]
+    superseded_by: null
+    last_verified_commit: null
+
   - id: SETTINGS-WINDOW-019
     title: Every Settings request activates and reveals the existing window
     status: active
@@ -1614,7 +1648,7 @@ contracts:
 
   - id: APP-UPDATE-001
     title: Settings can manually check the latest stable release without private data
-    status: active
+    status: superseded
     statement: >-
       Settings must provide a manual update-check action that reads only the
       public GitHub latest-release metadata endpoint with an unauthenticated
@@ -1637,7 +1671,7 @@ contracts:
       - Tests/CodexNotchTests/AppUpdateCheckerTests.swift
       - "manual: open Settings, click Check for Updates, and verify the current release result and download link"
     supersedes: []
-    superseded_by: null
+    superseded_by: APP-UPDATE-002
     last_verified_commit: null
 
   - id: ACTIVITY-STATE-003

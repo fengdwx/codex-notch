@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [APP-UPDATE-001]
 supersedes: []
-superseded_by: null
+superseded_by: 047-sparkle-in-app-updates
 owner: project-maintainer
 created_at: 2026-08-05
 last_verified_commit: null
