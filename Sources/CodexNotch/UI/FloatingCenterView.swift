@@ -65,22 +65,35 @@ struct FloatingCenterView: View {
     }
 
     private var signatureLabel: some View {
+        signatureGlyphs
+            .foregroundStyle(Color.white.opacity(style == .signature && shouldAnimate ? 0.3 : 0.7))
+            .overlay {
+                if style == .signature {
+                    motionLayer.mask(signatureGlyphs.foregroundStyle(Color.white))
+                }
+            }
+    }
+
+    private var signatureGlyphs: some View {
         Text(signature)
             .font(.system(size: 11, weight: .regular, design: .monospaced))
             .tracking(0.2)
-            .foregroundStyle(Color.white.opacity(0.7))
             .lineLimit(1)
             .truncationMode(.tail)
+    }
+
+    private var shouldAnimate: Bool {
+        FloatingCenterMotionPolicy.shouldAnimate(
+            style: style, activity: activity,
+            motionEnabled: motionEnabled, isExpanded: isExpanded
+        )
     }
 
     private var motionLayer: some View {
         FloatingCenterMotionLayer(
             style: style,
             activity: activity,
-            isAnimating: FloatingCenterMotionPolicy.shouldAnimate(
-                style: style, activity: activity,
-                motionEnabled: motionEnabled, isExpanded: isExpanded
-            )
+            isAnimating: shouldAnimate
         )
         .allowsHitTesting(false)
     }

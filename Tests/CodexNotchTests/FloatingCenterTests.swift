@@ -48,9 +48,10 @@ final class FloatingCenterTests: XCTestCase {
         XCTAssertNil(FloatingCenterText.elapsedText(activity: .running, startedAt: .distantPast, now: start))
     }
 
-    func testOnlyOrbitAndFlowRunAndAllMotionGatesStopThem() {
+    func testSignatureOrbitAndFlowRunAndAllMotionGatesStopThem() {
         for style in FloatingCenterStyle.allCases {
-            XCTAssertEqual(FloatingCenterMotionPolicy.shouldAnimate(style: style, activity: .running, motionEnabled: true, isExpanded: false), style == .orbit || style == .flow)
+            // FLOATING-CENTER-053 supersedes the static-signature exception.
+            XCTAssertEqual(FloatingCenterMotionPolicy.shouldAnimate(style: style, activity: .running, motionEnabled: true, isExpanded: false), style != .elapsed)
             for activity in [QuotaRingActivity.idle, .completed] {
                 XCTAssertFalse(FloatingCenterMotionPolicy.shouldAnimate(style: style, activity: activity, motionEnabled: true, isExpanded: false))
             }
@@ -60,9 +61,126 @@ final class FloatingCenterTests: XCTestCase {
     }
 
     @MainActor
+    func testHostedSignatureIncludesHighlightAndPreservesStaticStateGeometry() throws {
+        _ = NSApplication.shared
+        let suite = "FloatingSignatureTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(FloatingCenterStyle.signature.rawValue, forKey: FloatingCenterStyle.storageKey)
+        defaults.set("专注当下 Keep", forKey: FloatingCenterText.storageKey)
+        func content(_ activity: QuotaRingActivity, motion: Bool = true, expanded: Bool = false) -> some View {
+            FloatingCenterView(activity: activity, startedAt: .now, now: .now, isExpanded: expanded)
+                .environment(\.notchMotionEnabled, motion)
+                .defaultAppStorage(defaults)
+                .frame(width: 136, height: 30)
+        }
+        func findMotion(in view: NSView) -> FloatingCenterLayerView? {
+            if let motion = view as? FloatingCenterLayerView { return motion }
+            return view.subviews.lazy.compactMap { findMotion(in: $0) }.first
+        }
+        let hosting = NSHostingView(rootView: content(.running))
+        let panel = NSPanel(contentRect: NSRect(x: -10_000, y: 1_000, width: 136, height: 30),
+                            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.contentView = hosting
+        defer { panel.orderOut(nil) }
+        hosting.layoutSubtreeIfNeeded()
+        let highlight = try XCTUnwrap(findMotion(in: hosting), "Running signature must include the omitted text highlight")
+        XCTAssertTrue(highlight.animationIsRequested)
+        XCTAssertFalse(highlight.layerAnimationIsRunning, "Detached or invisible surfaces must not consume animation work")
+        let bounds = highlight.bounds
+        XCTAssertGreaterThan(bounds.width, 0)
+        XCTAssertGreaterThan(bounds.height, 0)
+        XCTAssertLessThanOrEqual(bounds.width, 110)
+        XCTAssertLessThanOrEqual(bounds.height, 30)
+        for state in [(QuotaRingActivity.completed, true, false), (.idle, true, false),
+                      (.running, false, false), (.running, true, true)] {
+            hosting.rootView = content(state.0, motion: state.1, expanded: state.2)
+            hosting.layoutSubtreeIfNeeded()
+            let stopped = try XCTUnwrap(findMotion(in: hosting))
+            XCTAssertFalse(stopped.animationIsRequested)
+            XCTAssertFalse(stopped.layerAnimationIsRunning)
+            XCTAssertEqual(stopped.bounds, bounds, "Stopping shimmer must not move or resize the signature")
+        }
+    }
+
+    @MainActor
+    func testVisibleSignatureAdvancesThroughClockUpdatesAndStopsOnCompletion() async throws {
+        // Like the screen-recording fixture, this check needs an unlocked
+        // interactive desktop. A skipped fixture is not visual acceptance.
+        guard ProcessInfo.processInfo.environment["NOTCH_SIGNATURE_FRAMES"] != nil else {
+            throw XCTSkip("Set NOTCH_SIGNATURE_FRAMES to sample live layers on an unlocked desktop")
+        }
+        _ = NSApplication.shared
+        let suite = "VisibleSignatureTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(FloatingCenterStyle.signature.rawValue, forKey: FloatingCenterStyle.storageKey)
+        defaults.set("Codex", forKey: FloatingCenterText.storageKey)
+        func content(_ activity: QuotaRingActivity) -> some View {
+            FloatingCenterView(activity: activity, startedAt: .now, now: .now, isExpanded: false)
+                .environment(\.notchMotionEnabled, true)
+                .defaultAppStorage(defaults)
+                .frame(width: 136, height: 30)
+                .background(Color.black)
+        }
+        func findMotion(in view: NSView) -> FloatingCenterLayerView? {
+            if let motion = view as? FloatingCenterLayerView { return motion }
+            return view.subviews.lazy.compactMap { findMotion(in: $0) }.first
+        }
+        let hosting = NSHostingView(rootView: content(.running))
+        let screen = try XCTUnwrap(NSScreen.main)
+        let panel = NSPanel(contentRect: NSRect(x: screen.visibleFrame.minX + 40, y: screen.visibleFrame.minY + 40, width: 136, height: 30),
+                            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.contentView = hosting
+        panel.hidesOnDeactivate = false
+        panel.level = .popUpMenu
+        panel.orderFrontRegardless()
+        defer { panel.orderOut(nil) }
+        hosting.layoutSubtreeIfNeeded()
+        try await Task.sleep(for: .milliseconds(200))
+        let highlight = try XCTUnwrap(findMotion(in: hosting))
+        XCTAssertTrue(highlight.layerAnimationIsRunning,
+                      "requested=\(highlight.animationIsRequested) attached=\(highlight.window != nil) hidden=\(highlight.isHiddenOrHasHiddenAncestor) bounds=\(highlight.bounds) sameWindow=\(highlight.window === panel) viewWindowVisible=\(highlight.window?.isVisible ?? false) viewWindowOcclusion=\(highlight.window?.occlusionState.rawValue ?? 0) panelVisible=\(panel.isVisible) occlusion=\(panel.occlusionState.rawValue) visibleBit=\(NSWindow.OcclusionState.visible.rawValue) screen=\(screen.frame)")
+        let glint = try XCTUnwrap(highlight.layer?.sublayers?.first { !($0.animationKeys()?.isEmpty ?? true) })
+        let initialBounds = highlight.bounds
+        var positions: [Double] = []
+        let samples = ProcessInfo.processInfo.environment["NOTCH_SIGNATURE_FRAMES"].map { URL(fileURLWithPath: $0) }
+        if let samples { try FileManager.default.createDirectory(at: samples, withIntermediateDirectories: true) }
+        for index in 0..<34 {
+            if index.isMultiple(of: 8) {
+                hosting.rootView = content(.running)
+                hosting.layoutSubtreeIfNeeded()
+            }
+            let x = try XCTUnwrap(glint.presentation()?.value(forKeyPath: "transform.translation.x") as? NSNumber)
+            positions.append(x.doubleValue)
+            XCTAssertEqual(highlight.bounds, initialBounds)
+            if let samples, index.isMultiple(of: 2),
+               let image = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 272, pixelsHigh: 60,
+                                            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+                                            isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+               let context = NSGraphicsContext(bitmapImageRep: image)?.cgContext {
+                context.scaleBy(x: 2, y: 2)
+                hosting.layer?.presentation()?.render(in: context)
+                try image.representation(using: .png, properties: [:])?.write(
+                    to: samples.appendingPathComponent(String(format: "frame-%02d.png", index)))
+            }
+            try await Task.sleep(for: .milliseconds(125))
+        }
+        XCTAssertGreaterThan(try XCTUnwrap(positions.max()) - XCTUnwrap(positions.min()), initialBounds.width,
+                             "The highlight must traverse the full text despite one-second view updates")
+        hosting.rootView = content(.completed)
+        hosting.layoutSubtreeIfNeeded()
+        XCTAssertFalse(highlight.animationIsRequested)
+        XCTAssertFalse(highlight.layerAnimationIsRunning)
+        XCTAssertTrue(glint.animationKeys()?.isEmpty ?? true)
+        XCTAssertEqual(highlight.bounds, initialBounds)
+    }
+
+    @MainActor
     func testLayersRemainContainedAndDetachWithoutBackgroundAnimation() async throws {
-        for style in [FloatingCenterStyle.orbit, .flow] {
-            let size = style == .orbit ? NSSize(width: 18, height: 18) : NSSize(width: 96, height: 3)
+        for style in [FloatingCenterStyle.signature, .orbit, .flow] {
+            let size = style == .orbit ? NSSize(width: 18, height: 18)
+                : NSSize(width: 96, height: style == .signature ? 14 : 3)
             let view = FloatingCenterLayerView(frame: NSRect(origin: .zero, size: size))
             view.configure(style: style, activity: .running, isAnimating: true)
             view.layout()
@@ -73,10 +191,17 @@ final class FloatingCenterTests: XCTestCase {
             view.startLayerAnimation()
             let animated = try XCTUnwrap(layers.first { !($0.animationKeys()?.isEmpty ?? true) })
             let key = try XCTUnwrap(animated.animationKeys()?.first)
-            let motion = try XCTUnwrap(animated.animation(forKey: key) as? CABasicAnimation)
+            let motion = try XCTUnwrap(animated.animation(forKey: key))
             XCTAssertEqual(motion.preferredFrameRateRange.preferred, 8)
             if style == .flow {
-                XCTAssertEqual(motion.toValue as? CGFloat, size.width + 32)
+                XCTAssertEqual((motion as? CABasicAnimation)?.toValue as? CGFloat, size.width + 32)
+            } else if style == .signature {
+                let shimmer = try XCTUnwrap(motion as? CAKeyframeAnimation)
+                XCTAssertEqual(shimmer.keyPath, "transform.translation.x")
+                let positions = try XCTUnwrap(shimmer.values as? [NSNumber]).map(\.doubleValue)
+                XCTAssertLessThan(try XCTUnwrap(positions.first), try XCTUnwrap(positions.last))
+                XCTAssertGreaterThanOrEqual(shimmer.duration, 3, "Text shimmer should be gentle rather than flashing")
+                XCTAssertTrue(CATransform3DIsIdentity(root.transform), "Only the masked light moves; glyph geometry stays fixed")
             }
             view.viewWillMove(toWindow: nil)
             XCTAssertTrue(layers.allSatisfy { $0.animationKeys()?.isEmpty ?? true })

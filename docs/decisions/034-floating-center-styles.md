@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [FLOATING-CENTER-051, SETTINGS-PREFERENCES-018]
 supersedes: [016-sword-wanderer-battle-island]
-superseded_by: null
+superseded_by: 040-running-signature-shimmer
 owner: project-maintainer
 created_at: 2026-09-13
 ---

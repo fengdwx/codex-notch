@@ -65,19 +65,23 @@ final class FloatingCenterLayerView: QuotaAnimatedLayerView {
         track.fillColor = style == .flow ? color.withAlphaComponent(0.22).cgColor : nil
         track.strokeColor = style == .orbit ? color.withAlphaComponent(0.28).cgColor : nil
         track.lineWidth = 1
+        track.isHidden = style != .orbit && style != .flow
         bead.backgroundColor = color.cgColor
+        let highlight = style == .signature ? NSColor.white : color
         glint.colors = [
-            color.withAlphaComponent(0).cgColor,
-            color.withAlphaComponent(0.6).cgColor,
-            color.cgColor,
-            color.withAlphaComponent(0).cgColor
+            highlight.withAlphaComponent(0).cgColor,
+            highlight.withAlphaComponent(style == .signature ? 0.25 : 0.6).cgColor,
+            highlight.withAlphaComponent(style == .signature ? 0.85 : 1).cgColor,
+            highlight.withAlphaComponent(0).cgColor
         ]
-        glint.locations = [0, 0.35, 0.7, 1]
+        glint.locations = style == .signature ? [0, 0.3, 0.55, 1] : [0, 0.35, 0.7, 1]
         rotor.isHidden = style != .orbit
-        glint.isHidden = style != .flow || !isAnimating || activity != .running
+        glint.isHidden = (style != .flow && style != .signature) || !isAnimating || activity != .running
         CATransaction.commit()
         needsLayout = true
-        setAnimationRequested(isAnimating && activity == .running && (style == .orbit || style == .flow))
+        setAnimationRequested(isAnimating && FloatingCenterMotionPolicy.shouldAnimate(
+            style: style, activity: activity, motionEnabled: true, isExpanded: false
+        ))
     }
 
     override func layout() {
@@ -97,9 +101,10 @@ final class FloatingCenterLayerView: QuotaAnimatedLayerView {
         rotor.position = CGPoint(x: bounds.midX, y: bounds.midY)
         bead.frame = CGRect(x: bounds.width / 2 - 1.75, y: bounds.height - 3.75, width: 3.5, height: 3.5)
         bead.cornerRadius = 1.75
-        glint.bounds = CGRect(x: 0, y: 0, width: 32, height: bounds.height)
-        glint.position = CGPoint(x: -16, y: bounds.midY)
-        glint.cornerRadius = bounds.height / 2
+        let highlightWidth = style == .signature ? max(24, bounds.width * 0.8) : 32
+        glint.bounds = CGRect(x: 0, y: 0, width: highlightWidth, height: bounds.height)
+        glint.position = CGPoint(x: -highlightWidth / 2, y: bounds.midY)
+        glint.cornerRadius = style == .signature ? 0 : bounds.height / 2
         CATransaction.commit()
         // SwiftUI may attach the view before assigning its nonzero frame.
         if geometryChanged {
@@ -112,6 +117,18 @@ final class FloatingCenterLayerView: QuotaAnimatedLayerView {
     override func startLayerAnimation() {
         let target: CALayer = style == .orbit ? rotor : glint
         guard target.animation(forKey: Self.animationKey) == nil else { return }
+        if style == .signature {
+            let animation = CAKeyframeAnimation(keyPath: "transform.translation.x")
+            let distance = bounds.width + glint.bounds.width
+            animation.values = [0, 0, distance, distance]
+            animation.keyTimes = [0, 0.15, 0.8, 1]
+            animation.timingFunctions = [.init(name: .linear), .init(name: .easeInEaseOut), .init(name: .linear)]
+            animation.duration = 4
+            animation.repeatCount = .infinity
+            animation.preferredFrameRateRange = QuotaLayerAnimationPolicy.frameRateRange
+            target.add(animation, forKey: Self.animationKey)
+            return
+        }
         let animation: CABasicAnimation
         if style == .orbit {
             animation = CABasicAnimation(keyPath: "transform.rotation.z")

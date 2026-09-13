@@ -66,7 +66,7 @@ contracts:
 
   - id: FLOATING-CENTER-051
     title: Floating bars offer signatures, orbit, elapsed time and thin light flow
-    status: active
+    status: superseded
     statement: >-
       Preserve the screen routing, mirrored-display visibility, top attachment,
       212pt width, measured compact height, 8pt outer insets, 30pt quota lanes,
@@ -104,6 +104,41 @@ contracts:
       - docs/decisions/034-floating-center-styles.md
       - "manual: change and restart all center choices; inspect real running/completed/idle, long Chinese text, Reduce Motion, mirror visibility and downward hover behavior"
     supersedes: [NOTCH-VISIBILITY-050]
+    superseded_by: FLOATING-CENTER-053
+    last_verified_commit: null
+
+  - id: FLOATING-CENTER-053
+    title: Running personal signatures retain a gentle text shimmer
+    status: active
+    statement: >-
+      Preserve FLOATING-CENTER-051 choices, persistence, text normalization,
+      font, truncation, elapsed-time semantics, geometry, visibility and all
+      motion gates, plus FLOATING-ICON-052 alignment. Replace only the static
+      personal-signature treatment with a soft highlight passing through the
+      stationary glyphs on a four-second cycle while running, collapsed and
+      motion-enabled. Keep a dim readable text base and a steady status dot;
+      do not scale, move or fully hide the text. Reuse visible-only Core
+      Animation at the existing preferred 8 FPS without a new timer or polling.
+      Ordinary clock/text refreshes must not restart the highlight. Completion,
+      idle, expansion, hidden/detached views, disabled animation and Reduce Motion
+      stop it, retaining the existing static 70 percent white text. Orbit text,
+      elapsed digits, light flow and physical-notch layouts retain their behavior.
+    rationale: The early custom-text preview included a slow shimmer, but the native signature implementation omitted it and always displayed static text.
+    source: user-reported-visual-regression
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [floating-bar, personal-signature, center-motion]
+      exclude: [quota-semantics, icon-artwork, card-transitions, task-data, physical-notch-center, releases]
+    examples:
+      positive: Running custom text softly brightens as a highlight crosses it without changing position, and completion or disabled motion restores a steady readable signature.
+      negative: Static running text, flashing or disappearing glyphs, changed font metrics, a moving status dot, motion behind the expanded card, or restarting every second.
+    guards:
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - Tests/CodexNotchTests/NotchMotionCaptureTests.swift
+      - docs/decisions/040-running-signature-shimmer.md
+      - "manual: record a full running shimmer cycle, completion, motion off and return; verify the installed mirrored floating bar and retained hover motion"
+    supersedes: [FLOATING-CENTER-051]
     superseded_by: null
     last_verified_commit: null
 
@@ -284,7 +319,7 @@ contracts:
   - id: SETTINGS-PREFERENCES-018
     title: Language, history, motion and floating center settings apply live
     status: active
-    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-051. Card transitions now follow the motion preference and Reduce Motion under NOTCH-READABILITY-007; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
+    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-053. Card transitions now follow the motion preference and Reduce Motion under NOTCH-READABILITY-007; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
     rationale: Center choices need live visual comparison and persistence, and the newly requested spring transition supersedes the earlier always-static exception.
     source: user-request
     owner: project-maintainer

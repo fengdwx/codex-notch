@@ -5,7 +5,7 @@ import XCTest
 
 /// Opt-in visual fixture using the production view and panel, with synthetic data.
 /// NOTCH_MOTION_CAPTURE=/absolute/path.mov swift test --filter NotchMotionCaptureTests
-/// Add NOTCH_MOTION_CAPTURE_SCENARIO=dense, empty or completed for visual checks.
+/// Add NOTCH_MOTION_CAPTURE_SCENARIO=dense, empty, completed or signature for visual checks.
 final class NotchMotionCaptureTests: XCTestCase {
     @MainActor
     func testRecordOpeningCollapseAndReentry() async throws {
@@ -18,6 +18,7 @@ final class NotchMotionCaptureTests: XCTestCase {
         let dense = scenario == "dense"
         let empty = scenario == "empty"
         let completed = scenario == "completed"
+        let signature = scenario == "signature"
         let expandedHeight = dense
             ? NotchExpandedLayout.taskContentSize(conversationCount: 5, isResetScheduleExpanded: true,
                                                   resetCreditCount: 3, hasFiveHourWindow: true).height + 30
@@ -70,8 +71,12 @@ final class NotchMotionCaptureTests: XCTestCase {
         let suite = "NotchMotionCapture.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
-        if dense {
-            defaults.set("zh-Hans", forKey: AppLanguage.storageKey)
+        if dense || signature {
+            if dense { defaults.set("zh-Hans", forKey: AppLanguage.storageKey) }
+            if signature {
+                defaults.set(FloatingCenterStyle.signature.rawValue, forKey: FloatingCenterStyle.storageKey)
+                defaults.set("专注当下", forKey: FloatingCenterText.storageKey)
+            }
             controller.setRootView(NotchView(model: model).defaultAppStorage(defaults))
         } else {
             controller.setRootView(NotchView(model: model))
@@ -91,14 +96,40 @@ final class NotchMotionCaptureTests: XCTestCase {
         }
         show(closed, animated: false)
         try await Task.sleep(for: .milliseconds(300))
+        if signature { show(closed) }
         let recording = Process()
         recording.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
         let top = try XCTUnwrap(NSScreen.screens.first).frame.maxY
-        recording.arguments = ["-v", "-V", "8", "-R",
+        recording.arguments = ["-v", "-V", signature ? "12" : "8", "-R",
                                "\(Int(area.minX)),\(Int(top - area.maxY)),\(Int(area.width)),\(Int(area.height))", output]
         try recording.run()
         defer { if recording.isRunning { recording.terminate() } }
         try await Task.sleep(for: .seconds(1))
+        if signature {
+            // Repeated model updates must preserve a full shimmer cycle.
+            for _ in 0..<5 {
+                show(closed)
+                try await Task.sleep(for: .seconds(1))
+            }
+            show(.completedCompact(sessions[0], usage: usage))
+            try await Task.sleep(for: .seconds(2))
+            show(closed, animated: false)
+            try await Task.sleep(for: .seconds(2))
+            show(closed)
+            try await Task.sleep(for: .milliseconds(2300))
+            XCTAssertEqual(controller.window?.frame, compact)
+            // ScreenCaptureKit startup/finalization can outlast the requested
+            // capture duration; do not terminate it before the movie is saved.
+            for _ in 0..<100 where recording.isRunning {
+                try await Task.sleep(for: .milliseconds(100))
+            }
+            XCTAssertFalse(recording.isRunning, "Screen recording did not finish within the bounded finalization period")
+            if !recording.isRunning {
+                XCTAssertEqual(recording.terminationStatus, 0)
+            }
+            XCTAssertTrue(FileManager.default.fileExists(atPath: output))
+            return
+        }
         show(opened)
         try await Task.sleep(for: .milliseconds(1500))
         show(closed)

@@ -24,5 +24,6 @@ Record decisions here only when they affect active behavior contracts, could be 
 | [020-running-notch-breathing-light](020-running-notch-breathing-light.md) | superseded | `QUOTA-SEMANTICS-045` | Use a centered breathing light for the running physical-notch state |
 | [021-visible-quota-halo-running-cue](021-visible-quota-halo-running-cue.md) | active | `QUOTA-SEMANTICS-046` | Put the running cue behind the real visible compact quota indicators |
 | [033-mirrored-display-floating-island](033-mirrored-display-floating-island.md) | active | `NOTCH-VISIBILITY-050` | Keep the enabled island visible in the mirror master's current coordinate space |
+| [040-running-signature-shimmer](040-running-signature-shimmer.md) | active | `FLOATING-CENTER-053` | Restore a soft masked text highlight while retaining signature geometry and motion gates |
 
 New decisions must include `status`, `contract_ids`, rejected alternatives, and consequences. When a decision changes, retain the old document and point to the new one with `superseded_by`.
