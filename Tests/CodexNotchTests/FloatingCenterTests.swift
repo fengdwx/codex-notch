@@ -177,6 +177,23 @@ final class FloatingCenterTests: XCTestCase {
             XCTAssertFalse(glint.isHidden)
             let x = try XCTUnwrap(glint.presentation()?.value(forKeyPath: "transform.translation.x") as? NSNumber)
             positions.append(x.doubleValue)
+            if positions.count > 4 {
+                let travel = abs(x.doubleValue - positions[positions.count - 5])
+                XCTAssertGreaterThan(travel, initialBounds.width * 0.01,
+                                     "The highlight must keep moving instead of waiting at either endpoint")
+            }
+            let pixelWidth = Int(ceil(initialBounds.width))
+            let pixelHeight = Int(ceil(initialBounds.height))
+            let light = try XCTUnwrap(CGContext(data: nil, width: pixelWidth, height: pixelHeight,
+                                               bitsPerComponent: 8, bytesPerRow: pixelWidth * 4,
+                                               space: CGColorSpaceCreateDeviceRGB(),
+                                               bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            try XCTUnwrap(highlight.layer?.presentation()).render(in: light)
+            let bytes = try XCTUnwrap(light.data).assumingMemoryBound(to: UInt8.self)
+            let meanLight = stride(from: 3, to: pixelWidth * pixelHeight * 4, by: 4)
+                .reduce(0.0) { $0 + Double(bytes[$1]) / 255 } / Double(pixelWidth * pixelHeight)
+            XCTAssertGreaterThan(meanLight, 0.2,
+                                 "Some soft illumination must remain within the word at every phase")
             XCTAssertEqual(highlight.bounds, initialBounds)
             if let samples, index.isMultiple(of: 2),
                let image = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 272, pixelsHigh: 60,
@@ -190,8 +207,10 @@ final class FloatingCenterTests: XCTestCase {
             }
             try await Task.sleep(for: .milliseconds(125))
         }
-        XCTAssertGreaterThan(try XCTUnwrap(positions.max()) - XCTUnwrap(positions.min()), initialBounds.width,
-                             "The highlight must traverse the full text despite one-second view updates")
+        // FLOATING-CENTER-055 wraps after one text-width, instead of traveling
+        // beyond both ends of the word. Discrete samples cover nearly a period.
+        XCTAssertGreaterThan(try XCTUnwrap(positions.max()) - XCTUnwrap(positions.min()), initialBounds.width * 0.9,
+                             "The highlight must traverse a full period despite one-second view updates")
         hosting.rootView = content(.completed, motion: false)
         hosting.layoutSubtreeIfNeeded()
         XCTAssertFalse(highlight.animationIsRequested)
@@ -220,10 +239,11 @@ final class FloatingCenterTests: XCTestCase {
             if style == .flow {
                 XCTAssertEqual((motion as? CABasicAnimation)?.toValue as? CGFloat, size.width + 32)
             } else if style == .signature {
-                let shimmer = try XCTUnwrap(motion as? CAKeyframeAnimation)
+                let shimmer = try XCTUnwrap(motion as? CABasicAnimation)
                 XCTAssertEqual(shimmer.keyPath, "transform.translation.x")
-                let positions = try XCTUnwrap(shimmer.values as? [NSNumber]).map(\.doubleValue)
-                XCTAssertLessThan(try XCTUnwrap(positions.first), try XCTUnwrap(positions.last))
+                let start = try XCTUnwrap(shimmer.fromValue as? NSNumber).doubleValue
+                let end = try XCTUnwrap(shimmer.toValue as? NSNumber).doubleValue
+                XCTAssertEqual(end - start, size.width, accuracy: 0.001)
                 XCTAssertEqual(shimmer.duration, 6, "Use the requested slower cadence")
                 XCTAssertTrue(CATransform3DIsIdentity(root.transform), "Only the masked light moves; glyph geometry stays fixed")
             }

@@ -144,7 +144,7 @@ contracts:
 
   - id: FLOATING-CENTER-054
     title: Personal signatures shimmer slowly through running and resting states
-    status: active
+    status: superseded
     statement: >-
       Preserve FLOATING-CENTER-053 typography, glyph mask, dim readable base,
       stationary colored status dot, preferences, geometry and visible-only
@@ -170,6 +170,38 @@ contracts:
       - docs/decisions/041-continuous-signature-shimmer.md
       - "manual: inspect a complete slow cycle through running, completion and idle, then disable motion and expand the card"
     supersedes: [FLOATING-CENTER-053]
+    superseded_by: FLOATING-CENTER-055
+    last_verified_commit: null
+
+  - id: FLOATING-CENTER-055
+    title: Signature light moves continuously without an all-dim interval
+    status: active
+    statement: >-
+      Preserve FLOATING-CENTER-054 state behavior, six-second cadence, text
+      styling and geometry, static status dot, settings and visibility gates.
+      Replace the isolated sweep and its endpoint holds with a periodic soft
+      highlight moving at constant speed by one text-width per cycle. Adjacent
+      copies meet seamlessly so light remains within the glyph area at every
+      phase, including the repeat boundary. Keep a faint illumination floor
+      and visible contrast within the moving band; do not substitute static
+      brighter text, accelerate the sweep or add a new timer. Task completion
+      and idle keep the phase, while expansion, hiding, detachment, disabled
+      animation and Reduce Motion retain the existing static behavior.
+    rationale: Stretching the isolated sweep to six seconds also stretched its endpoint holds and off-text travel, creating long all-dim intervals.
+    source: user-reported-motion-gap
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [floating-bar, personal-signature, center-motion]
+      exclude: [quota-semantics, icon-artwork, card-transitions, task-data, physical-notch-center, releases]
+    examples:
+      positive: The light moves slowly across the text and the next highlight enters as the previous one leaves, including after completion.
+      negative: A stationary interval, an entirely dim word between sweeps, a flash at the repeat boundary, or a whole-label brightness pulse.
+    guards:
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - docs/decisions/042-seamless-signature-light.md
+      - "manual: record more than one full cycle and inspect short, Chinese and custom text for smooth motion and no dark gap"
+    supersedes: [FLOATING-CENTER-054]
     superseded_by: null
     last_verified_commit: null
 
@@ -350,7 +382,7 @@ contracts:
   - id: SETTINGS-PREFERENCES-018
     title: Language, history, motion and floating center settings apply live
     status: active
-    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-054. Card transitions now follow the motion preference and Reduce Motion under NOTCH-READABILITY-007; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
+    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-055. Card transitions now follow the motion preference and Reduce Motion under NOTCH-READABILITY-007; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
     rationale: Center choices need live visual comparison and persistence, and the newly requested spring transition supersedes the earlier always-static exception.
     source: user-request
     owner: project-maintainer

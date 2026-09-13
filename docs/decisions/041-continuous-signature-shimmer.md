@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [FLOATING-CENTER-054, SETTINGS-PREFERENCES-018]
 supersedes: [040-running-signature-shimmer]
-superseded_by: null
+superseded_by: 042-seamless-signature-light
 owner: project-maintainer
 created_at: 2026-09-13
 ---

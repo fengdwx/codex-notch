@@ -70,14 +70,16 @@ final class FloatingCenterLayerView: QuotaAnimatedLayerView {
         track.lineWidth = 1
         track.isHidden = style != .orbit && style != .flow
         bead.backgroundColor = color.cgColor
-        let highlight = style == .signature ? NSColor.white : color
-        glint.colors = [
-            highlight.withAlphaComponent(0).cgColor,
-            highlight.withAlphaComponent(style == .signature ? 0.25 : 0.6).cgColor,
-            highlight.withAlphaComponent(style == .signature ? 0.85 : 1).cgColor,
-            highlight.withAlphaComponent(0).cgColor
-        ]
-        glint.locations = style == .signature ? [0, 0.3, 0.55, 1] : [0, 0.35, 0.7, 1]
+        if style == .signature {
+            // Two matching periods keep a highlight inside the word and make
+            // the repeat boundary visually identical to the starting phase.
+            let alpha: [CGFloat] = [0.14, 0.32, 0.85, 0.32, 0.14, 0.32, 0.85, 0.32, 0.14]
+            glint.colors = alpha.map { NSColor.white.withAlphaComponent($0).cgColor }
+            glint.locations = alpha.indices.map { NSNumber(value: Double($0) / Double(alpha.count - 1)) }
+        } else {
+            glint.colors = [0, 0.6, 1, 0].map { color.withAlphaComponent($0).cgColor }
+            glint.locations = [0, 0.35, 0.7, 1]
+        }
         rotor.isHidden = style != .orbit
         glint.isHidden = (style != .flow && style != .signature) || !shouldAnimate
         CATransaction.commit()
@@ -102,9 +104,9 @@ final class FloatingCenterLayerView: QuotaAnimatedLayerView {
         rotor.position = CGPoint(x: bounds.midX, y: bounds.midY)
         bead.frame = CGRect(x: bounds.width / 2 - 1.75, y: bounds.height - 3.75, width: 3.5, height: 3.5)
         bead.cornerRadius = 1.75
-        let highlightWidth = style == .signature ? max(24, bounds.width * 0.8) : 32
+        let highlightWidth = style == .signature ? bounds.width * 2 : 32
         glint.bounds = CGRect(x: 0, y: 0, width: highlightWidth, height: bounds.height)
-        glint.position = CGPoint(x: -highlightWidth / 2, y: bounds.midY)
+        glint.position = CGPoint(x: style == .signature ? 0 : -highlightWidth / 2, y: bounds.midY)
         glint.cornerRadius = style == .signature ? 0 : bounds.height / 2
         CATransaction.commit()
         // SwiftUI may attach the view before assigning its nonzero frame.
@@ -119,11 +121,10 @@ final class FloatingCenterLayerView: QuotaAnimatedLayerView {
         let target: CALayer = style == .orbit ? rotor : glint
         guard target.animation(forKey: Self.animationKey) == nil else { return }
         if style == .signature {
-            let animation = CAKeyframeAnimation(keyPath: "transform.translation.x")
-            let distance = bounds.width + glint.bounds.width
-            animation.values = [0, 0, distance, distance]
-            animation.keyTimes = [0, 0.15, 0.8, 1]
-            animation.timingFunctions = [.init(name: .linear), .init(name: .easeInEaseOut), .init(name: .linear)]
+            let animation = CABasicAnimation(keyPath: "transform.translation.x")
+            animation.fromValue = 0
+            animation.toValue = bounds.width
+            animation.timingFunction = CAMediaTimingFunction(name: .linear)
             animation.duration = 6
             animation.repeatCount = .infinity
             animation.preferredFrameRateRange = QuotaLayerAnimationPolicy.frameRateRange

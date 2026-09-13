@@ -25,6 +25,7 @@ Record decisions here only when they affect active behavior contracts, could be 
 | [021-visible-quota-halo-running-cue](021-visible-quota-halo-running-cue.md) | active | `QUOTA-SEMANTICS-046` | Put the running cue behind the real visible compact quota indicators |
 | [033-mirrored-display-floating-island](033-mirrored-display-floating-island.md) | active | `NOTCH-VISIBILITY-050` | Keep the enabled island visible in the mirror master's current coordinate space |
 | [040-running-signature-shimmer](040-running-signature-shimmer.md) | superseded | `FLOATING-CENTER-053` | Restore a soft masked text highlight while retaining signature geometry and motion gates |
-| [041-continuous-signature-shimmer](041-continuous-signature-shimmer.md) | active | `FLOATING-CENTER-054` | Keep personal signatures shimmering slowly through running, completion and idle |
+| [041-continuous-signature-shimmer](041-continuous-signature-shimmer.md) | superseded | `FLOATING-CENTER-054` | Keep personal signatures shimmering slowly through running, completion and idle |
+| [042-seamless-signature-light](042-seamless-signature-light.md) | active | `FLOATING-CENTER-055` | Move a repeating light band at constant speed without pauses or dark intervals |
 
 New decisions must include `status`, `contract_ids`, rejected alternatives, and consequences. When a decision changes, retain the old document and point to the new one with `superseded_by`.
