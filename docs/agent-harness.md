@@ -9,7 +9,7 @@ last_verified_commit: 0d37196
 
 ## Goals and Adoption Level
 
-CodexNotch uses a lightweight harness with executable acceptance checks. It is a continuously maintained native macOS app, but it currently has no online service, database migration, or required CI check. The harness prevents fixes to notch visuals or the state machine from overwriting confirmed user experience, privacy boundaries, and packaging behavior.
+CodexNotch uses a lightweight harness with executable acceptance checks. It is a continuously maintained native macOS app with local and GitHub CI verification, but no online service, database migration, or configured branch-protection checks. The harness prevents fixes to notch visuals or the state machine from overwriting confirmed user experience, privacy boundaries, and packaging behavior.
 
 Completion does not mean that the code compiles. Completion must demonstrate that the requested outcome occurred, protected behavior did not regress, historical failures have guards, and any unperformed real-hardware verification is explicitly called out.
 
@@ -43,6 +43,11 @@ Assess risk by impact, not line count:
 - **L1**: Local implementation or low-risk bug; run focused tests and `swift test`.
 - **L2**: User-visible UI, quota semantics, session state, settings, or packaging; add or locate positive and negative guards, run `./scripts/verify.sh`, and inspect affected states on a physical notch.
 - **L3**: Authentication, privacy, token handling, external API permissions, or a formal public release; in addition to full checks, perform human review and define a rollback path. This project has no automatic deployment, so a local package must not be described as published.
+
+Before publishing a release, the exact release source must also pass GitHub CI.
+An existing CI failure is still a blocker. When only the workflow needed repair,
+its manual `ref` input can verify an existing release commit without rewriting
+the tag. Record the checkout SHA and successful run URL. See `docs/updating.md`.
 
 ## Implementation and Regression Rules
 
@@ -92,6 +97,6 @@ Do not use a static screenshot as proof that an animation is correct; describe t
 | Frequent hotspots | `NotchView`, `NotchRuntimeCoordinator`, `NotchWindowController`, `NotchPresentationReducer`, and quota parsing |
 | Current contracts | `docs/contracts/behavior-contracts.yaml` |
 | L3 | Authentication/token handling, privacy data, usage API permissions, and formal public release |
-| Required CI check | Not configured; do not claim CI provides coverage |
+| CI verification | GitHub CI runs full verification on macOS 14 with Xcode 16.2; release publication requires a successful run for the exact source. Branch-protection checks are not configured. |
 | Deployment target | None; a release is a locally distributable archive, not automatic deployment |
-| Template sections not adopted | Required CI checks, online deployment evidence, canaries, and data migrations; this project has no corresponding runtime or data layer |
+| Template sections not adopted | Branch-protection checks, online deployment evidence, canaries, and data migrations; this project has no corresponding runtime or data layer |

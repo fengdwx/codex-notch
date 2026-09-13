@@ -1,4 +1,35 @@
 contracts:
+  - id: CI-VERIFICATION-001
+    title: Verify release source with a supported SDK before publication
+    status: active
+    statement: >-
+      CI must explicitly select Xcode 16.2 on macOS 14, record the checked-out
+      source SHA and toolchain, and run the existing full verification entry
+      point without weakening or skipping its checks. Before a public release,
+      both local verification and CI for the exact release source must pass.
+      Failed, pending, cancelled or missing CI cannot be replaced by a local
+      pass. A manual ref permits an existing release commit to be checked with
+      a repaired workflow without changing its source, tag or signed archives.
+    rationale: A local build passed with Xcode 26.6 while CI failed with its implicit Xcode 15.4 SDK, and v0.2.2 was published before that failure was resolved.
+    source: user-reported-release-verification-gap
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [ci-toolchain, full-verification, release-publication]
+      exclude: [app-behavior, minimum-runtime-version, signing-key, published-archive-replacement, branch-protection]
+    examples:
+      positive: The logged checkout SHA matches the intended release and full CI verification passes with Xcode 16.2 on macOS 14.
+      negative: Depending on the runner's default SDK, skipping failing tests, checking a different commit, or publishing while CI is red.
+    guards:
+      - .github/workflows/ci.yml
+      - scripts/verify.sh
+      - docs/updating.md
+      - docs/decisions/053-explicit-ci-toolchain.md
+      - "manual: confirm successful CI and its checkout SHA before publication"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null
+
   - id: SETTINGS-WINDOW-022
     title: Settings presentation must not interrupt popup menu selection
     status: active
