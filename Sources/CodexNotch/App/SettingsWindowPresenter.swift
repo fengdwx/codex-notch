@@ -22,6 +22,10 @@ enum SettingsWindowPresenter {
     static func bringToFront(_ explicitWindow: NSWindow? = nil) {
         DispatchQueue.main.async {
             guard let window = explicitWindow ?? settingsWindow else { return }
+            // Initial appearance and an explicit request can both arrive for
+            // the same scene. Once it is active, leave popup-menu focus alone.
+            guard !window.isVisible || !window.isKeyWindow
+                || !window.isOnActiveSpace || !NSApp.isActive else { return }
             // Settings may still belong to a different desktop. Bring it to
             // the current Space before activation instead of switching away.
             window.collectionBehavior.subtract([

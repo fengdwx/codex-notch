@@ -1,4 +1,36 @@
 contracts:
+  - id: SETTINGS-WINDOW-022
+    title: Settings presentation must not interrupt popup menu selection
+    status: active
+    statement: >-
+      Preserve SETTINGS-WINDOW-019 explicit presentation, window reuse, current
+      Space/full-screen behavior, normal level and current preferences. Raise
+      Settings only for an explicit Settings request or initial appearance.
+      A window gaining key status must not schedule another activation or
+      front-order operation. A deferred presentation must leave an already
+      visible, key window on the current Space in the active app alone. Language and recent-task
+      popups must stay open for selection and support repeated changes without
+      requiring a second click to recover from our focus handling. Preserve
+      SETTINGS-MOTION-021 and all unrelated layout, data and motion behavior.
+    rationale: The user reported that the recent-task picker would not open; key-window notifications scheduled redundant activation that could interrupt native popup tracking.
+    source: user-reported-incident
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [settings-window-activation, popup-selection]
+      exclude: [preference-values, picker-redesign, notch-geometry, tasks, quotas, releases]
+    examples:
+      positive: Recent-task and language menus open and select repeatedly, while reopening Settings from behind another app still reveals the same window.
+      negative: A key-window notification raises Settings over its popup, opening a picker loses its menu, or removing redundant activation breaks explicit reopening.
+    guards:
+      - Tests/CodexNotchTests/SettingsWindowPresenterTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePreferencesTests.swift
+      - docs/decisions/052-settings-popup-focus.md
+      - "manual: open and select both Settings popups repeatedly, including after another app has focus and after Settings closes/reopens; restore the original preferences"
+    supersedes: [SETTINGS-WINDOW-019]
+    superseded_by: null
+    last_verified_commit: null
+
   - id: SETTINGS-MOTION-021
     title: The app animation switch is independent of system Reduce Motion
     status: active
@@ -190,7 +222,7 @@ contracts:
 
   - id: SETTINGS-WINDOW-019
     title: Every Settings request activates and reveals the existing window
-    status: active
+    status: superseded
     statement: >-
       The expanded card, notch context menu and application Settings command
       must use the same explicit presentation request. Each request activates
@@ -215,7 +247,7 @@ contracts:
       - docs/decisions/046-settings-window-activation.md
       - "manual: open Settings, cover it with another app, then reopen from the notch; also close and reopen it and confirm current values remain"
     supersedes: []
-    superseded_by: null
+    superseded_by: SETTINGS-WINDOW-022
     last_verified_commit: null
 
   - id: CONVERSATION-TITLE-042
