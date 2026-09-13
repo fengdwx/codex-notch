@@ -26,7 +26,7 @@ struct FloatingCenterView: View {
         Group {
             switch style {
             case .signature:
-                signatureContent
+                signatureLabel
             case .orbit:
                 HStack(spacing: 7) {
                     motionLayer.frame(width: 18, height: 18)

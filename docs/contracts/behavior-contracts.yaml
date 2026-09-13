@@ -207,7 +207,7 @@ contracts:
 
   - id: FLOATING-CENTER-056
     title: Seamless signature light repeats every five seconds
-    status: active
+    status: superseded
     statement: >-
       Preserve FLOATING-CENTER-055 seamless gradient, illumination floor,
       constant motion, typography, geometry, static status dot and all-state
@@ -230,6 +230,33 @@ contracts:
       - docs/decisions/043-faster-signature-light.md
       - "manual: record more than one five-second cycle in the installed floating bar and confirm continuous movement"
     supersedes: [FLOATING-CENTER-055]
+    superseded_by: FLOATING-CENTER-057
+    last_verified_commit: null
+
+  - id: FLOATING-CENTER-057
+    title: Personal signatures show centered text without a status dot
+    status: active
+    statement: >-
+      Preserve FLOATING-CENTER-056 five-second seamless light, brightness,
+      font metrics, all-state continuity, settings and motion gates. Remove
+      the colored status dot only in the personal signature style and center
+      the text within the existing center area. Retain the island and icon
+      geometry, primary task-state cues, orbit, elapsed fallback and flow.
+    rationale: The user requested removing the extra dot before the personal signature.
+    source: user-confirmed-design-adjustment
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [floating-bar, personal-signature, center-motion]
+      exclude: [quota-semantics, icon-artwork, card-transitions, task-data, physical-notch-center, releases]
+    examples:
+      positive: Personal signature text is centered without a preceding dot and the light keeps moving through running, completed and idle states.
+      negative: A dot reappears on completion, the text remains offset by the removed dot, or the primary activity icon disappears.
+    guards:
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - docs/decisions/044-signature-without-status-dot.md
+      - "manual: inspect signature centering and absence of the dot in live running, completed and idle frames and the installed floating bar"
+    supersedes: [FLOATING-CENTER-056]
     superseded_by: null
     last_verified_commit: null
 
@@ -410,7 +437,7 @@ contracts:
   - id: SETTINGS-PREFERENCES-018
     title: Language, history, motion and floating center settings apply live
     status: active
-    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-056. Card transitions now follow the motion preference and Reduce Motion under NOTCH-READABILITY-007; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
+    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-057. Card transitions now follow the motion preference and Reduce Motion under NOTCH-READABILITY-007; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
     rationale: Center choices need live visual comparison and persistence, and the newly requested spring transition supersedes the earlier always-static exception.
     source: user-request
     owner: project-maintainer
