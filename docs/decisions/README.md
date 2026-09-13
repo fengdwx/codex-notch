@@ -30,5 +30,6 @@ Record decisions here only when they affect active behavior contracts, could be 
 | [043-faster-signature-light](043-faster-signature-light.md) | superseded | `FLOATING-CENTER-056` | Shorten the seamless signature light period to five seconds |
 | [044-signature-without-status-dot](044-signature-without-status-dot.md) | active | `FLOATING-CENTER-057` | Center personal signature text without its preceding status dot |
 | [045-hover-response-and-shadow](045-hover-response-and-shadow.md) | active | `NOTCH-MOTION-008` | Add a small compact hover response and a faint exterior shadow while retaining main transitions |
+| [046-settings-window-activation](046-settings-window-activation.md) | active | `SETTINGS-WINDOW-019` | Activate and reveal the existing Settings window on every request |
 
 New decisions must include `status`, `contract_ids`, rejected alternatives, and consequences. When a decision changes, retain the old document and point to the new one with `superseded_by`.

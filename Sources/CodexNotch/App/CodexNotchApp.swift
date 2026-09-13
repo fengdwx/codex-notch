@@ -16,9 +16,10 @@ struct CodexNotchApp: App {
         }
         .commands {
             CommandGroup(replacing: .appSettings) {
-                SettingsLink {
+                NotchSettingsButton {
                     Text(appLanguage.localized(chinese: "设置…", english: "Settings…"))
                 }
+                .keyboardShortcut(",", modifiers: .command)
             }
         }
     }

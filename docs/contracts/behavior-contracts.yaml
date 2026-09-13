@@ -1,4 +1,34 @@
 contracts:
+  - id: SETTINGS-WINDOW-019
+    title: Every Settings request activates and reveals the existing window
+    status: active
+    statement: >-
+      The expanded card, notch context menu and application Settings command
+      must use the same explicit presentation request. Each request activates
+      CodexNotch and brings its existing Settings window to the front, restoring
+      it if minimized and moving it to the current desktop, including full-screen
+      workspaces. Create the Settings scene only when no Settings window
+      exists. Preserve its normal window level, current values, language,
+      keyboard shortcut and all notch behavior. Initial appearance remains a
+      fallback, not the only signal that a Settings window should come forward.
+    rationale: The user reported that clicking Settings again left an already open window behind other applications; SettingsLink does not reliably repeat onAppear or key-window notifications.
+    source: user-reported-incident-and-entry-point-inspection
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [settings-window, expanded-settings-button, settings-context-menu, settings-command]
+      exclude: [quota-semantics, task-data, notch-motion, automatic-updates, releases]
+    examples:
+      positive: Repeated requests reveal the same Settings window without changing its normal level or creating duplicates.
+      negative: Only the first click activates Settings, an unrelated window is raised, or Settings becomes permanently floating.
+    guards:
+      - Tests/CodexNotchTests/SettingsWindowPresenterTests.swift
+      - docs/decisions/046-settings-window-activation.md
+      - "manual: open Settings, cover it with another app, then reopen from the notch; also close and reopen it and confirm current values remain"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null
+
   - id: CONVERSATION-TITLE-042
     title: Use the latest Codex name and reject prompt transport text
     status: active

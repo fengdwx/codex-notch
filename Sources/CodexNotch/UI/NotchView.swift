@@ -426,7 +426,7 @@ struct NotchView: View {
 
             Divider()
 
-            SettingsLink {
+            NotchSettingsButton {
                 Label(
                     appLanguage.localized(chinese: "设置…", english: "Settings…"),
                     systemImage: "gearshape"
@@ -1531,7 +1531,7 @@ private struct ExpandedNotchView: View {
                         : language.localized(chinese: "关闭", english: "Off")
                 )
 
-                SettingsLink {
+                NotchSettingsButton {
                     Label(
                         language.localized(chinese: "设置", english: "Settings"),
                         systemImage: "gearshape"
