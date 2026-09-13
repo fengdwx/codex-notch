@@ -11,10 +11,7 @@ enum AppAnimationPreference {
         return userDefaults.bool(forKey: storageKey)
     }
 
-    static func allowsMotion(
-        animationsEnabled: Bool,
-        reduceMotion: Bool
-    ) -> Bool {
-        animationsEnabled && !reduceMotion
+    static func allowsMotion(animationsEnabled: Bool) -> Bool {
+        animationsEnabled
     }
 }

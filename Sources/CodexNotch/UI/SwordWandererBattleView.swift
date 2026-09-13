@@ -92,11 +92,8 @@ enum SwordWandererBattleMotion {
     static let timelineFramesPerSecond: Double = 12
     static let timelineInterval: TimeInterval = 1.0 / timelineFramesPerSecond
 
-    static func shouldAnimate(
-        animationsEnabled: Bool,
-        reduceMotion: Bool
-    ) -> Bool {
-        animationsEnabled && !reduceMotion
+    static func shouldAnimate(animationsEnabled: Bool) -> Bool {
+        AppAnimationPreference.allowsMotion(animationsEnabled: animationsEnabled)
     }
 
     static func sample(at elapsed: TimeInterval) -> SwordWandererBattleSample {

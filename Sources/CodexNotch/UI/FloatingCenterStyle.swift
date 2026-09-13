@@ -22,6 +22,21 @@ enum FloatingCenterStyle: String, CaseIterable, Identifiable, Sendable {
         case .flow: return language.localized(chinese: "细流光", english: "Light flow")
         }
     }
+
+    var usesCustomText: Bool { self != .flow }
+
+    func explanation(for language: AppLanguage) -> String {
+        switch self {
+        case .signature:
+            return language.localized(chinese: "显示自定义文字，带有柔和的流光效果。", english: "Displays custom text with a subtle shimmer.")
+        case .orbit:
+            return language.localized(chinese: "任务运行时，文字旁的圆点沿轨道旋转。", english: "A dot orbits beside the text while a task is running.")
+        case .elapsed:
+            return language.localized(chinese: "任务运行时显示已用时间，结束后显示自定义文字。", english: "Displays elapsed time while a task is running, then custom text when it ends.")
+        case .flow:
+            return language.localized(chinese: "任务运行时播放流光动画，结束后停止。", english: "Displays an animated light while a task is running. The animation stops when the task ends.")
+        }
+    }
 }
 
 enum FloatingCenterText {

@@ -4,6 +4,7 @@ import SwiftUI
 enum StatusIconStyle: String, CaseIterable, Identifiable, Sendable {
     case codex
     case chatGPT = "chatgpt"
+    case off
 
     static let storageKey = "statusIconStyle"
     static let defaultStyle: StatusIconStyle = .codex
@@ -11,9 +12,16 @@ enum StatusIconStyle: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 
     var title: String {
+        title(for: .english)
+    }
+
+    var showsLeftIndicator: Bool { self != .off }
+
+    func title(for language: AppLanguage) -> String {
         switch self {
         case .codex: return "Codex"
         case .chatGPT: return "ChatGPT"
+        case .off: return language.localized(chinese: "关闭", english: "Off")
         }
     }
 
@@ -21,6 +29,7 @@ enum StatusIconStyle: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .codex: return CodexMarkAsset.templateImage
         case .chatGPT: return ChatGPTMarkAsset.templateImage
+        case .off: return nil
         }
     }
 
@@ -32,6 +41,7 @@ enum StatusIconStyle: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .codex: return "terminal.fill"
         case .chatGPT: return "sparkles"
+        case .off: return "eye.slash"
         }
     }
 

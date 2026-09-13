@@ -8,6 +8,20 @@ enum NotchLayoutMode: Equatable {
 }
 
 struct NotchScreenMetrics {
+    /// One selection rule for the real surface and Settings applicability hints.
+    static func preferredScreen() -> NSScreen? {
+        let screens = NSScreen.screens
+        let main = NSScreen.main
+        if let main,
+           main.auxiliaryTopLeftArea != nil,
+           main.auxiliaryTopRightArea != nil {
+            return main
+        }
+        return screens.first {
+            $0.auxiliaryTopLeftArea != nil && $0.auxiliaryTopRightArea != nil
+        } ?? main ?? screens.first
+    }
+
     let frame: NSRect
     let visibleFrame: NSRect
     let safeAreaInsets: NSEdgeInsets
@@ -46,15 +60,21 @@ struct NotchLayout: Equatable {
     let compactFrame: NSRect
     let quotaExpandedFrame: NSRect
     let expandedFrame: NSRect
+    var compactLeadingInset: CGFloat = 0
+
+    var visibleCompactFrame: NSRect {
+        NSRect(x: compactFrame.minX + compactLeadingInset, y: compactFrame.minY,
+               width: compactFrame.width - compactLeadingInset, height: compactFrame.height)
+    }
 }
 
 extension NotchLayout {
     func frame(for state: NotchPresentationState) -> NSRect {
         switch state {
         case .hidden:
-            hoverSensorFrame
+            mode == .floatingBar && compactLeadingInset > 0 ? visibleCompactFrame : hoverSensorFrame
         case .quotaCompact, .workingCompact, .completedCompact:
-            compactFrame
+            visibleCompactFrame
         case let .expanded(content):
             content.conversations.isEmpty ? quotaExpandedFrame : expandedFrame
         }
@@ -204,6 +224,7 @@ enum NotchExpandedLayout {
 enum NotchGeometry {
     static func layout(
         metrics: NotchScreenMetrics,
+        leftIndicatorEnabled: Bool = true,
         compactSize: NSSize = NSSize(
             width: NotchCompactLayout.minimumWidth,
             height: NotchCompactLayout.height
@@ -224,6 +245,7 @@ enum NotchGeometry {
               right.minX > left.maxX else {
             return floatingBarLayout(
                 metrics: metrics,
+                leftIndicatorEnabled: leftIndicatorEnabled,
                 compactSize: compactSize,
                 quotaExpandedSize: quotaExpandedSize,
                 expandedSize: expandedSize
@@ -254,6 +276,11 @@ enum NotchGeometry {
             width: expandedSize.width,
             height: expandedSize.height + cameraAttachmentHeight
         )
+        let compactFrame = frame(
+            centeredAt: centerX,
+            size: NSSize(width: compactWidth, height: compactHeight),
+            screenFrame: metrics.frame, visibleFrame: metrics.visibleFrame, topInset: 0
+        )
         return NotchLayout(
             mode: .notch,
             centerX: centerX,
@@ -264,13 +291,7 @@ enum NotchGeometry {
                 visibleFrame: metrics.visibleFrame,
                 topInset: 0
             ),
-            compactFrame: frame(
-                centeredAt: centerX,
-                size: NSSize(width: compactWidth, height: compactHeight),
-                screenFrame: metrics.frame,
-                visibleFrame: metrics.visibleFrame,
-                topInset: 0
-            ),
+            compactFrame: compactFrame,
             quotaExpandedFrame: frame(
                 centeredAt: centerX,
                 size: quotaExpandedPanelSize,
@@ -284,12 +305,14 @@ enum NotchGeometry {
                 screenFrame: metrics.frame,
                 visibleFrame: metrics.visibleFrame,
                 topInset: 0
-            )
+            ),
+            compactLeadingInset: leftIndicatorEnabled ? 0 : max(0, left.maxX - compactFrame.minX)
         )
     }
 
     private static func floatingBarLayout(
         metrics: NotchScreenMetrics,
+        leftIndicatorEnabled: Bool,
         compactSize: NSSize,
         quotaExpandedSize: NSSize,
         expandedSize: NSSize
@@ -350,7 +373,8 @@ enum NotchGeometry {
                 screenFrame: metrics.frame,
                 visibleFrame: metrics.visibleFrame,
                 topInset: 0
-            )
+            ),
+            compactLeadingInset: leftIndicatorEnabled ? 0 : NotchFloatingBarLayout.appLaneWidth
         )
     }
 

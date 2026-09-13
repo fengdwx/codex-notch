@@ -2,6 +2,21 @@ import XCTest
 @testable import CodexNotch
 
 final class CompactLeftIndicatorPolicyTests: XCTestCase {
+    func testOffHidesTheEntireLeftLaneEvenWhenFiveHourQuotaExists() {
+        for mode in [NotchLayoutMode.notch, .floatingBar] {
+            for hasQuota in [false, true] {
+                XCTAssertEqual(CompactLeftIndicatorPolicy.content(
+                    layoutMode: mode, hasFiveHourWindow: hasQuota, iconStyle: .off
+                ), .hidden)
+                for style in [StatusIconStyle.codex, .chatGPT] {
+                    XCTAssertEqual(CompactLeftIndicatorPolicy.content(
+                        layoutMode: mode, hasFiveHourWindow: hasQuota, iconStyle: style
+                    ), hasQuota ? .fiveHourQuota : .appStatus)
+                }
+            }
+        }
+    }
+
     func testPhysicalNotchUsesReturnedFiveHourWindowInTheLeftLane() {
         XCTAssertEqual(
             CompactLeftIndicatorPolicy.content(

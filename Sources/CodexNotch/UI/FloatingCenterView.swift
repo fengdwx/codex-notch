@@ -5,14 +5,30 @@ struct FloatingCenterView: View {
     let startedAt: Date?
     let now: Date
     let isExpanded: Bool
-    @Environment(\.notchMotionEnabled) private var motionEnabled
-    @Environment(\.notchAppLanguage) private var language
     @AppStorage(FloatingCenterStyle.storageKey)
     private var styleRaw = FloatingCenterStyle.defaultStyle.rawValue
     @AppStorage(FloatingCenterText.storageKey)
     private var customText = FloatingCenterText.defaultText
 
-    private var style: FloatingCenterStyle { .fromStoredValue(styleRaw) }
+    var body: some View {
+        FloatingCenterContent(
+            style: .fromStoredValue(styleRaw), customText: customText,
+            activity: activity, startedAt: startedAt, now: now, isExpanded: isExpanded
+        )
+    }
+}
+
+/// Shared rendering for the live island and the explicitly labelled Settings demo.
+struct FloatingCenterContent: View {
+    let style: FloatingCenterStyle
+    let customText: String
+    let activity: QuotaRingActivity
+    let startedAt: Date?
+    let now: Date
+    let isExpanded: Bool
+    @Environment(\.notchMotionEnabled) private var motionEnabled
+    @Environment(\.notchAppLanguage) private var language
+
     private var signature: String { FloatingCenterText.displayText(customText) }
     private var color: Color {
         switch activity {

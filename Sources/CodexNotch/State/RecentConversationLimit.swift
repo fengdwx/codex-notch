@@ -34,6 +34,7 @@ struct NotchRuntimePreferences: Equatable, Sendable {
     let language: AppLanguage
     let animationsEnabled: Bool
     let notchDisplayEnabled: Bool
+    var leftIndicatorEnabled: Bool = true
 
     static func read(from userDefaults: UserDefaults) -> NotchRuntimePreferences {
         let recentConversationLimit = (userDefaults.object(
@@ -46,7 +47,10 @@ struct NotchRuntimePreferences: Equatable, Sendable {
                 userDefaults.string(forKey: AppLanguage.storageKey)
             ),
             animationsEnabled: AppAnimationPreference.isEnabled(in: userDefaults),
-            notchDisplayEnabled: NotchDisplayPreference.isEnabled(in: userDefaults)
+            notchDisplayEnabled: NotchDisplayPreference.isEnabled(in: userDefaults),
+            leftIndicatorEnabled: StatusIconStyle.fromStoredValue(
+                userDefaults.string(forKey: StatusIconStyle.storageKey)
+            ).showsLeftIndicator
         )
     }
 }

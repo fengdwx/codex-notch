@@ -453,8 +453,7 @@ final class NotchRuntimeCoordinator {
 
     private var animationsEnabled: Bool {
         AppAnimationPreference.allowsMotion(
-            animationsEnabled: runtimePreferences.animationsEnabled,
-            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+            animationsEnabled: runtimePreferences.animationsEnabled
         )
     }
 
@@ -531,13 +530,13 @@ final class NotchRuntimeCoordinator {
     private func render(now: Date? = nil) {
         let renderDate = now ?? nowProvider()
         let preferences = runtimePreferences
-        guard let screen = preferredScreen() else {
+        guard let screen = NotchScreenMetrics.preferredScreen() else {
             resetHoverState()
             windowController.hideNotchPanel()
             return
         }
         let metrics = NotchScreenMetrics(screen: screen)
-        let baseLayout = NotchGeometry.layout(metrics: metrics)
+        let baseLayout = NotchGeometry.layout(metrics: metrics, leftIndicatorEnabled: preferences.leftIndicatorEnabled)
 
         if NotchPanelVisibilityPolicy.shouldUseMenuBarFallback(
             layoutMode: baseLayout.mode,
@@ -602,6 +601,7 @@ final class NotchRuntimeCoordinator {
         }
         let layout = NotchGeometry.layout(
             metrics: metrics,
+            leftIndicatorEnabled: preferences.leftIndicatorEnabled,
             quotaExpandedSize: quotaExpandedContentSize(
                 for: displayState,
                 isResetScheduleExpanded: isResetScheduleExpanded
@@ -630,6 +630,7 @@ final class NotchRuntimeCoordinator {
                 : 0,
             compactWidth: layout.compactFrame.width,
             compactHeight: layout.compactFrame.height,
+            compactLeadingInset: layout.compactLeadingInset,
             surfaceSize: targetFrame.size,
             isResetScheduleExpanded: isResetScheduleExpanded,
             isPointerInside: isPointerInside,
@@ -653,7 +654,7 @@ final class NotchRuntimeCoordinator {
         screen: NSScreen,
         metrics: NotchScreenMetrics
     ) {
-        let layout = NotchGeometry.layout(metrics: metrics)
+        let layout = NotchGeometry.layout(metrics: metrics, leftIndicatorEnabled: runtimePreferences.leftIndicatorEnabled)
         guard layout.mode != .menuBarFallback else {
             windowController.showDisplayDisabledFallback()
             return
@@ -673,6 +674,7 @@ final class NotchRuntimeCoordinator {
             cameraSafeAreaInset: max(0, screen.safeAreaInsets.top),
             compactWidth: layout.compactFrame.width,
             compactHeight: layout.compactFrame.height,
+            compactLeadingInset: layout.compactLeadingInset,
             surfaceSize: targetFrame.size,
             isResetScheduleExpanded: false,
             animationsEnabled: false
@@ -690,7 +692,7 @@ final class NotchRuntimeCoordinator {
         screen: NSScreen,
         metrics: NotchScreenMetrics
     ) {
-        let layout = NotchGeometry.layout(metrics: metrics)
+        let layout = NotchGeometry.layout(metrics: metrics, leftIndicatorEnabled: runtimePreferences.leftIndicatorEnabled)
         let targetFrame = layout.frame(for: displayState)
         let transitionIdentifier = windowController.prepare(
             layout: layout,
@@ -707,7 +709,8 @@ final class NotchRuntimeCoordinator {
                 : 0,
             compactWidth: layout.compactFrame.width,
             compactHeight: layout.compactFrame.height,
-            surfaceSize: targetFrame.size,
+            compactLeadingInset: layout.compactLeadingInset,
+            surfaceSize: displayState == .hidden ? targetFrame.size : layout.compactFrame.size,
             isResetScheduleExpanded: false,
             isPointerInside: isPointerInside && displayState != .hidden,
             animationsEnabled: animationsEnabled,
@@ -725,16 +728,4 @@ final class NotchRuntimeCoordinator {
         )
     }
 
-    private func preferredScreen() -> NSScreen? {
-        let screens = NSScreen.screens
-        let main = NSScreen.main
-        if let main,
-           main.auxiliaryTopLeftArea != nil,
-           main.auxiliaryTopRightArea != nil {
-            return main
-        }
-        return screens.first {
-            $0.auxiliaryTopLeftArea != nil && $0.auxiliaryTopRightArea != nil
-        } ?? main ?? screens.first
-    }
 }

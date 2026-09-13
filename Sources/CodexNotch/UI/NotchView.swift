@@ -8,6 +8,7 @@ final class NotchViewModel: ObservableObject {
     @Published private(set) var cameraSafeAreaInset: CGFloat
     @Published private(set) var compactWidth: CGFloat
     @Published private(set) var compactHeight: CGFloat
+    @Published private(set) var compactLeadingInset: CGFloat = 0
     @Published private(set) var surfaceSize: CGSize
     @Published private(set) var isResetScheduleExpanded = false
     @Published private(set) var animationsEnabled: Bool
@@ -59,6 +60,7 @@ final class NotchViewModel: ObservableObject {
         cameraSafeAreaInset: CGFloat = 0,
         compactWidth: CGFloat = NotchCompactLayout.minimumWidth,
         compactHeight: CGFloat = NotchCompactLayout.height,
+        compactLeadingInset: CGFloat = 0,
         surfaceSize: CGSize = CGSize(
             width: NotchCompactLayout.minimumWidth,
             height: NotchCompactLayout.height
@@ -75,6 +77,7 @@ final class NotchViewModel: ObservableObject {
             || self.cameraSafeAreaInset != cameraSafeAreaInset
             || self.compactWidth != compactWidth
             || self.compactHeight != compactHeight
+            || self.compactLeadingInset != compactLeadingInset
             || self.surfaceSize != surfaceSize
             || self.isResetScheduleExpanded != isResetScheduleExpanded
             || self.isPointerInside != isPointerInside
@@ -91,6 +94,7 @@ final class NotchViewModel: ObservableObject {
             || self.surfaceSize != surfaceSize
             || self.compactWidth != compactWidth
             || self.compactHeight != compactHeight
+            || self.compactLeadingInset != compactLeadingInset
             || self.isResetScheduleExpanded != isResetScheduleExpanded
 
         // A content-height reduction must start at the previous full size.
@@ -112,6 +116,7 @@ final class NotchViewModel: ObservableObject {
             }
             if self.compactWidth != compactWidth { self.compactWidth = compactWidth }
             if self.compactHeight != compactHeight { self.compactHeight = compactHeight }
+            if self.compactLeadingInset != compactLeadingInset { self.compactLeadingInset = compactLeadingInset }
             if self.surfaceSize != surfaceSize { self.surfaceSize = surfaceSize }
             if self.isResetScheduleExpanded != isResetScheduleExpanded {
                 self.isResetScheduleExpanded = isResetScheduleExpanded
@@ -170,7 +175,6 @@ final class NotchViewModel: ObservableObject {
 
 struct NotchView: View {
     @ObservedObject private var model: NotchViewModel
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(QuotaDisplayStyle.storageKey)
     private var quotaDisplayStyleRaw = QuotaDisplayStyle.defaultStyle.rawValue
     @AppStorage(StatusIconStyle.storageKey)
@@ -190,8 +194,7 @@ struct NotchView: View {
 
     private var motionEnabled: Bool {
         AppAnimationPreference.allowsMotion(
-            animationsEnabled: model.animationsEnabled,
-            reduceMotion: reduceMotion
+            animationsEnabled: model.animationsEnabled
         )
     }
 
@@ -243,7 +246,8 @@ struct NotchView: View {
         NotchSurfaceShape(
             layoutMode: model.layoutMode,
             shoulderDepth: 6,
-            bottomRadius: isExpanded ? 22 : 14
+            bottomRadius: isExpanded ? 22 : 14,
+            leadingInset: isHidden || isExpanded ? 0 : model.compactLeadingInset
         )
     }
 
@@ -493,16 +497,21 @@ struct NotchSurfaceShape: Shape {
     let layoutMode: NotchLayoutMode
     var shoulderDepth: CGFloat
     var bottomRadius: CGFloat
+    var leadingInset: CGFloat = 0
 
-    var animatableData: AnimatablePair<CGFloat, CGFloat> {
-        get { AnimatablePair(shoulderDepth, bottomRadius) }
+    var animatableData: AnimatablePair<AnimatablePair<CGFloat, CGFloat>, CGFloat> {
+        get { AnimatablePair(AnimatablePair(shoulderDepth, bottomRadius), leadingInset) }
         set {
-            shoulderDepth = newValue.first
-            bottomRadius = newValue.second
+            shoulderDepth = newValue.first.first
+            bottomRadius = newValue.first.second
+            leadingInset = newValue.second
         }
     }
 
     func path(in rect: CGRect) -> Path {
+        let inset = min(max(0, leadingInset), rect.width)
+        let rect = CGRect(x: rect.minX + inset, y: rect.minY,
+                          width: rect.width - inset, height: rect.height)
         if layoutMode == .floatingBar {
             return NotchAttachedShape(
                 shoulderDepth: 0,
@@ -574,12 +583,15 @@ enum CompactLeftIndicatorPolicy {
     enum Content: Equatable {
         case fiveHourQuota
         case appStatus
+        case hidden
     }
 
     static func content(
         layoutMode: NotchLayoutMode,
-        hasFiveHourWindow: Bool
+        hasFiveHourWindow: Bool,
+        iconStyle: StatusIconStyle = .defaultStyle
     ) -> Content {
+        if !iconStyle.showsLeftIndicator { return .hidden }
         if (layoutMode == .notch || layoutMode == .floatingBar) && hasFiveHourWindow {
             return .fiveHourQuota
         }
@@ -615,6 +627,7 @@ private struct CompactNotchView: View {
     var isExpanded = false
     let action: () -> Void
     @Environment(\.notchAppLanguage) private var language
+    @Environment(\.notchStatusIconStyle) private var iconStyle
 
     var body: some View {
         Button(action: action) {
@@ -682,7 +695,8 @@ private struct CompactNotchView: View {
     private var compactLeftIndicator: some View {
         switch CompactLeftIndicatorPolicy.content(
             layoutMode: layoutMode,
-            hasFiveHourWindow: usage?.fiveHourWindow != nil
+            hasFiveHourWindow: usage?.fiveHourWindow != nil,
+            iconStyle: iconStyle
         ) {
         case .fiveHourQuota:
             if let fiveHourWindow = usage?.fiveHourWindow {
@@ -701,6 +715,8 @@ private struct CompactNotchView: View {
             }
         case .appStatus:
             compactAppIcon
+        case .hidden:
+            Color.clear
         }
     }
 

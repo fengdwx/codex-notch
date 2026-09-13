@@ -15,8 +15,7 @@ final class StatusIconStyleTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let initial = NotchRuntimePreferences.read(from: defaults)
 
-        XCTAssertEqual(StatusIconStyle.allCases.count, 2)
-        for style in StatusIconStyle.allCases {
+        for style in [StatusIconStyle.codex, .chatGPT] {
             defaults.set(style.rawValue, forKey: StatusIconStyle.storageKey)
             let reopened = try XCTUnwrap(UserDefaults(suiteName: suiteName))
             XCTAssertEqual(
@@ -29,7 +28,7 @@ final class StatusIconStyleTests: XCTestCase {
 
     func testBothEmbeddedMarksKeepTheSameTemplateGeometryAndDistinctArtwork() throws {
         var bitmaps = [Data]()
-        for style in StatusIconStyle.allCases {
+        for style in [StatusIconStyle.codex, .chatGPT] {
             let image = try XCTUnwrap(style.templateImage)
             XCTAssertTrue(image.isTemplate)
             XCTAssertEqual(image.size, NSSize(width: 18, height: 18))
@@ -39,6 +38,25 @@ final class StatusIconStyleTests: XCTestCase {
             bitmaps.append(try XCTUnwrap(bitmap.dataProvider?.data) as Data)
         }
         XCTAssertNotEqual(bitmaps[0], bitmaps[1])
+    }
+
+    func testOffPersistsAndChangesOnlyLeftVisibility() throws {
+        let name = "StatusIconStyleTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let before = NotchRuntimePreferences.read(from: defaults)
+        XCTAssertEqual(StatusIconStyle.allCases, [.codex, .chatGPT, .off])
+        defaults.set(StatusIconStyle.off.rawValue, forKey: StatusIconStyle.storageKey)
+        let reopened = try XCTUnwrap(UserDefaults(suiteName: name))
+        XCTAssertEqual(StatusIconStyle.fromStoredValue(reopened.string(forKey: StatusIconStyle.storageKey)), .off)
+        let after = NotchRuntimePreferences.read(from: reopened)
+        XCTAssertFalse(after.leftIndicatorEnabled)
+        XCTAssertEqual(after.language, before.language)
+        XCTAssertEqual(after.recentConversationLimit, before.recentConversationLimit)
+        XCTAssertEqual(after.animationsEnabled, before.animationsEnabled)
+        XCTAssertEqual(after.notchDisplayEnabled, before.notchDisplayEnabled)
+        defaults.set(StatusIconStyle.chatGPT.rawValue, forKey: StatusIconStyle.storageKey)
+        XCTAssertEqual(NotchRuntimePreferences.read(from: defaults), before)
     }
 
     private func maskImage(from layer: CALayer) throws -> CGImage {

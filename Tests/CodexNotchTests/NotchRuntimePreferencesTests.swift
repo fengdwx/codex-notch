@@ -1,4 +1,5 @@
-import Foundation
+import AppKit
+import SwiftUI
 import XCTest
 @testable import CodexNotch
 
@@ -102,25 +103,57 @@ final class NotchRuntimePreferencesTests: XCTestCase {
         XCTAssertTrue(NotchDisplayPreference.toggledValue(for: false))
     }
 
-    func testMotionRequiresBothTheAppSettingAndSystemPermission() {
+    func testMotionFollowsTheAppSetting() {
         XCTAssertTrue(
             AppAnimationPreference.allowsMotion(
-                animationsEnabled: true,
-                reduceMotion: false
+                animationsEnabled: true
             )
         )
         XCTAssertFalse(
             AppAnimationPreference.allowsMotion(
-                animationsEnabled: false,
-                reduceMotion: false
+                animationsEnabled: false
             )
         )
-        XCTAssertFalse(
-            AppAnimationPreference.allowsMotion(
-                animationsEnabled: true,
-                reduceMotion: true
+    }
+
+    @MainActor
+    func testAppSwitchStopsLiveAndPreviewMotionWithoutFreezingState() throws {
+        _ = NSApplication.shared
+        let suite = "IndependentMotionTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(FloatingCenterStyle.signature.rawValue, forKey: FloatingCenterStyle.storageKey)
+        func findMotion(in view: NSView) -> FloatingCenterLayerView? {
+            if let motion = view as? FloatingCenterLayerView { return motion }
+            return view.subviews.lazy.compactMap { findMotion(in: $0) }.first
+        }
+        for appAnimations in [true, false] {
+            let now = Date(timeIntervalSince1970: 1_700_000_000)
+            let model = NotchViewModel(
+                state: .quotaCompact(nil), now: now, layoutMode: .floatingBar,
+                compactWidth: 212, compactHeight: 30,
+                surfaceSize: CGSize(width: 212, height: 30), animationsEnabled: appAnimations
             )
-        )
+            let live = NSHostingView(rootView: NotchView(model: model)
+                .defaultAppStorage(defaults)
+                .frame(width: 212, height: 30))
+            let preview = NSHostingView(rootView: FloatingBarSettingsPreview(
+                style: .signature, customText: "Example", state: .idle,
+                language: .english, animationsEnabled: appAnimations
+            )
+                .frame(width: 500, height: 140))
+            for hosting in [live as NSView, preview as NSView] {
+                hosting.layoutSubtreeIfNeeded()
+                let motion = try XCTUnwrap(findMotion(in: hosting))
+                XCTAssertEqual(motion.animationIsRequested, appAnimations,
+                               "The live surface and preview must both follow the app switch")
+                XCTAssertFalse(motion.layerAnimationIsRunning,
+                               "Detached surfaces must still avoid animation work")
+            }
+            model.updateClock(now: now.addingTimeInterval(1))
+            XCTAssertEqual(model.now, now.addingTimeInterval(1), "Turning off motion must not freeze clocks")
+            XCTAssertEqual(model.state, .quotaCompact(nil))
+        }
     }
 
     func testMissingRecentConversationLimitUsesTheTwoItemDefault() {

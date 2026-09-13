@@ -3,6 +3,17 @@ import Foundation
 import SwiftUI
 
 enum NotchPanelFramePolicy {
+    /// Keep content in its original screen coordinates while cropping the actual
+    /// window. Otherwise narrowing one wing would move the surviving quota.
+    static func hostingFrame(canvas: NSRect, contentCenterX: CGFloat?) -> NSRect {
+        guard let centerX = contentCenterX else {
+            return NSRect(origin: .zero, size: canvas.size)
+        }
+        let halfWidth = max(centerX - canvas.minX, canvas.maxX - centerX)
+        return NSRect(x: centerX - halfWidth - canvas.minX, y: 0,
+                      width: halfWidth * 2, height: canvas.height)
+    }
+
     static func shouldSettleAfterCollapse(
         layoutMode: NotchLayoutMode
     ) -> Bool {
@@ -27,6 +38,7 @@ final class NotchWindowController: NSWindowController {
     private var canvasTransitionIdentifier = UUID()
     private var awaitingSurfaceCompletion = false
     private var requestedLayoutMode: NotchLayoutMode = .menuBarFallback
+    private var contentCenterX: CGFloat?
 
     private var appLanguage: AppLanguage {
         AppLanguage.fromStoredValue(
@@ -55,7 +67,7 @@ final class NotchWindowController: NSWindowController {
         let canvas = NSView(frame: panel.contentView?.bounds ?? .zero)
         hostingView.sizingOptions = []
         hostingView.frame = canvas.bounds
-        hostingView.autoresizingMask = [.width, .height]
+        hostingView.autoresizingMask = []
         canvas.addSubview(hostingView)
         panel.contentView = canvas
         self.hostingView = hostingView
@@ -81,6 +93,7 @@ final class NotchWindowController: NSWindowController {
         }
 
         requestedLayoutMode = layout.mode
+        contentCenterX = layout.compactLeadingInset > 0 ? layout.centerX : nil
         hideFallbackMenu()
         let targetFrame = layout.frame(for: state)
         let isExpanded: Bool
@@ -116,6 +129,8 @@ final class NotchWindowController: NSWindowController {
         )
         if setsFrameImmediately {
             applyCanvasFrame(frame)
+        } else {
+            updateHostingFrame()
         }
         panel.ignoresMouseEvents = false
         if wasVisible {
@@ -213,7 +228,7 @@ final class NotchWindowController: NSWindowController {
     }
 
     private func applyCanvasFrame(_ frame: NSRect) {
-        guard let panel = window as? NotchPanel, panel.frame != frame else { return }
+        guard let panel = window as? NotchPanel else { return }
         var transaction = Transaction(animation: nil)
         transaction.disablesAnimations = true
         withTransaction(transaction) {
@@ -221,6 +236,7 @@ final class NotchWindowController: NSWindowController {
                 context.duration = 0
                 context.allowsImplicitAnimation = false
                 panel.setFrame(frame, display: false)
+                updateHostingFrame()
                 // Resolve the old compact surface in the new canvas before
                 // the caller starts a SwiftUI animation. Otherwise its old
                 // local x coordinate is animated after the window moved left.
@@ -229,6 +245,13 @@ final class NotchWindowController: NSWindowController {
                 panel.displayIfNeeded()
             }
         }
+    }
+
+    private func updateHostingFrame() {
+        guard let panel = window else { return }
+        hostingView?.frame = NotchPanelFramePolicy.hostingFrame(
+            canvas: panel.frame, contentCenterX: contentCenterX
+        )
     }
 
     private func shouldDeferFrameSettlement(from current: NSRect, to target: NSRect) -> Bool {

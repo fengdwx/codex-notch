@@ -44,23 +44,15 @@ final class SwordWandererBattleMotionTests: XCTestCase {
         XCTAssertEqual(first.swordAngle, next.swordAngle, accuracy: 0.001)
     }
 
-    func testMotionPolicyHonorsBothAnimationControls() {
+    func testMotionPolicyHonorsTheAppAnimationControl() {
         XCTAssertTrue(
             SwordWandererBattleMotion.shouldAnimate(
-                animationsEnabled: true,
-                reduceMotion: false
+                animationsEnabled: true
             )
         )
         XCTAssertFalse(
             SwordWandererBattleMotion.shouldAnimate(
-                animationsEnabled: false,
-                reduceMotion: false
-            )
-        )
-        XCTAssertFalse(
-            SwordWandererBattleMotion.shouldAnimate(
-                animationsEnabled: true,
-                reduceMotion: true
+                animationsEnabled: false
             )
         )
     }

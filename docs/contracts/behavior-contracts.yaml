@@ -1,4 +1,159 @@
 contracts:
+  - id: SETTINGS-MOTION-021
+    title: The app animation switch is independent of system Reduce Motion
+    status: active
+    statement: >-
+      Preserve SETTINGS-PREFERENCES-020 and every inherited contract except the
+      requirement to gate app animations on system Reduce Motion. Only the
+      persisted app animation switch controls whether CodexNotch requests
+      motion, including live notch and floating content, surface transitions,
+      completion effects and Settings previews. System Reduce Motion must not
+      override it, and the app must not change the system setting. Preserve
+      task, expansion, visibility and detachment gates and the existing static
+      state cues when the app switch is off. Quota and task updates continue
+      with motion off. Settings uses a short resource-use explanation without
+      CPU/GPU details or system-linkage text. Retain plain screen names,
+      preview routing, defaults, settings storage and all unrelated behavior.
+    rationale: The user explicitly requested simpler copy and an animation switch that does not follow system Reduce Motion.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [animation-preference, settings-copy, live-motion-gating, preview-motion-gating]
+      exclude: [system-settings, motion-design, screen-routing, quotas, tasks, releases]
+    examples:
+      positive: With system Reduce Motion enabled, the app switch still enables live and preview motion; turning it off stops motion while clocks and task state remain live.
+      negative: The app switch is on but system Reduce Motion silently stops app animations, hidden layers keep animating, or the app changes system accessibility settings.
+    guards:
+      - Tests/CodexNotchTests/NotchRuntimePreferencesTests.swift
+      - Tests/CodexNotchTests/SwordWandererBattleMotionTests.swift
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - docs/decisions/051-independent-animation-switch.md
+      - "manual: read both settings panes, toggle the app animation switch and check preview/live motion; system accessibility settings must remain untouched"
+    supersedes: [SETTINGS-PREFERENCES-020]
+    superseded_by: null
+    last_verified_commit: null
+
+  - id: SETTINGS-PREFERENCES-020
+    title: Grouped Settings explain floating applicability and provide a safe example
+    status: superseded
+    statement: >-
+      Preserve SETTINGS-PREFERENCES-018 and NOTCH-LEFT-001 preferences, defaults,
+      persistence, real display behavior and all inherited contracts. Organize
+      Settings into General, Appearance and Floating Bar tabs, using concise
+      contextual descriptions and native keyboard-accessible controls. Preserve
+      login approval/errors, updates and repeated window activation. Floating
+      applicability must use the same screen-selection and geometry rules as
+      the runtime, refreshed on appearance, app activation and screen changes;
+      do not imply that options change a physical-notch or hidden surface.
+      Explicitly override the inherited no-Settings-preview requirement only
+      for a labelled floating-center example usable on any screen. Share the
+      live center renderer with injected sample state, style and text. The
+      example must not read or display live task/quota data, create a task,
+      start a new clock or force the actual display into floating mode. Support
+      running, idle and completed samples with a fixed 02:18 elapsed example;
+      respect motion preferences and Reduce Motion and stop on tab/window
+      hiding. Show custom text only for styles that use it, retaining it when
+      hidden. Describe notch and no-notch/external-display modes in plain
+      language without implying that connecting any external screen changes
+      the active route. Explain that turning off animations reduces animation
+      processing while quota and task updates continue; do not promise memory
+      savings or a measured performance improvement. Keep the real top display, expanded card, settings keys, quota
+      semantics, privacy, login items and release/update behavior unchanged.
+    rationale: The user could not understand or try floating-only settings on a physical-notch display and requested a clearer settings arrangement.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [settings-layout, applicability-hints, floating-example, shared-center-renderer]
+      exclude: [real-display-layout, task-data, quota-data, new-runtime-modes, releases]
+    examples:
+      positive: A notched-display user reads why the real notch is unchanged, tries every style and sample state below, and retains all existing settings after restart.
+      negative: Showing a preview as real activity, claiming an attached external screen guarantees applicability, leaving animation behind a hidden tab, or disabling the controls so the user still cannot try them.
+    guards:
+      - Tests/CodexNotchTests/SettingsDisplayContextTests.swift
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - Tests/CodexNotchTests/NotchDisplayRoutingTests.swift
+      - Tests/CodexNotchTests/SettingsWindowPresenterTests.swift
+      - docs/decisions/050-grouped-settings-and-floating-preview.md
+      - "manual: inspect all tabs in Chinese/English, try each example style and state, edit text, disable motion, close/reopen Settings and verify display hints across screen changes"
+    supersedes: [SETTINGS-PREFERENCES-018, NOTCH-LEFT-001]
+    superseded_by: SETTINGS-MOTION-021
+    last_verified_commit: null
+
+  - id: NOTCH-LEFT-001
+    title: An explicit Off choice releases the compact left wing
+    status: superseded
+    statement: >-
+      Preserve all behavior inherited from QUOTA-SEMANTICS-055, FLOATING-ICON-052,
+      FLOATING-CENTER-057, NOTCH-MOTION-008 and NOTCH-LAYOUT-038 when Codex or
+      ChatGPT is selected. Add a localized Off choice to the existing status
+      icon picker, persisted as off; default and unknown values remain Codex.
+      Only Off overrides the mandatory left status and five-hour indicators:
+      remove that entire compact lane, its effects, shell background and settled
+      mouse-hit area. Five-hour quota remains in the expanded card, and the
+      setting explains this exception. At a physical notch, the actual compact
+      panel begins at the camera's left edge. On floating bars remove the 30pt
+      left lane. Preserve right quota and floating center screen positions,
+      expanded frames, camera safety, quota values, task state, navigation,
+      signatures, full-screen routing and motion preferences. Keep the original
+      content coordinate system inside the cropped panel and retain fixed-canvas
+      expansion and completion-driven reclamation. Hidden recovery stays at the
+      physical camera or remaining floating compact region. Restoring either
+      artwork immediately restores the full left lane and its original priority.
+    rationale: The user requested a third picker choice to address issue 3 menu-bar obstruction; hiding artwork alone would leave the blocking background and panel.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [settings, left-indicator, compact-geometry, panel-hit-area, hover-canvas]
+      exclude: [automatic-menu-avoidance, quota-data, task-state, expanded-content, login-items, releases]
+    examples:
+      positive: Off persists after restart, removes the full left wing even with five-hour quota, leaves the right indicator and expanded card anchored, and switching back restores the prior layout.
+      negative: An invisible panel still blocks the old left menu region, a five-hour ring reappears while Off is selected, the right quota moves, or a stale collapse clips a reopened card.
+    guards:
+      - Tests/CodexNotchTests/StatusIconStyleTests.swift
+      - Tests/CodexNotchTests/CompactLeftIndicatorPolicyTests.swift
+      - Tests/CodexNotchTests/HiddenLeftWingTests.swift
+      - Tests/CodexNotchTests/NotchHoverFeedbackTests.swift
+      - docs/decisions/049-optional-left-wing.md
+      - "manual: switch all three choices and restart, inspect floating and physical-notch placement, click the recovered menu area, expand/collapse and confirm full quota data and Reduce Motion behavior"
+    supersedes: [QUOTA-SEMANTICS-055, FLOATING-ICON-052, FLOATING-CENTER-057, NOTCH-MOTION-008, NOTCH-LAYOUT-038]
+    superseded_by: SETTINGS-PREFERENCES-020
+    last_verified_commit: null
+
+  - id: APP-LOGIN-001
+    title: Launch at login is opt-in and reflects system registration
+    status: active
+    statement: >-
+      Settings provides a bilingual Launch at login toggle backed by
+      SMAppService.mainApp. Register or unregister only after an explicit toggle;
+      never opt users in at app startup or when opening Settings. Read the system
+      state on Settings appearance, application activation and after each change,
+      including failures. Respect existing system registration and external
+      changes without a second persisted preference. Pending approval must be
+      visibly distinguished from enabled, remain cancellable, and offer a
+      user-initiated Login Items settings button. Show failures without claiming
+      success. Preserve existing settings, notch layout, data and app updates.
+    rationale: The maintainer approved the startup request in issue 3 independently of the menu-bar layout proposal.
+    source: user-request
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [settings, launch-at-login, system-login-item]
+      exclude: [menu-bar-layout, notch-motion, task-data, quota-data, packaging, releases]
+    examples:
+      positive: Enabling registers the bundled app, disabling removes it, and an external change is reflected when returning to Settings; pending approval and failed changes are clearly reported.
+      negative: Starting the app silently opts in, an external disable is overwritten, a failed change saves a false success state, or pending approval is described as active.
+    guards:
+      - Tests/CodexNotchTests/LaunchAtLoginTests.swift
+      - docs/decisions/048-launch-at-login.md
+      - "manual: toggle in the bundled app, check Login Items and external changes, then log out/in with the option enabled and verify automatic launch"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null
+
   - id: APP-UPDATE-002
     title: Manually initiated signed updates install inside the app
     status: active
@@ -99,7 +254,7 @@ contracts:
 
   - id: FLOATING-ICON-052
     title: Center the complete floating status mark within its indicator lane
-    status: active
+    status: superseded
     statement: >-
       Preserve FLOATING-CENTER-051 geometry and center choices. On floating
       bars, including mirrored displays, render a 20pt app mark with a smaller
@@ -125,7 +280,7 @@ contracts:
       - docs/decisions/039-task-names-and-floating-icon-alignment.md
       - "manual: compare native completed and running fixtures, then inspect the mirrored-display app; physical-notch placement still requires real-notch confirmation"
     supersedes: []
-    superseded_by: null
+    superseded_by: NOTCH-LEFT-001
     last_verified_commit: null
 
   - id: FLOATING-CENTER-051
@@ -299,7 +454,7 @@ contracts:
 
   - id: FLOATING-CENTER-057
     title: Personal signatures show centered text without a status dot
-    status: active
+    status: superseded
     statement: >-
       Preserve FLOATING-CENTER-056 five-second seamless light, brightness,
       font metrics, all-state continuity, settings and motion gates. Remove
@@ -321,7 +476,7 @@ contracts:
       - docs/decisions/044-signature-without-status-dot.md
       - "manual: inspect signature centering and absence of the dot in live running, completed and idle frames and the installed floating bar"
     supersedes: [FLOATING-CENTER-056]
-    superseded_by: null
+    superseded_by: NOTCH-LEFT-001
     last_verified_commit: null
 
   - id: NOTCH-MOTION-004
@@ -500,7 +655,7 @@ contracts:
 
   - id: NOTCH-MOTION-008
     title: A small hover response precedes expansion with a subtle shell shadow
-    status: active
+    status: superseded
     statement: >-
       Preserve NOTCH-READABILITY-007 typography, primary activity and quota cues,
       main opening and closing curves, stable text transitions, top-center
@@ -534,12 +689,12 @@ contracts:
       - docs/decisions/045-hover-response-and-shadow.md
       - "manual: record brief hover, full expansion, collapse and rapid reentry on the installed floating bar; confirm physical-notch clearance and Reduce Motion"
     supersedes: [NOTCH-READABILITY-007]
-    superseded_by: null
+    superseded_by: NOTCH-LEFT-001
     last_verified_commit: null
 
   - id: SETTINGS-PREFERENCES-018
     title: Language, history, motion and floating center settings apply live
-    status: active
+    status: superseded
     statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-057. Card transitions now follow the motion preference and Reduce Motion under NOTCH-MOTION-008; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
     rationale: Center choices need live visual comparison and persistence, and the newly requested spring transition supersedes the earlier always-static exception.
     source: user-request
@@ -557,7 +712,7 @@ contracts:
       - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
       - "manual: change styles, text, language and motion preferences, then restart and verify persistence"
     supersedes: [SETTINGS-PREFERENCES-017]
-    superseded_by: null
+    superseded_by: SETTINGS-PREFERENCES-020
     last_verified_commit: null
 
   - id: QUOTA-WAVE-055
@@ -1125,7 +1280,7 @@ contracts:
 
   - id: NOTCH-LAYOUT-038
     title: Completion keeps its green cue without a quota firework
-    status: active
+    status: superseded
     statement: >-
       Completion must preserve the readable quota percentage, the green completed ChatGPT mark, and its clear green checkmark, but the quota ring and wave ball must never create or play the particle firework, even when app animations are enabled and Reduce Motion is disabled. The dormant particle geometry may remain available for rollback, but no completion TimelineView may run in normal use.
     rationale: >-
@@ -1143,7 +1298,7 @@ contracts:
       - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
       - "manual: finish a real task and confirm the green completion cue remains without any quota firework"
     supersedes: [NOTCH-LAYOUT-037]
-    superseded_by: null
+    superseded_by: NOTCH-LEFT-001
     last_verified_commit: null
 
   - id: NOTCH-COMPATIBILITY-015
@@ -2429,7 +2584,7 @@ contracts:
 
   - id: QUOTA-SEMANTICS-055
     title: The Codex flower outline stays white at every quota level
-    status: active
+    status: superseded
     statement: >-
       Preserve the black center, original white prompt, narrow 18pt flower outline geometry, icon selection, and motion lifecycle from QUOTA-SEMANTICS-054. The live Codex foreground outline is now white regardless of weekly quota. Only the running echo retains its existing weekly theme, with neutral white at critical quota; completion keeps the green echo and checkmark. The right quota ring and wave retain their existing quota palette and animations, and Settings brand samples and ChatGPT artwork remain unchanged.
     rationale: The user asked to change the outer flower outline back to white after viewing the quota-colored outline.
@@ -2449,7 +2604,7 @@ contracts:
       - docs/decisions/030-white-codex-flower-outline.md
       - "manual: inspect the white outline and black center on the real notch, including running and completed cues"
     supersedes: [QUOTA-SEMANTICS-054]
-    superseded_by: null
+    superseded_by: NOTCH-LEFT-001
     last_verified_commit: null
 
   - id: ACTIVITY-STATE-006

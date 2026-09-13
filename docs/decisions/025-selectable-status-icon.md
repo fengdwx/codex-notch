@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [QUOTA-SEMANTICS-055, SETTINGS-PREFERENCES-017, PRIVACY-APP-BUNDLE-040]
 supersedes: [023-embed-codex-mark-for-status-fallback]
-superseded_by: null
+superseded_by: 049-optional-left-wing
 owner: project-maintainer
 created_at: 2026-09-06
 last_verified_commit: null
