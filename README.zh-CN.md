@@ -23,6 +23,13 @@
 
 <p align="center"><sub>真实 App 演示：周额度、精确重置时间、全部重置额度到期时间、跨应用持续可见，以及任务运行状态。</sub></p>
 
+## 0.2.0 更新
+
+- 悬停时轻微预撑，展开后带一点回弹，收回过渡更连贯。
+- 优化字体层级和留白，文字在展开与收回时保持自然大小。
+- 浮动条中间支持个人签名、轨道签名、运行计时和细流光四种样式；紧凑浮动条可见且启用动画时，签名流光持续运动。
+- 优化浮动条状态图标的视觉平衡，显示 Codex 最新任务名称，过滤标题中的附件说明，修正转义字符显示。
+
 ## 为什么做 CodexNotch
 
 Codex 的额度很容易被其他窗口挡住。CodexNotch 把最关心的三个答案固定在 MacBook 刘海旁：
@@ -89,20 +96,21 @@ CodexNotch 默认读取 `~/.codex`。如果你的 Codex 使用其他目录，可
 鼠标移入实体刘海并点击右下角“设置”，或通过刘海右键菜单、应用菜单打开设置：
 
 - 在顺时针额度圆环与波浪球之间切换
+- 选择浮动条中间样式，并设置最多 12 个字符的个人签名
 - 选择中文或英文界面（默认英文）
 - 设置展开卡片显示的最近对话数量（0–5，设置为 0 可隐藏最近对话）
 - 手动检查最新正式版本，并打开 GitHub 下载页
 - 修改后立即生效，并保存在本机
 - 开启 Reduce Motion 后保留静态状态，减少动态效果
 
-无刘海屏幕会自动使用菜单栏 fallback。
+无刘海屏幕（包括镜像屏幕）会在屏幕顶部居中显示浮动条。
 
 <details>
 <summary><strong>视觉与交互细节</strong></summary>
 
 - 左右紧凑指标使用相同的 24pt 对齐容器，避免图标下沉或被摄像头区域遮挡。
 - 额度环从 12 点方向开始，按顺时针表达进度；额度不低于 20% 时为绿色，低于 20% 时为红色，数据缺失时为灰色。
-- 只有任务运行时，额度渐变或波浪才会运动；空闲、完成或启用 Reduce Motion 时保持静止。
+- 只有任务运行时，额度渐变或波浪才会运动；签名流光在空闲和完成时也持续运动。关闭动画或启用 Reduce Motion 后，两者都保持静止。
 - 展开卡片只从紧凑岛体向下展开；收起后回收透明画布，避免拦截刘海外的鼠标操作。
 - 数字始终显示在额度指标内部，不在旁边重复显示。
 
@@ -113,7 +121,7 @@ CodexNotch 默认读取 `~/.codex`。如果你的 Codex 使用其他目录，可
 - 认证令牌只从 `CODEX_HOME/auth.json` 读取并保存在进程内存，不写入 CodexNotch 缓存或日志。
 - 额度与可用重置额度明细分别请求 ChatGPT 的只读 usage 和重置额度接口。
 - 任务状态只解析本地 `CODEX_HOME/sessions` 中的 rollout JSONL 文件。
-- 最近对话按 thread ID 只读匹配 `CODEX_HOME/state_5.sqlite` 中 Codex 维护的简短 `threads.title`；不读取 rollout 消息正文、`first_user_message` 或 `preview`。
+- 对话标题按 thread ID 优先匹配 `CODEX_HOME/session_index.jsonl` 中最新的简短 `thread_name`，再回退到只读 `CODEX_HOME/state_5.sqlite` 中的 `threads.title`；解析标题时不读取 rollout 消息正文、`first_user_message` 或 `preview`。
 - 不记录 Authorization header、完整 usage 响应、用户消息正文或对话标题缓存。
 - 手动检查更新只读取 GitHub 的公开 Release 元数据，不发送 Codex 凭据、额度数据、任务数据或用户内容。
 
@@ -146,7 +154,7 @@ SIGN_IDENTITY=none ./scripts/build_app.sh
 
 ## 当前边界
 
-CodexNotch 目前是 v1 preview，不提供终止 Codex 任务、成本统计、云同步、远程通知、自动下载安装、宠物动画或 Mac App Store 分发。ChatGPT Classic 不属于监听目标。
+CodexNotch 目前处于 0.x 版本阶段，不提供终止 Codex 任务、成本统计、云同步、远程通知、自动下载安装、宠物动画或 Mac App Store 分发。ChatGPT Classic 不属于监听目标。
 
 ## 开源许可
 

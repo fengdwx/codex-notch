@@ -23,6 +23,13 @@ Your browser, IDE, or any other app can be frontmost—your quota remains visibl
 
 <p align="center"><sub>Real app capture with English product callouts: weekly quota, exact reset time, every reset-credit expiry, cross-app visibility, and live task status.</sub></p>
 
+## New in 0.2.0
+
+- Gentle hover feedback, a spring opening with a small landing rebound, and a smoother collapse.
+- Cleaner typography and spacing, with text staying at its natural size during transitions.
+- Four floating-bar center styles: a custom signature, orbit, elapsed time, and light flow. Signature lighting moves continuously while the compact bar is visible and motion is enabled.
+- Better-balanced floating status icons and current Codex task names, filtering attachment headers and decoding escaped characters in conversation labels.
+
 ## Why CodexNotch exists
 
 Codex quota is easy to lose behind other windows. CodexNotch keeps the answers that matter beside your MacBook notch, wherever you work:
@@ -89,20 +96,21 @@ CodexNotch reads the default `~/.codex` directory. If Codex uses another directo
 Hover over the physical notch and use **Settings** at the lower-right of the expanded card. You can also open Settings from the notch context menu or app menu.
 
 - Switch between the clockwise quota ring and wave ball
+- Choose a floating-bar center style and set a signature of up to 12 characters
 - Choose Chinese or English for the app interface (English by default)
 - Show 0–5 recent conversations in the expanded card
 - Manually check the latest stable release and open its GitHub download page
 - Apply changes immediately and save them locally
 - Respect Reduce Motion while preserving static status cues
 
-Macs without a notch automatically use a menu-bar fallback.
+Displays without a notch, including mirrored displays, use a floating bar centered at the top of the screen.
 
 <details>
 <summary><strong>Visual and interaction details</strong></summary>
 
 - Both compact indicators use matching 24pt alignment containers, keeping icons clear of the camera cutout.
 - The quota ring starts at 12 o'clock and progresses clockwise. It is green at 20% or above, red below 20%, and gray when data is unavailable.
-- The gradient or wave moves only while a task is running. It remains still while idle, completed, or when Reduce Motion is enabled.
+- The quota gradient or wave moves only while a task is running. Signature lighting also continues while idle or completed; disabling animations or enabling Reduce Motion keeps both still.
 - The card expands downward from the compact island. Its transparent canvas is reclaimed after collapse so it does not intercept clicks outside the notch.
 - The quota number stays inside the indicator and is never repeated beside it.
 
@@ -113,7 +121,7 @@ Macs without a notch automatically use a menu-bar fallback.
 - The authentication token is read only from `CODEX_HOME/auth.json` and remains in process memory. CodexNotch never writes it to a cache or log.
 - Quota and reset-credit details come from ChatGPT's read-only usage and reset-credit endpoints.
 - Task state is parsed only from rollout JSONL files in `CODEX_HOME/sessions`.
-- Recent-conversation labels are joined by thread ID to Codex's short `threads.title` summary in read-only `CODEX_HOME/state_5.sqlite`; rollout message bodies, `first_user_message`, and `preview` are ignored.
+- Conversation labels use the latest short `thread_name` in `CODEX_HOME/session_index.jsonl`, falling back to `threads.title` in read-only `CODEX_HOME/state_5.sqlite`. Rollout message bodies, `first_user_message`, and `preview` are ignored when resolving titles.
 - CodexNotch never records Authorization headers, complete usage responses, user-message bodies, or conversation-title caches.
 - The manual update check reads only public GitHub release metadata; it sends no Codex credentials, quota data, task data, or user content.
 
@@ -146,7 +154,7 @@ SIGN_IDENTITY=none ./scripts/build_app.sh
 
 ## Current boundaries
 
-CodexNotch is currently a v1 preview. It does not terminate Codex tasks, estimate cost, sync to the cloud, send remote notifications, automatically download or install updates, animate a pet, or support Mac App Store distribution. ChatGPT Classic is not a monitored target.
+CodexNotch is currently in its 0.x release series. It does not terminate Codex tasks, estimate cost, sync to the cloud, send remote notifications, automatically download or install updates, animate a pet, or support Mac App Store distribution. ChatGPT Classic is not a monitored target.
 
 ## License
 
