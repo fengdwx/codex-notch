@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [NOTCH-READABILITY-007, SETTINGS-PREFERENCES-018, NOTCH-LAYOUT-038]
 supersedes: [037-stable-type-motion]
-superseded_by: null
+superseded_by: 045-hover-response-and-shadow
 owner: project-maintainer
 created_at: 2026-09-13
 ---

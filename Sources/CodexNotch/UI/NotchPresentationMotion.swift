@@ -4,6 +4,14 @@ import SwiftUI
 enum NotchPresentationMotion {
     static let expandDuration: TimeInterval = 0.65
     static let collapseDuration: TimeInterval = 0.50
+    // A bounded settling curve keeps a tiny hover from retaining a long spring tail.
+    static let hover = Animation.timingCurve(0.2, 0.8, 0.35, 1.06, duration: 0.20)
+    static let shadowPadding: CGFloat = 12
+
+    static func hoverSurfaceSize(_ compact: CGSize, isHovering: Bool, animationsEnabled: Bool) -> CGSize {
+        guard isHovering, animationsEnabled, compact.width > 0, compact.height > 0 else { return compact }
+        return CGSize(width: compact.width + 4, height: compact.height + 2)
+    }
 
     // Let the outer shell land and rebound, while content keeps a stable scale.
     // The surface frame bounds both opening and closing excursions.
@@ -54,11 +62,27 @@ enum NotchPresentationMotion {
         changesSurface && animationsEnabled
     }
 
-    static func canvasFrame(for target: CGRect, isExpanded: Bool, animationsEnabled: Bool) -> CGRect {
-        guard isExpanded, animationsEnabled else { return target }
+    static func settledCanvasFrame(
+        for target: CGRect, isExpanded: Bool, isHovering: Bool = false, animationsEnabled: Bool
+    ) -> CGRect {
+        guard animationsEnabled, isExpanded || isHovering,
+              target.width > 0, target.height > 0 else { return target }
+        let size = isExpanded ? target.size
+            : hoverSurfaceSize(target.size, isHovering: isHovering, animationsEnabled: animationsEnabled)
+        return CGRect(x: target.midX - size.width / 2 - shadowPadding,
+                      y: target.maxY - size.height - shadowPadding,
+                      width: size.width + shadowPadding * 2, height: size.height + shadowPadding)
+    }
+
+    static func canvasFrame(
+        for target: CGRect, isExpanded: Bool, isHovering: Bool = false, animationsEnabled: Bool
+    ) -> CGRect {
+        let settled = settledCanvasFrame(for: target, isExpanded: isExpanded,
+                                         isHovering: isHovering, animationsEnabled: animationsEnabled)
+        guard isExpanded, animationsEnabled else { return settled }
         // Preserve the screen-top anchor; make room only beside/below it.
-        return CGRect(x: target.minX - 8, y: target.minY - 8,
-                      width: target.width + 16, height: target.height + 8)
+        return CGRect(x: settled.minX - 8, y: settled.minY - 8,
+                      width: settled.width + 16, height: settled.height + 8)
     }
 }
 

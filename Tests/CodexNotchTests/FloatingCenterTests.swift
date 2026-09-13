@@ -320,7 +320,11 @@ final class FloatingCenterTests: XCTestCase {
                 XCTAssertEqual(panel.frame, preparedFrame, "SwiftUI must animate inside the controller-owned canvas")
             }
             XCTAssertTrue(completed, "The actual SwiftUI completion must release the temporary canvas")
-            XCTAssertEqual(panel.frame, target)
+            // NOTCH-MOTION-008 retains only shadow clearance while expanded.
+            let settled = target == expanded
+                ? NSRect(x: expanded.minX - 12, y: expanded.minY - 12,
+                         width: expanded.width + 24, height: expanded.height + 12) : target
+            XCTAssertEqual(panel.frame, settled)
         }
     }
 
@@ -372,16 +376,18 @@ final class FloatingCenterTests: XCTestCase {
             sessions: [], conversations: [], headerConversation: nil, usage: nil
         ))
         let smallState = NotchPresentationState.quotaCompact(nil)
+        let shadowFrame = NSRect(x: expanded.minX - 12, y: expanded.minY - 12,
+                                 width: expanded.width + 24, height: expanded.height + 12)
         let first = controller.prepare(layout: layout, state: largeState, animationsEnabled: true)
         controller.settleFrame(layout: layout, state: largeState, animationWillComplete: true)
         controller.finishSurfaceAnimation(identifier: first, targetFrame: expanded)
         let closing = controller.prepare(layout: layout, state: smallState, animationsEnabled: true)
         controller.settleFrame(layout: layout, state: smallState, animationWillComplete: true)
         try await Task.sleep(for: .milliseconds(750))
-        XCTAssertEqual(panel.frame, expanded, "Elapsed time alone must never cut off the final animation frames")
+        XCTAssertEqual(panel.frame, shadowFrame, "Elapsed time alone must never cut off the final animation frames")
         XCTAssertEqual(controller.prepare(layout: layout, state: smallState), closing)
         controller.settleFrame(layout: layout, state: smallState)
-        XCTAssertEqual(panel.frame, expanded, "A clock refresh must not reclaim the canvas")
+        XCTAssertEqual(panel.frame, shadowFrame, "A clock refresh must not reclaim the canvas")
 
         let reopened = controller.prepare(layout: layout, state: largeState, animationsEnabled: true)
         controller.settleFrame(layout: layout, state: largeState, animationWillComplete: true)
@@ -390,7 +396,7 @@ final class FloatingCenterTests: XCTestCase {
         controller.finishSurfaceAnimation(identifier: first, targetFrame: expanded)
         XCTAssertEqual(panel.frame, padded, "Stale callbacks must not affect a later transition to the same target")
         controller.finishSurfaceAnimation(identifier: reopened, targetFrame: expanded)
-        XCTAssertEqual(panel.frame, expanded)
+        XCTAssertEqual(panel.frame, shadowFrame)
     }
 
     @MainActor
@@ -407,6 +413,8 @@ final class FloatingCenterTests: XCTestCase {
             mode: .floatingBar, centerX: compact.midX, hoverSensorFrame: compact,
             compactFrame: compact, quotaExpandedFrame: expandedFrame, expandedFrame: expandedFrame
         )
+        let shadowFrame = NSRect(x: expandedFrame.minX - 12, y: expandedFrame.minY - 12,
+                                 width: expandedFrame.width + 24, height: expandedFrame.height + 12)
         let compactState = NotchPresentationState.quotaCompact(nil)
         let expandedState = NotchPresentationState.expanded(ExpandedContent(
             sessions: [], conversations: [], headerConversation: nil, usage: nil
@@ -422,7 +430,7 @@ final class FloatingCenterTests: XCTestCase {
             controller.settleFrame(layout: layout, state: expandedState, animationsEnabled: true)
         }
         try await Task.sleep(for: .milliseconds(250))
-        XCTAssertEqual(panel.frame, expandedFrame, "Same-target refreshes must not restart the settlement delay")
+        XCTAssertEqual(panel.frame, shadowFrame, "Same-target refreshes must not restart the settlement delay")
 
         controller.prepare(layout: layout, state: compactState, animationsEnabled: true)
         controller.settleFrame(layout: layout, state: compactState, animationsEnabled: true)
@@ -432,7 +440,7 @@ final class FloatingCenterTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(450))
         XCTAssertGreaterThanOrEqual(panel.frame.width, expandedFrame.width, "The canceled collapse must not shrink a reopened card")
         try await Task.sleep(for: .milliseconds(250))
-        XCTAssertEqual(panel.frame, expandedFrame)
+        XCTAssertEqual(panel.frame, shadowFrame)
 
         controller.prepare(layout: layout, state: compactState, animationsEnabled: false)
         controller.settleFrame(layout: layout, state: compactState, animationsEnabled: false)

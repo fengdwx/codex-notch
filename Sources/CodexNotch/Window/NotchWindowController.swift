@@ -21,6 +21,9 @@ final class NotchWindowController: NSWindowController {
     private var deferredFrameWorkItem: DispatchWorkItem?
     private var deferredFrameIdentifier: UUID?
     private var lastPreparedTargetFrame: NSRect?
+    private var lastPreparedSettledFrame: NSRect?
+    private var lastPreparedIsExpanded = false
+    private(set) var isCardTransitionInFlight = false
     private var canvasTransitionIdentifier = UUID()
     private var awaitingSurfaceCompletion = false
     private var requestedLayoutMode: NotchLayoutMode = .menuBarFallback
@@ -66,6 +69,7 @@ final class NotchWindowController: NSWindowController {
     func prepare(
         layout: NotchLayout,
         state: NotchPresentationState,
+        isHovering: Bool = false,
         animationsEnabled: Bool = AppAnimationPreference.defaultEnabled
     ) -> UUID {
         guard let panel = window as? NotchPanel else { return canvasTransitionIdentifier }
@@ -79,23 +83,31 @@ final class NotchWindowController: NSWindowController {
         requestedLayoutMode = layout.mode
         hideFallbackMenu()
         let targetFrame = layout.frame(for: state)
+        let isExpanded: Bool
+        if case .expanded = state { isExpanded = true } else { isExpanded = false }
+        let settledFrame = NotchPresentationMotion.settledCanvasFrame(
+            for: targetFrame, isExpanded: isExpanded, isHovering: isHovering,
+            animationsEnabled: animationsEnabled
+        )
         let wasVisible = panel.isVisible
         let wasIgnoringMouseEvents = panel.ignoresMouseEvents
         let changesTarget = lastPreparedTargetFrame != targetFrame
+            || lastPreparedSettledFrame != settledFrame
             || !wasVisible
-            || (deferredFrameWorkItem == nil && !awaitingSurfaceCompletion && panel.frame != targetFrame)
+            || (deferredFrameWorkItem == nil && !awaitingSurfaceCompletion && panel.frame != settledFrame)
         if changesTarget || !animationsEnabled {
             cancelDeferredFrameSettlement()
             canvasTransitionIdentifier = UUID()
+            isCardTransitionInFlight = animationsEnabled && (isExpanded || lastPreparedIsExpanded)
         }
         lastPreparedTargetFrame = targetFrame
-        let isExpanded: Bool
-        if case .expanded = state { isExpanded = true } else { isExpanded = false }
+        lastPreparedSettledFrame = settledFrame
+        lastPreparedIsExpanded = isExpanded
         let frame = changesTarget
             ? NotchPresentationMotion.canvasFrame(
-                for: targetFrame, isExpanded: isExpanded, animationsEnabled: animationsEnabled
+                for: targetFrame, isExpanded: isExpanded, isHovering: isHovering, animationsEnabled: animationsEnabled
             )
-            : (deferredFrameWorkItem == nil && !awaitingSurfaceCompletion ? targetFrame : panel.frame)
+            : (deferredFrameWorkItem == nil && !awaitingSurfaceCompletion ? settledFrame : panel.frame)
 
         let setsFrameImmediately = shouldSetFrameImmediately(
             from: panel.frame,
@@ -144,7 +156,7 @@ final class NotchWindowController: NSWindowController {
             return
         }
 
-        let targetFrame = layout.frame(for: state)
+        let targetFrame = lastPreparedSettledFrame ?? layout.frame(for: state)
         guard shouldDeferFrameSettlement(from: panel.frame, to: targetFrame) else {
             return
         }
@@ -154,6 +166,7 @@ final class NotchWindowController: NSWindowController {
             animationsEnabled: animationsEnabled
         ) else {
             cancelDeferredFrameSettlement()
+            isCardTransitionInFlight = false
             applyCanvasFrame(targetFrame)
             return
         }
@@ -177,6 +190,7 @@ final class NotchWindowController: NSWindowController {
                 return
             }
             self.applyCanvasFrame(targetFrame)
+            self.isCardTransitionInFlight = false
             self.deferredFrameIdentifier = nil
             self.deferredFrameWorkItem = nil
         }
@@ -194,7 +208,8 @@ final class NotchWindowController: NSWindowController {
         guard identifier == canvasTransitionIdentifier,
               targetFrame == lastPreparedTargetFrame else { return }
         cancelDeferredFrameSettlement()
-        applyCanvasFrame(targetFrame)
+        isCardTransitionInFlight = false
+        applyCanvasFrame(lastPreparedSettledFrame ?? targetFrame)
     }
 
     private func applyCanvasFrame(_ frame: NSRect) {
@@ -247,6 +262,9 @@ final class NotchWindowController: NSWindowController {
 
     func hideNotchPanel() {
         requestedLayoutMode = .menuBarFallback
+        isCardTransitionInFlight = false
+        lastPreparedIsExpanded = false
+        lastPreparedSettledFrame = nil
         cancelDeferredFrameSettlement()
         canvasTransitionIdentifier = UUID()
         guard let panel = window as? NotchPanel else { return }

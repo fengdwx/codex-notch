@@ -5,7 +5,7 @@ import XCTest
 
 /// Opt-in visual fixture using the production view and panel, with synthetic data.
 /// NOTCH_MOTION_CAPTURE=/absolute/path.mov swift test --filter NotchMotionCaptureTests
-/// Add NOTCH_MOTION_CAPTURE_SCENARIO=dense, empty, completed or signature for visual checks.
+/// Add NOTCH_MOTION_CAPTURE_SCENARIO=dense, empty, completed, signature or hover for visual checks.
 final class NotchMotionCaptureTests: XCTestCase {
     @MainActor
     func testRecordOpeningCollapseAndReentry() async throws {
@@ -13,12 +13,17 @@ final class NotchMotionCaptureTests: XCTestCase {
             throw XCTSkip("Set NOTCH_MOTION_CAPTURE to record the native motion fixture")
         }
         _ = NSApplication.shared
+        let previousPolicy = NSApp.activationPolicy()
+        NSApp.setActivationPolicy(.accessory)
+        NSApp.finishLaunching()
+        defer { NSApp.setActivationPolicy(previousPolicy) }
         let screen = try XCTUnwrap(NSScreen.main)
         let scenario = ProcessInfo.processInfo.environment["NOTCH_MOTION_CAPTURE_SCENARIO"]
         let dense = scenario == "dense"
         let empty = scenario == "empty"
         let completed = scenario == "completed"
         let signature = scenario == "signature"
+        let hover = scenario == "hover"
         let expandedHeight = dense
             ? NotchExpandedLayout.taskContentSize(conversationCount: 5, isResetScheduleExpanded: true,
                                                   resetCreditCount: 3, hasFiveHourWindow: true).height + 30
@@ -82,17 +87,21 @@ final class NotchMotionCaptureTests: XCTestCase {
             controller.setRootView(NotchView(model: model))
         }
         defer { controller.hideNotchPanel(); backdrop.orderOut(nil) }
-        func show(_ state: NotchPresentationState, animated: Bool = true) {
+        func show(_ state: NotchPresentationState, hovering: Bool = false, animated: Bool = true) {
             let target = layout.frame(for: state)
-            let identifier = controller.prepare(layout: layout, state: state, animationsEnabled: animated)
+            let identifier = controller.prepare(layout: layout, state: state, isHovering: hovering, animationsEnabled: animated)
             let started = model.update(state: state, now: now, layoutMode: .floatingBar,
                                       compactWidth: compact.width, compactHeight: compact.height,
                                       surfaceSize: target.size, isResetScheduleExpanded: dense,
+                                      isPointerInside: hovering,
                                       animationsEnabled: animated,
                                       onSurfaceAnimationCompleted: {
                 controller.finishSurfaceAnimation(identifier: identifier, targetFrame: target)
             })
             controller.settleFrame(layout: layout, state: state, animationsEnabled: animated, animationWillComplete: started)
+            controller.window?.displayIfNeeded()
+            NSApp.updateWindows()
+            CATransaction.flush()
         }
         show(closed, animated: false)
         try await Task.sleep(for: .milliseconds(300))
@@ -129,6 +138,41 @@ final class NotchMotionCaptureTests: XCTestCase {
             if !recording.isRunning {
                 XCTAssertEqual(recording.terminationStatus, 0)
             }
+            XCTAssertTrue(FileManager.default.fileExists(atPath: output))
+            return
+        }
+        if hover {
+            show(closed, hovering: true)
+            try await Task.sleep(for: .milliseconds(90))
+            show(closed)
+            try await Task.sleep(for: .milliseconds(450))
+            XCTAssertEqual(controller.window?.frame, compact, "A brief pass must leave no extra hit area")
+            show(closed, hovering: true)
+            try await Task.sleep(for: .milliseconds(180))
+            show(opened, hovering: true)
+            try await Task.sleep(for: .milliseconds(1200))
+            show(closed)
+            try await Task.sleep(for: .milliseconds(650))
+            show(closed, hovering: true)
+            try await Task.sleep(for: .milliseconds(180))
+            show(opened, hovering: true)
+            try await Task.sleep(for: .milliseconds(1100))
+            show(closed)
+            try await Task.sleep(for: .milliseconds(140))
+            show(opened, hovering: true)
+            try await Task.sleep(for: .milliseconds(750))
+            show(closed)
+            try await Task.sleep(for: .milliseconds(700))
+            XCTAssertEqual(controller.window?.frame, compact)
+            show(closed, hovering: true, animated: false)
+            XCTAssertEqual(controller.window?.frame, compact, "Disabled motion must suppress hover clearance")
+            try await Task.sleep(for: .milliseconds(400))
+            show(closed)
+            for _ in 0..<100 where recording.isRunning {
+                try await Task.sleep(for: .milliseconds(100))
+            }
+            XCTAssertFalse(recording.isRunning, "The hover recording must finish within the bounded finalization period")
+            if !recording.isRunning { XCTAssertEqual(recording.terminationStatus, 0) }
             XCTAssertTrue(FileManager.default.fileExists(atPath: output))
             return
         }

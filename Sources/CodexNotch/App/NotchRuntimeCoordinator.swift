@@ -373,7 +373,14 @@ final class NotchRuntimeCoordinator {
     }
 
     private func setHovered(_ hovered: Bool) {
+        guard isPointerInside != hovered else { return }
         isPointerInside = hovered
+
+        // Prepare the hover canvas before publishing the small shell response.
+        // Reentry during a card transition keeps its accepted curve intact.
+        if !isHovered && viewModel.state != .hidden && !windowController.isCardTransitionInFlight {
+            render()
+        }
 
         if hovered {
             hoverCollapseWorkItem?.cancel()
@@ -611,6 +618,7 @@ final class NotchRuntimeCoordinator {
         let transitionIdentifier = windowController.prepare(
             layout: layout,
             state: displayState,
+            isHovering: isPointerInside,
             animationsEnabled: animationsEnabled
         )
         let animationWillComplete = viewModel.update(
@@ -624,6 +632,7 @@ final class NotchRuntimeCoordinator {
             compactHeight: layout.compactFrame.height,
             surfaceSize: targetFrame.size,
             isResetScheduleExpanded: isResetScheduleExpanded,
+            isPointerInside: isPointerInside,
             animationsEnabled: animationsEnabled,
             onSurfaceAnimationCompleted: { [weak windowController] in
                 windowController?.finishSurfaceAnimation(
@@ -686,6 +695,7 @@ final class NotchRuntimeCoordinator {
         let transitionIdentifier = windowController.prepare(
             layout: layout,
             state: displayState,
+            isHovering: isPointerInside && displayState != .hidden,
             animationsEnabled: animationsEnabled
         )
         let animationWillComplete = viewModel.update(
@@ -699,6 +709,7 @@ final class NotchRuntimeCoordinator {
             compactHeight: layout.compactFrame.height,
             surfaceSize: targetFrame.size,
             isResetScheduleExpanded: false,
+            isPointerInside: isPointerInside && displayState != .hidden,
             animationsEnabled: animationsEnabled,
             onSurfaceAnimationCompleted: { [weak windowController] in
                 windowController?.finishSurfaceAnimation(

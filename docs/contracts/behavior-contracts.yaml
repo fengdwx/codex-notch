@@ -392,7 +392,7 @@ contracts:
 
   - id: NOTCH-READABILITY-007
     title: Lighter expanded typography on a continuous black surface
-    status: active
+    status: superseded
     statement: >-
       Preserve NOTCH-MOTION-006 opening rebound, collapse curve, stable text
       transitions, canvas preparation and completion, reentry, compact geometry,
@@ -431,13 +431,52 @@ contracts:
       - docs/decisions/038-clean-expanded-typography.md
       - "manual: record normal, dense Chinese/mixed-state and unavailable-quota fixtures; inspect title truncation, exact timestamps, controls and retained motion; confirm physical-notch legibility and hover interaction"
     supersedes: [NOTCH-MOTION-006]
+    superseded_by: NOTCH-MOTION-008
+    last_verified_commit: null
+
+  - id: NOTCH-MOTION-008
+    title: A small hover response precedes expansion with a subtle shell shadow
+    status: active
+    statement: >-
+      Preserve NOTCH-READABILITY-007 typography, primary activity and quota cues,
+      main opening and closing curves, stable text transitions, top-center
+      anchor, camera-safe floor, reentry and completion-driven canvas recovery.
+      Before the existing hover-open delay, grow only the compact shell by
+      4pt total width and 2pt downward using a short settling curve. Keep glyphs and
+      icons at their original positions and sizes. Show a faint exterior shadow
+      during compact hover and expansion, fading it on exit or collapse.
+      Prepare bounded transparent clearance before either animation; retain
+      only shadow clearance while open, then restore the exact compact window
+      after collapse or an aborted hover. Clock updates and stale callbacks
+      must not reclaim an active canvas. Hover feedback must not retime an
+      in-flight card transition. Disabled motion, Reduce Motion and hidden
+      surfaces have no pre-expansion or shadow. Preserve hover delays, data,
+      settings, signature flow and all other interaction behavior.
+    rationale: The user approved borrowing Atoll's immediate hover response and subtle exterior shadow while retaining the accepted card animation.
+    source: user-confirmed-design-adjustment
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [notch-screens, floating-bar, compact-hover, surface-shadow, canvas-settlement]
+      exclude: [main-motion-curves, typography-restyle, task-data, quota-semantics, settings, releases]
+    examples:
+      positive: Hover gently pre-expands the shell around stationary contents, then opens normally; a brief canceled hover and a full collapse both restore the original compact window.
+      negative: Scaled text, shifted icons, clipped shadows, a leftward jump, a delayed callback shrinking a reopened card, or invisible padding intercepting the mouse after collapse.
+    guards:
+      - Tests/CodexNotchTests/NotchHoverFeedbackTests.swift
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - Tests/CodexNotchTests/NotchCollapseMotionTests.swift
+      - Tests/CodexNotchTests/NotchMotionCaptureTests.swift
+      - docs/decisions/045-hover-response-and-shadow.md
+      - "manual: record brief hover, full expansion, collapse and rapid reentry on the installed floating bar; confirm physical-notch clearance and Reduce Motion"
+    supersedes: [NOTCH-READABILITY-007]
     superseded_by: null
     last_verified_commit: null
 
   - id: SETTINGS-PREFERENCES-018
     title: Language, history, motion and floating center settings apply live
     status: active
-    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-057. Card transitions now follow the motion preference and Reduce Motion under NOTCH-READABILITY-007; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
+    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-057. Card transitions now follow the motion preference and Reduce Motion under NOTCH-MOTION-008; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
     rationale: Center choices need live visual comparison and persistence, and the newly requested spring transition supersedes the earlier always-static exception.
     source: user-request
     owner: project-maintainer

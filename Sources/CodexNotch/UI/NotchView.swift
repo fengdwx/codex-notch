@@ -12,6 +12,7 @@ final class NotchViewModel: ObservableObject {
     @Published private(set) var isResetScheduleExpanded = false
     @Published private(set) var animationsEnabled: Bool
     @Published private(set) var surfaceExpansionLimit: CGSize?
+    @Published private(set) var isPointerInside = false
 
     var onOpenThread: (String) -> Void
     var onActivateChatGPT: () -> Void
@@ -63,6 +64,7 @@ final class NotchViewModel: ObservableObject {
             height: NotchCompactLayout.height
         ),
         isResetScheduleExpanded: Bool = false,
+        isPointerInside: Bool = false,
         animationsEnabled: Bool = AppAnimationPreference.defaultEnabled,
         onSurfaceAnimationCompleted: (() -> Void)? = nil
     ) -> Bool {
@@ -75,12 +77,16 @@ final class NotchViewModel: ObservableObject {
             || self.compactHeight != compactHeight
             || self.surfaceSize != surfaceSize
             || self.isResetScheduleExpanded != isResetScheduleExpanded
+            || self.isPointerInside != isPointerInside
             || self.animationsEnabled != animationsEnabled
         guard changesModel else { return false }
 
         let wasExpanded = Self.isExpanded(self.state)
         let willBeExpanded = Self.isExpanded(state)
+        let changesHoverFeedback = !wasExpanded && !willBeExpanded
+            && self.isPointerInside != isPointerInside
         let changesSurface = wasExpanded != willBeExpanded
+            || changesHoverFeedback
             || self.layoutMode != layoutMode
             || self.surfaceSize != surfaceSize
             || self.compactWidth != compactWidth
@@ -110,6 +116,7 @@ final class NotchViewModel: ObservableObject {
             if self.isResetScheduleExpanded != isResetScheduleExpanded {
                 self.isResetScheduleExpanded = isResetScheduleExpanded
             }
+            if self.isPointerInside != isPointerInside { self.isPointerInside = isPointerInside }
             if self.animationsEnabled != animationsEnabled {
                 self.animationsEnabled = animationsEnabled
             }
@@ -123,7 +130,7 @@ final class NotchViewModel: ObservableObject {
                 || surfaceSize.width > self.surfaceSize.width + 0.5
                 || (isResetScheduleExpanded && !self.isResetScheduleExpanded)
             withAnimation(
-                NotchPresentationMotion.animation(
+                changesHoverFeedback ? NotchPresentationMotion.hover : NotchPresentationMotion.animation(
                     forExpanding: expands, isCollapsingCard: wasExpanded && !willBeExpanded
                 ),
                 completionCriteria: .removed
@@ -172,7 +179,6 @@ struct NotchView: View {
     private var appLanguageRaw = AppLanguage.defaultLanguage.rawValue
     @AppStorage(NotchDisplayPreference.storageKey)
     private var notchDisplayEnabled = NotchDisplayPreference.defaultEnabled
-    @State private var isPointerInside = false
 
     private var quotaDisplayStyle: QuotaDisplayStyle {
         QuotaDisplayStyle.fromStoredValue(quotaDisplayStyleRaw)
@@ -226,9 +232,10 @@ struct NotchView: View {
         if isHidden || isExpanded {
             return model.surfaceSize
         }
-        return CGSize(
-            width: model.compactWidth,
-            height: model.compactHeight
+        return NotchPresentationMotion.hoverSurfaceSize(
+            CGSize(width: model.compactWidth, height: model.compactHeight),
+            isHovering: model.isPointerInside,
+            animationsEnabled: motionEnabled
         )
     }
 
@@ -384,13 +391,17 @@ struct NotchView: View {
             expandedLimit: model.surfaceExpansionLimit
         ))
         .contentShape(surfaceShape)
+        .clipShape(surfaceShape)
         .background {
             NotchSurfaceBackground(
                 material: surfaceMaterial,
                 shape: surfaceShape
             )
+            .shadow(
+                color: .black.opacity(motionEnabled && !isHidden && (isExpanded || model.isPointerInside) ? 0.18 : 0),
+                radius: 3, x: 0, y: 2
+            )
         }
-        .clipShape(surfaceShape)
         .overlay {
             surfaceShape.stroke(
                 surfaceBorder,
@@ -398,13 +409,6 @@ struct NotchView: View {
             )
         }
         .onHover { hovering in
-            withAnimation(
-                motionEnabled
-                    ? .spring(response: 0.28, dampingFraction: 0.84)
-                    : nil
-            ) {
-                isPointerInside = hovering
-            }
             model.onHoverChanged(hovering)
         }
         .contextMenu {
@@ -480,7 +484,7 @@ private struct NotchSurfaceBackground: View {
         case .clear:
             Color.clear
         case .black:
-            NotchPalette.background
+            shape.fill(NotchPalette.background)
         }
     }
 }
