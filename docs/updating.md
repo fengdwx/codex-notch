@@ -7,6 +7,11 @@ Users do not generate or download keys.
 
 ## Publish a version
 
+Write GitHub Release titles, release notes, and appcast release notes in English,
+including edits to historical releases. Keep notes focused on user-visible changes,
+compatibility, and installation instructions. Internal validation logs, pending
+checks, and publishing checklists belong outside the public release notes.
+
 1. Increase both `CFBundleShortVersionString` and `CFBundleVersion`; write
    user-facing notes in `docs/releases/<version>.md`.
 2. Run `./scripts/verify.sh`, then `RUN_TESTS=0 ./scripts/release.sh` on the
