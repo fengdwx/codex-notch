@@ -20,8 +20,8 @@ Users do not generate or download keys.
 5. Check for Updates from an older updater-enabled installation; verify the
    offered version, download, installation, relaunch, and saved preferences.
 
-The tracked feed initially contains no items. Merely building a release does
-not advertise unpublished files or overwrite the production feed. Do not edit
+The tracked feed advertises published stable releases. Merely building a release
+does not advertise unpublished files or overwrite the production feed. Do not edit
 archive bytes after signing. The feed currently advertises full ZIP updates;
 it does not generate deltas or beta channels.
 

@@ -1,8 +1,22 @@
-<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
     <channel>
         <title>CodexNotch</title>
-        <description>Stable CodexNotch updates</description>
-        <language>en</language>
+        <item>
+            <title>0.2.1</title>
+            <pubDate>Sun, 13 Sep 2026 19:18:44 +0800</pubDate>
+            <sparkle:version>19</sparkle:version>
+            <sparkle:shortVersionString>0.2.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# CodexNotch 0.2.1
+
+- Settings now returns to the front when it is already open.
+- Check for Updates can download, verify, install, and relaunch new versions inside the app.
+
+Install this version manually once if you are upgrading from 0.2.0 or earlier. Future updates can be installed from Settings.
+]]></description>
+            <enclosure url="https://github.com/fengdwx/codex-notch/releases/download/v0.2.1/CodexNotch-0.2.1-macOS-arm64.zip" length="5940420" type="application/octet-stream" sparkle:edSignature="VjGc9sdreMvIKHKA2Rmuoyyr+M/3IdBLB1SGug7bOYPnxk9v211S3+hcvyLOU/DqwaAshDnkxCpM0m8KbsKkAA=="/>
+        </item>
     </channel>
 </rss>
