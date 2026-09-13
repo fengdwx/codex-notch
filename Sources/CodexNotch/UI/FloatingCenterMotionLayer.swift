@@ -54,6 +54,9 @@ final class FloatingCenterLayerView: QuotaAnimatedLayerView {
             self.style = style
         }
         self.activity = activity
+        let shouldAnimate = isAnimating && FloatingCenterMotionPolicy.shouldAnimate(
+            style: style, activity: activity, motionEnabled: true, isExpanded: false
+        )
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         let color: NSColor
@@ -76,12 +79,10 @@ final class FloatingCenterLayerView: QuotaAnimatedLayerView {
         ]
         glint.locations = style == .signature ? [0, 0.3, 0.55, 1] : [0, 0.35, 0.7, 1]
         rotor.isHidden = style != .orbit
-        glint.isHidden = (style != .flow && style != .signature) || !isAnimating || activity != .running
+        glint.isHidden = (style != .flow && style != .signature) || !shouldAnimate
         CATransaction.commit()
         needsLayout = true
-        setAnimationRequested(isAnimating && FloatingCenterMotionPolicy.shouldAnimate(
-            style: style, activity: activity, motionEnabled: true, isExpanded: false
-        ))
+        setAnimationRequested(shouldAnimate)
     }
 
     override func layout() {
@@ -123,7 +124,7 @@ final class FloatingCenterLayerView: QuotaAnimatedLayerView {
             animation.values = [0, 0, distance, distance]
             animation.keyTimes = [0, 0.15, 0.8, 1]
             animation.timingFunctions = [.init(name: .linear), .init(name: .easeInEaseOut), .init(name: .linear)]
-            animation.duration = 4
+            animation.duration = 6
             animation.repeatCount = .infinity
             animation.preferredFrameRateRange = QuotaLayerAnimationPolicy.frameRateRange
             target.add(animation, forKey: Self.animationKey)

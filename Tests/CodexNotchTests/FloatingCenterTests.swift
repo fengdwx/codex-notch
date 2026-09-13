@@ -48,12 +48,12 @@ final class FloatingCenterTests: XCTestCase {
         XCTAssertNil(FloatingCenterText.elapsedText(activity: .running, startedAt: .distantPast, now: start))
     }
 
-    func testSignatureOrbitAndFlowRunAndAllMotionGatesStopThem() {
+    func testSignatureContinuesAtRestWhileOtherMotionKeepsItsRunningGate() {
         for style in FloatingCenterStyle.allCases {
-            // FLOATING-CENTER-053 supersedes the static-signature exception.
+            // FLOATING-CENTER-054 permits only signature shimmer at rest.
             XCTAssertEqual(FloatingCenterMotionPolicy.shouldAnimate(style: style, activity: .running, motionEnabled: true, isExpanded: false), style != .elapsed)
             for activity in [QuotaRingActivity.idle, .completed] {
-                XCTAssertFalse(FloatingCenterMotionPolicy.shouldAnimate(style: style, activity: activity, motionEnabled: true, isExpanded: false))
+                XCTAssertEqual(FloatingCenterMotionPolicy.shouldAnimate(style: style, activity: activity, motionEnabled: true, isExpanded: false), style == .signature)
             }
             XCTAssertFalse(FloatingCenterMotionPolicy.shouldAnimate(style: style, activity: .running, motionEnabled: false, isExpanded: false))
             XCTAssertFalse(FloatingCenterMotionPolicy.shouldAnimate(style: style, activity: .running, motionEnabled: true, isExpanded: true))
@@ -97,28 +97,41 @@ final class FloatingCenterTests: XCTestCase {
             hosting.rootView = content(state.0, motion: state.1, expanded: state.2)
             hosting.layoutSubtreeIfNeeded()
             let stopped = try XCTUnwrap(findMotion(in: hosting))
-            XCTAssertFalse(stopped.animationIsRequested)
+            XCTAssertEqual(stopped.animationIsRequested, state.1 && !state.2)
             XCTAssertFalse(stopped.layerAnimationIsRunning)
             XCTAssertEqual(stopped.bounds, bounds, "Stopping shimmer must not move or resize the signature")
         }
     }
 
     @MainActor
-    func testVisibleSignatureAdvancesThroughClockUpdatesAndStopsOnCompletion() async throws {
+    func testVisibleSignatureContinuesThroughClockAndTaskStateUpdates() async throws {
         // Like the screen-recording fixture, this check needs an unlocked
         // interactive desktop. A skipped fixture is not visual acceptance.
         guard ProcessInfo.processInfo.environment["NOTCH_SIGNATURE_FRAMES"] != nil else {
             throw XCTSkip("Set NOTCH_SIGNATURE_FRAMES to sample live layers on an unlocked desktop")
         }
         _ = NSApplication.shared
+        // swift test is a command-line process, so prepare AppKit and service
+        // its window events just as a running application would.
+        let previousPolicy = NSApp.activationPolicy()
+        NSApp.setActivationPolicy(.accessory)
+        NSApp.finishLaunching()
+        defer { NSApp.setActivationPolicy(previousPolicy) }
+        func serviceWindowEvents() {
+            for _ in 0..<100 {
+                guard let event = NSApp.nextEvent(matching: .any, until: .distantPast,
+                                                 inMode: .default, dequeue: true) else { break }
+                NSApp.sendEvent(event)
+            }
+        }
         let suite = "VisibleSignatureTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set(FloatingCenterStyle.signature.rawValue, forKey: FloatingCenterStyle.storageKey)
         defaults.set("Codex", forKey: FloatingCenterText.storageKey)
-        func content(_ activity: QuotaRingActivity) -> some View {
+        func content(_ activity: QuotaRingActivity, motion: Bool = true) -> some View {
             FloatingCenterView(activity: activity, startedAt: .now, now: .now, isExpanded: false)
-                .environment(\.notchMotionEnabled, true)
+                .environment(\.notchMotionEnabled, motion)
                 .defaultAppStorage(defaults)
                 .frame(width: 136, height: 30)
                 .background(Color.black)
@@ -129,15 +142,23 @@ final class FloatingCenterTests: XCTestCase {
         }
         let hosting = NSHostingView(rootView: content(.running))
         let screen = try XCTUnwrap(NSScreen.main)
-        let panel = NSPanel(contentRect: NSRect(x: screen.visibleFrame.minX + 40, y: screen.visibleFrame.minY + 40, width: 136, height: 30),
-                            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        panel.contentView = hosting
-        panel.hidesOnDeactivate = false
-        panel.level = .popUpMenu
+        let panel = NotchPanel(contentRect: NSRect(x: screen.visibleFrame.minX + 40, y: screen.visibleFrame.minY + 40, width: 136, height: 30))
+        let canvas = NSView(frame: NSRect(x: 0, y: 0, width: 136, height: 30))
+        hosting.sizingOptions = []
+        hosting.frame = canvas.bounds
+        canvas.addSubview(hosting)
+        panel.contentView = canvas
         panel.orderFrontRegardless()
         defer { panel.orderOut(nil) }
         hosting.layoutSubtreeIfNeeded()
-        try await Task.sleep(for: .milliseconds(200))
+        for _ in 0..<20 {
+            serviceWindowEvents()
+            panel.displayIfNeeded()
+            NSApp.updateWindows()
+            CATransaction.flush()
+            if panel.occlusionState.contains(.visible) { break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
         let highlight = try XCTUnwrap(findMotion(in: hosting))
         XCTAssertTrue(highlight.layerAnimationIsRunning,
                       "requested=\(highlight.animationIsRequested) attached=\(highlight.window != nil) hidden=\(highlight.isHiddenOrHasHiddenAncestor) bounds=\(highlight.bounds) sameWindow=\(highlight.window === panel) viewWindowVisible=\(highlight.window?.isVisible ?? false) viewWindowOcclusion=\(highlight.window?.occlusionState.rawValue ?? 0) panelVisible=\(panel.isVisible) occlusion=\(panel.occlusionState.rawValue) visibleBit=\(NSWindow.OcclusionState.visible.rawValue) screen=\(screen.frame)")
@@ -146,11 +167,14 @@ final class FloatingCenterTests: XCTestCase {
         var positions: [Double] = []
         let samples = ProcessInfo.processInfo.environment["NOTCH_SIGNATURE_FRAMES"].map { URL(fileURLWithPath: $0) }
         if let samples { try FileManager.default.createDirectory(at: samples, withIntermediateDirectories: true) }
-        for index in 0..<34 {
+        for index in 0..<58 {
+            serviceWindowEvents()
             if index.isMultiple(of: 8) {
-                hosting.rootView = content(.running)
+                hosting.rootView = content(index < 16 ? .running : (index < 32 ? .completed : .idle))
                 hosting.layoutSubtreeIfNeeded()
             }
+            XCTAssertTrue(highlight.layerAnimationIsRunning, "Completion and idle must retain the active shimmer")
+            XCTAssertFalse(glint.isHidden)
             let x = try XCTUnwrap(glint.presentation()?.value(forKeyPath: "transform.translation.x") as? NSNumber)
             positions.append(x.doubleValue)
             XCTAssertEqual(highlight.bounds, initialBounds)
@@ -168,7 +192,7 @@ final class FloatingCenterTests: XCTestCase {
         }
         XCTAssertGreaterThan(try XCTUnwrap(positions.max()) - XCTUnwrap(positions.min()), initialBounds.width,
                              "The highlight must traverse the full text despite one-second view updates")
-        hosting.rootView = content(.completed)
+        hosting.rootView = content(.completed, motion: false)
         hosting.layoutSubtreeIfNeeded()
         XCTAssertFalse(highlight.animationIsRequested)
         XCTAssertFalse(highlight.layerAnimationIsRunning)
@@ -200,7 +224,7 @@ final class FloatingCenterTests: XCTestCase {
                 XCTAssertEqual(shimmer.keyPath, "transform.translation.x")
                 let positions = try XCTUnwrap(shimmer.values as? [NSNumber]).map(\.doubleValue)
                 XCTAssertLessThan(try XCTUnwrap(positions.first), try XCTUnwrap(positions.last))
-                XCTAssertGreaterThanOrEqual(shimmer.duration, 3, "Text shimmer should be gentle rather than flashing")
+                XCTAssertEqual(shimmer.duration, 6, "Use the requested slower cadence")
                 XCTAssertTrue(CATransform3DIsIdentity(root.transform), "Only the masked light moves; glyph geometry stays fixed")
             }
             view.viewWillMove(toWindow: nil)

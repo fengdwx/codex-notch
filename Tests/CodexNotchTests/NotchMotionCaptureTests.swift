@@ -100,7 +100,7 @@ final class NotchMotionCaptureTests: XCTestCase {
         let recording = Process()
         recording.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
         let top = try XCTUnwrap(NSScreen.screens.first).frame.maxY
-        recording.arguments = ["-v", "-V", signature ? "12" : "8", "-R",
+        recording.arguments = ["-v", "-V", signature ? "18" : "8", "-R",
                                "\(Int(area.minX)),\(Int(top - area.maxY)),\(Int(area.width)),\(Int(area.height))", output]
         try recording.run()
         defer { if recording.isRunning { recording.terminate() } }
@@ -112,7 +112,9 @@ final class NotchMotionCaptureTests: XCTestCase {
                 try await Task.sleep(for: .seconds(1))
             }
             show(.completedCompact(sessions[0], usage: usage))
-            try await Task.sleep(for: .seconds(2))
+            try await Task.sleep(for: .seconds(4))
+            show(.quotaCompact(usage))
+            try await Task.sleep(for: .seconds(4))
             show(closed, animated: false)
             try await Task.sleep(for: .seconds(2))
             show(closed)

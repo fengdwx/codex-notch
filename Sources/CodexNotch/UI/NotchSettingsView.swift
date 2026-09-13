@@ -129,8 +129,8 @@ struct NotchSettingsView: View {
                 }
 
                 Text(appLanguage.localized(
-                    chinese: "最多 12 个字符，留空显示 Codex。适用于无刘海或镜像屏幕的中间区域；计时对应当前主任务，空闲或完成后显示签名。文字扫光、轨道和流光仅在任务运行且卡片收起时播放。",
-                    english: "Up to 12 characters; blank uses Codex. Applies to the center of floating bars on displays without a notch, including mirrors. The timer follows the primary task and returns to your signature when idle or complete. Text shimmer, orbit and flow animate only while a task is running and the card is collapsed."
+                    chinese: "最多 12 个字符，留空显示 Codex。适用于无刘海或镜像屏幕的中间区域；计时对应当前主任务，空闲或完成后显示签名。个人签名在卡片收起时持续缓慢扫光；轨道和流光仅在任务运行时播放。",
+                    english: "Up to 12 characters; blank uses Codex. Applies to the center of floating bars on displays without a notch, including mirrors. The timer follows the primary task and returns to your signature when idle or complete. Personal signatures shimmer slowly while the card is collapsed; orbit and flow animate only while a task is running."
                 ))
                 .font(.callout)
                 .foregroundStyle(.secondary)

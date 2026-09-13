@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [FLOATING-CENTER-053, SETTINGS-PREFERENCES-018, FLOATING-ICON-052]
 supersedes: [034-floating-center-styles]
-superseded_by: null
+superseded_by: 041-continuous-signature-shimmer
 owner: project-maintainer
 created_at: 2026-09-13
 ---

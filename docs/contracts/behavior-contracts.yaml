@@ -109,7 +109,7 @@ contracts:
 
   - id: FLOATING-CENTER-053
     title: Running personal signatures retain a gentle text shimmer
-    status: active
+    status: superseded
     statement: >-
       Preserve FLOATING-CENTER-051 choices, persistence, text normalization,
       font, truncation, elapsed-time semantics, geometry, visibility and all
@@ -139,6 +139,37 @@ contracts:
       - docs/decisions/040-running-signature-shimmer.md
       - "manual: record a full running shimmer cycle, completion, motion off and return; verify the installed mirrored floating bar and retained hover motion"
     supersedes: [FLOATING-CENTER-051]
+    superseded_by: FLOATING-CENTER-054
+    last_verified_commit: null
+
+  - id: FLOATING-CENTER-054
+    title: Personal signatures shimmer slowly through running and resting states
+    status: active
+    statement: >-
+      Preserve FLOATING-CENTER-053 typography, glyph mask, dim readable base,
+      stationary colored status dot, preferences, geometry and visible-only
+      Core Animation lifecycle. A selected personal signature now repeats its
+      highlight on a six-second cycle while running, completed or idle.
+      Task-state and clock updates must not restart the cycle. Expansion,
+      hiding, detachment, disabled animations and Reduce Motion still stop it
+      and retain readable static text. Orbit and flow remain running-only;
+      elapsed digits and all other task, quota and card behavior remain unchanged.
+    rationale: After confirming the text shimmer looks correct, the user requested that it continue after work stops and run more slowly.
+    source: user-confirmed-design-adjustment
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [floating-bar, personal-signature, center-motion]
+      exclude: [quota-semantics, icon-artwork, card-transitions, task-data, physical-notch-center, releases]
+    examples:
+      positive: A task completes and the status dot turns green while the same slow text highlight continues without resetting.
+      negative: Shimmer stops when idle, completion restarts its phase, orbit starts while idle, or disabling animations no longer restores static text.
+    guards:
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - Tests/CodexNotchTests/NotchMotionCaptureTests.swift
+      - docs/decisions/041-continuous-signature-shimmer.md
+      - "manual: inspect a complete slow cycle through running, completion and idle, then disable motion and expand the card"
+    supersedes: [FLOATING-CENTER-053]
     superseded_by: null
     last_verified_commit: null
 
@@ -319,7 +350,7 @@ contracts:
   - id: SETTINGS-PREFERENCES-018
     title: Language, history, motion and floating center settings apply live
     status: active
-    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-053. Card transitions now follow the motion preference and Reduce Motion under NOTCH-READABILITY-007; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
+    statement: Preserve SETTINGS-PREFERENCES-017 language choices (English default), recent-conversation limits (0 through 5, default 2), live persistence and the enabled-by-default motion preference. Add the four floating center styles and custom text from FLOATING-CENTER-054. Card transitions now follow the motion preference and Reduce Motion under NOTCH-READABILITY-007; disabled motion still preserves static running/completed cues, and quota fireworks remain unavailable. Cosmetic center settings must not change runtime data preferences or require restart.
     rationale: Center choices need live visual comparison and persistence, and the newly requested spring transition supersedes the earlier always-static exception.
     source: user-request
     owner: project-maintainer

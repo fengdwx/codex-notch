@@ -57,7 +57,11 @@ enum FloatingCenterMotionPolicy {
         motionEnabled: Bool,
         isExpanded: Bool
     ) -> Bool {
-        (style == .signature || style == .orbit || style == .flow)
-            && activity == .running && motionEnabled && !isExpanded
+        guard motionEnabled, !isExpanded else { return false }
+        switch style {
+        case .signature: return true
+        case .orbit, .flow: return activity == .running
+        case .elapsed: return false
+        }
     }
 }
