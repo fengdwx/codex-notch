@@ -23,6 +23,14 @@ Your browser, IDE, or any other app can be frontmost—your quota remains visibl
 
 <p align="center"><sub>Real app capture with English product callouts: weekly quota, exact reset time, every reset-credit expiry, cross-app visibility, and live task status.</sub></p>
 
+## New in 0.2.2
+
+- Optional launch at login and an Off choice for the left display area to reduce menu-bar overlap.
+- Settings grouped into General, Appearance, and Floating Bar, with clearer descriptions.
+- Preview floating-bar styles and task states without an external display.
+- The animation switch works independently of system Reduce Motion; disabling animations reduces resource use while quota and task updates continue.
+- Fixed redundant Settings activation that could interrupt dropdown menus.
+
 ## New in 0.2.1
 
 - Bring an already-open Settings window back to the front.
@@ -61,7 +69,7 @@ They remain beside the physical notch while you code, browse, write, or work in 
 
 ### Quota at a glance, in every app
 
-On a physical notch, the returned five-hour indicator stays on the left and the weekly-quota indicator stays on the right even when no task is active. If the five-hour window is absent, the left lane remains empty rather than showing a duplicate status mark. The expanded card puts the five-hour detail above weekly. Switch to your browser, IDE, or another app and the quota remains visible.
+The left side shows five-hour quota when available, or the selected status icon otherwise. Weekly quota stays on the right even when no task is active. Choose Off in Settings to hide the left side; the expanded card still shows all available quota windows, with five-hour detail above weekly. Switch to your browser, IDE, or another app and the quota remains visible.
 
 ### Exact reset timing, not just a percentage
 
@@ -72,7 +80,7 @@ Hover over the notch to reveal:
 - The precise expiry time of every available reset credit
 - Active tasks and recent conversations
 
-Quota windows are identified from the returned `limit_window_seconds`; on a physical notch, the weekly window remains in the compact right lane and a returned five-hour window appears in the compact left lane and first in the expanded card. The no-notch floating bar keeps its separate status lane.
+Quota windows are identified from the returned `limit_window_seconds`. On both notch and floating-bar layouts, weekly quota stays on the right; the left side shows five-hour quota when available unless Off is selected. The expanded card lists five-hour detail first.
 
 ### Your quota follows you across apps
 
@@ -106,7 +114,9 @@ Hover over the physical notch and use **Settings** at the lower-right of the exp
 - Show 0–5 recent conversations in the expanded card
 - Check for stable updates and download, install, and relaunch inside the app (from 0.2.1)
 - Apply changes immediately and save them locally
-- Respect Reduce Motion while preserving static status cues
+- Start automatically at login when enabled in General
+- Hide the left display area while keeping quota details in the expanded card
+- Control animations with the app's own switch, independently of system Reduce Motion
 
 Displays without a notch, including mirrored displays, use a floating bar centered at the top of the screen.
 
@@ -115,7 +125,7 @@ Displays without a notch, including mirrored displays, use a floating bar center
 
 - Both compact indicators use matching 24pt alignment containers, keeping icons clear of the camera cutout.
 - The quota ring starts at 12 o'clock and progresses clockwise. It is green at 20% or above, red below 20%, and gray when data is unavailable.
-- The quota gradient or wave moves only while a task is running. Signature lighting also continues while idle or completed; disabling animations or enabling Reduce Motion keeps both still.
+- The quota gradient or wave moves only while a task is running. Signature lighting also continues while idle or completed; disabling animations in the app keeps both still.
 - The card expands downward from the compact island. Its transparent canvas is reclaimed after collapse so it does not intercept clicks outside the notch.
 - The quota number stays inside the indicator and is never repeated beside it.
 
