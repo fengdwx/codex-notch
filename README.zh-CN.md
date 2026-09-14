@@ -145,7 +145,7 @@ usage 接口属于 ChatGPT 内部接口，字段未来可能变化。接口异�
 <details>
 <summary><strong>从源码构建</strong></summary>
 
-需要 macOS 14 或更高版本、Xcode 15 / Swift 5.9 或更新版本：
+从源码构建需要 Xcode 16 或更新版本，以及该 Xcode 版本支持的 macOS 系统。构建后的应用支持 macOS 14 或更高版本。CI 使用 macOS 14 和 Xcode 16.2：
 
 ```sh
 swift test

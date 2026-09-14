@@ -244,14 +244,7 @@ struct NotchSettingsView: View {
                 .labelsHidden()
 
                 if floatingStyle.usesCustomText {
-                    TextField(
-                        appLanguage.localized(chinese: "自定义文字", english: "Custom text"),
-                        text: $floatingCenterText, prompt: Text(FloatingCenterText.defaultText)
-                    )
-                    .onChange(of: floatingCenterText) { _, value in
-                        let limited = String(value.prefix(FloatingCenterText.maximumCharacters))
-                        if limited != value { floatingCenterText = limited }
-                    }
+                    FloatingCenterTextField(text: $floatingCenterText, language: appLanguage)
                 }
             } header: {
                 Text(appLanguage.localized(chinese: "中间样式", english: "Center style"))

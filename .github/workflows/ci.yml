@@ -3,11 +3,32 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to verify (leave empty for the workflow commit)
+        required: false
+        type: string
+
+permissions:
+  contents: read
 
 jobs:
   test:
     runs-on: macos-14
+    env:
+      # openSettings is public in the Xcode 16 SDK, including for macOS 14.
+      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
-      - name: Run tests
-        run: swift test
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - name: Record source and toolchain
+        run: |
+          git rev-parse HEAD
+          sw_vers
+          xcodebuild -version
+          swift --version
+          xcrun --show-sdk-version
+      - name: Verify contracts, tests, and app bundle
+        run: ./scripts/verify.sh

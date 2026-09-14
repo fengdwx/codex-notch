@@ -18,11 +18,19 @@ checks, and publishing checklists belong outside the public release notes.
    publisher's Mac. Sparkle's `generate_appcast` may ask for Keychain permission
    on its first use. No private key is exported. The release script independently
    verifies the generated signature against the app's public key.
-3. When a release is authorized, upload the generated ZIP, DMG and checksums to
-   the matching `v<version>` GitHub Release. Read back the public archive URLs.
-4. Copy `dist/appcast.xml` over the tracked `appcast.xml`, commit it and push it
+3. Push the exact release commit and wait for its GitHub `CI` run to finish
+   successfully before publishing. CI uses Xcode 16.2 on macOS 14 and runs the
+   same full verification. A local pass does not replace a failed, pending,
+   cancelled, or missing CI result, even when the failure predates this release.
+   After a workflow-only fix, use CI's manual `ref` input to verify the release
+   commit or tag; confirm the checkout SHA in the log matches the intended
+   release source. Keep the successful run URL with the release verification.
+4. When a release is authorized and both checks have passed, upload the generated
+   ZIP, DMG and checksums to the matching `v<version>` GitHub Release. Read back
+   the public archive URLs.
+5. Copy `dist/appcast.xml` over the tracked `appcast.xml`, commit it and push it
    to personal `main` only after the archive is publicly available.
-5. Check for Updates from an older updater-enabled installation; verify the
+6. Check for Updates from an older updater-enabled installation; verify the
    offered version, download, installation, relaunch, and saved preferences.
 
 The tracked feed advertises published stable releases. Merely building a release

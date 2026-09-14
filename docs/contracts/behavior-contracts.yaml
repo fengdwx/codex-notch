@@ -1,4 +1,67 @@
 contracts:
+  - id: SETTINGS-TEXT-023
+    title: Custom signature input gives immediate visible whitespace feedback
+    status: active
+    statement: >-
+      Preserve SETTINGS-WINDOW-022 and SETTINGS-MOTION-021 and all inherited
+      preferences, display normalization, motion and layout behavior. The
+      custom-text editor in Floating Bar Settings uses a stable input area
+      with leading alignment. Every accepted trailing space must immediately
+      advance a visible caret without requiring another non-whitespace
+      character. Retain native text editing, localized accessible labeling,
+      the existing storage key, raw spaces, twelve Swift Character limit,
+      composed characters and blank display fallback. Do not normalize the
+      editing value using the floating display's whitespace rules.
+    rationale: On macOS 26.6.2 the automatic grouped Form field stored trailing spaces but right-aligned visible glyphs concealed them until another letter was entered.
+    source: user-reported-incident
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [settings-custom-text-editor, whitespace-feedback]
+      exclude: [recent-tasks, display-text-normalization, quotas, motion, window-geometry, releases]
+    examples:
+      positive: Typing ab and then three spaces moves the visible caret after each space, and adding c preserves ab followed by three spaces and c.
+      negative: Spaces are stored but have no visible editing feedback, the field resizes with the visible glyphs, or fixing input changes the signature on the actual floating bar.
+    guards:
+      - Tests/CodexNotchTests/FloatingCenterTextFieldTests.swift
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - docs/decisions/055-signature-text-editing.md
+      - "manual: type spaces one at a time in the rebuilt Settings, then delete and insert text in the middle; check Chinese input, composed emoji, the twelve-character boundary and persistence; restore original preferences"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null
+
+  - id: CI-VERIFICATION-001
+    title: Verify release source with a supported SDK before publication
+    status: active
+    statement: >-
+      CI must explicitly select Xcode 16.2 on macOS 14, record the checked-out
+      source SHA and toolchain, and run the existing full verification entry
+      point without weakening or skipping its checks. Before a public release,
+      both local verification and CI for the exact release source must pass.
+      Failed, pending, cancelled or missing CI cannot be replaced by a local
+      pass. A manual ref permits an existing release commit to be checked with
+      a repaired workflow without changing its source, tag or signed archives.
+    rationale: A local build passed with Xcode 26.6 while CI failed with its implicit Xcode 15.4 SDK, and v0.2.2 was published before that failure was resolved.
+    source: user-reported-release-verification-gap
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [ci-toolchain, full-verification, release-publication]
+      exclude: [app-behavior, minimum-runtime-version, signing-key, published-archive-replacement, branch-protection]
+    examples:
+      positive: The logged checkout SHA matches the intended release and full CI verification passes with Xcode 16.2 on macOS 14.
+      negative: Depending on the runner's default SDK, skipping failing tests, checking a different commit, or publishing while CI is red.
+    guards:
+      - .github/workflows/ci.yml
+      - scripts/verify.sh
+      - docs/updating.md
+      - docs/decisions/053-explicit-ci-toolchain.md
+      - "manual: confirm successful CI and its checkout SHA before publication"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null
+
   - id: SETTINGS-WINDOW-022
     title: Settings presentation must not interrupt popup menu selection
     status: active
