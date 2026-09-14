@@ -58,6 +58,12 @@ final class RecentConversationHistoryTests: XCTestCase {
         try await Task.sleep(nanoseconds: 250_000_000)
         XCTAssertEqual(reader.reads, 5, "Do not parse older logs or reread unchanged history")
 
+        // Delayed file notifications can include older files skipped at startup.
+        // Exercise this deterministically instead of depending on FSEvents timing.
+        monitor.filesDidChange(files)
+        try await Task.sleep(nanoseconds: 250_000_000)
+        XCTAssertEqual(reader.reads, 5, "File notifications must preserve bounded discovery")
+
         try FileManager.default.removeItem(at: files[0])
         monitor.filesDidChange([files[0]])
         monitor.rescan()

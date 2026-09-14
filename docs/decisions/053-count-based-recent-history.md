@@ -76,3 +76,14 @@ confirmation; this change does not alter their implementation.
 - The verified app replaced the installed v0.2.2 bundle after backing it up.
   Relaunch and Settings inheritance were checked. Physical-notch expansion
   and perceived animation still require real hardware confirmation.
+
+### Delayed file-event regression found during release verification
+
+CI run 34833969052 failed twice with eight history reads instead of five.
+The targeted event path directly processed previously skipped old files, bypassing
+bounded discovery. A deterministic regression now injects notifications for all
+eight fixtures after initial discovery: the previous code fails with eight reads.
+Route unknown paths through the existing bounded full discovery while retaining
+incremental processing for known changed files. Active files remain eligible,
+and existing deletion/backfill and responsiveness checks remain unchanged.
+No assertion is relaxed and no filesystem event source is disabled.

@@ -2773,6 +2773,8 @@ contracts:
       unfinished tasks; old logs must not revive abandoned work. Scan file metadata newest first,
       retain enough completed history for the maximum setting of five, and stop reading older logs
       once their modification times precede both the active window and the fifth distinct completion.
+      File events for unknown paths must use the same bounded discovery; delayed notifications
+      for skipped old logs must not cause extra history reads. Known changed files remain incremental.
       Unchanged recovery scans must not reread logs. Deleted or replaced records must be removed
       and older valid history must backfill on recovery. Preserve ordered event publication,
       child exclusion, explicit lifecycle matching, title privacy and all unrelated settings,

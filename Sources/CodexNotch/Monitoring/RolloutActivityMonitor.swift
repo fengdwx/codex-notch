@@ -80,7 +80,13 @@ final class RolloutActivityMonitor {
                         self.needsFullScan = true
                     } else if resolved.path.hasPrefix(self.rootURL.path + "/") {
                         if resolved.pathExtension == "jsonl" {
-                            self.pendingURLs.insert(resolved)
+                            if self.fingerprints[resolved] == nil {
+                                // An unknown path may be old history delivered by a
+                                // delayed event. Apply the same discovery bound as startup.
+                                self.needsFullScan = true
+                            } else {
+                                self.pendingURLs.insert(resolved)
+                            }
                         } else if resolved.pathExtension.isEmpty {
                             self.needsFullScan = true
                         }
