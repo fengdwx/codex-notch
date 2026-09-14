@@ -1,4 +1,36 @@
 contracts:
+  - id: SETTINGS-TEXT-023
+    title: Custom signature input gives immediate visible whitespace feedback
+    status: active
+    statement: >-
+      Preserve SETTINGS-WINDOW-022 and SETTINGS-MOTION-021 and all inherited
+      preferences, display normalization, motion and layout behavior. The
+      custom-text editor in Floating Bar Settings uses a stable input area
+      with leading alignment. Every accepted trailing space must immediately
+      advance a visible caret without requiring another non-whitespace
+      character. Retain native text editing, localized accessible labeling,
+      the existing storage key, raw spaces, twelve Swift Character limit,
+      composed characters and blank display fallback. Do not normalize the
+      editing value using the floating display's whitespace rules.
+    rationale: On macOS 26.6.2 the automatic grouped Form field stored trailing spaces but right-aligned visible glyphs concealed them until another letter was entered.
+    source: user-reported-incident
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [settings-custom-text-editor, whitespace-feedback]
+      exclude: [recent-tasks, display-text-normalization, quotas, motion, window-geometry, releases]
+    examples:
+      positive: Typing ab and then three spaces moves the visible caret after each space, and adding c preserves ab followed by three spaces and c.
+      negative: Spaces are stored but have no visible editing feedback, the field resizes with the visible glyphs, or fixing input changes the signature on the actual floating bar.
+    guards:
+      - Tests/CodexNotchTests/FloatingCenterTextFieldTests.swift
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - docs/decisions/055-signature-text-editing.md
+      - "manual: type spaces one at a time in the rebuilt Settings, then delete and insert text in the middle; check Chinese input, composed emoji, the twelve-character boundary and persistence; restore original preferences"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null
+
   - id: CI-VERIFICATION-001
     title: Verify release source with a supported SDK before publication
     status: active
