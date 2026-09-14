@@ -3,26 +3,23 @@
     <channel>
         <title>CodexNotch</title>
         <item>
-            <title>0.2.2</title>
-            <pubDate>Mon, 14 Sep 2026 01:04:27 +0800</pubDate>
-            <sparkle:version>20</sparkle:version>
-            <sparkle:shortVersionString>0.2.2</sparkle:shortVersionString>
+            <title>0.2.3</title>
+            <pubDate>Mon, 14 Sep 2026 10:43:56 +0000</pubDate>
+            <sparkle:version>21</sparkle:version>
+            <sparkle:shortVersionString>0.2.3</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# CodexNotch 0.2.2
+            <description sparkle:format="markdown"><![CDATA[# CodexNotch 0.2.3
 
-- **Launch at login**: Start CodexNotch automatically when you log in to your Mac. Enable it in General settings.
-- **More room for the menu bar**: Choose Off under Left side to hide the entire left area. Quota details remain available in the expanded card.
-- **Clearer settings**: Preferences are grouped into General, Appearance, and Floating Bar, with concise descriptions in English and Chinese.
-- **Floating-bar preview**: Try all four center styles and running, idle, or completed states without connecting an external display.
-- **Independent animation control**: The app's animation switch now works independently of the system's Reduce Motion setting. Disabling animations reduces resource use while quota and task status continue updating.
-- **Popup menu fix**: Remove redundant Settings-window activation that could interrupt the language and recent-task dropdown menus.
+- **Recent tasks across days**: Recent conversations no longer disappear after 24 hours. Your selected count (0–5) applies to the latest available conversations, including after several days away or an app restart.
+- **Efficient history loading**: Stops reading older logs once enough recent conversations have been found. Running tasks still take priority, and abandoned tasks are not revived.
+- **Custom text editing**: Spaces at the end of a floating-bar signature are now visible immediately while typing.
 
-Users on 0.2.1 can update through Settings → Check for Updates. Users on 0.2.0 or earlier should install this version manually. Existing preferences are preserved.
+Users on 0.2.1 or later can update through Settings → Check for Updates. Users on 0.2.0 or earlier should install this version manually. Existing preferences are preserved.
 
-DMG and ZIP downloads are available for Apple Silicon on macOS 14 or later. The app has not been notarized by Apple. See the [installation guide](https://github.com/fengdwx/codex-notch/blob/v0.2.2/README.md#install).
+DMG and ZIP downloads are available for Apple Silicon on macOS 14 or later. The app has not been notarized by Apple. See the [installation guide](https://github.com/fengdwx/codex-notch/blob/v0.2.3/README.md#install).
 ]]></description>
-            <enclosure url="https://github.com/fengdwx/codex-notch/releases/download/v0.2.2/CodexNotch-0.2.2-macOS-arm64.zip" length="5987940" type="application/octet-stream" sparkle:edSignature="XJNKUKTEyEGegd7Ud/HWKsOJeCuhyE7hxlUi6njIzUhZOg/qxLEWzU7Gz38+Ce2IWABW8435w3qzvMLPqI6QCA=="/>
+            <enclosure url="https://github.com/fengdwx/codex-notch/releases/download/v0.2.3/CodexNotch-0.2.3-macOS-arm64.zip" length="3842536" type="application/octet-stream" sparkle:edSignature="Fe+YVIuD4EtwMK6w4/H8DkYunOZte2FE0C5XteRXP9+54OQOoDYaYis1y6vGug72D43F2605jJYN5SsCXvMZBA=="/>
         </item>
     </channel>
 </rss>

@@ -36,3 +36,20 @@ physical-device or in-app installation acceptance.
 
 References: [Sparkle CI signing](https://github.com/sparkle-project/Sparkle/discussions/2308),
 [GitHub artifacts](https://docs.github.com/en/actions/tutorials/store-and-share-data).
+
+## Verified release, 2026-09-14
+
+- Release source: `be16b6f0af5f76066475c529b69ffc62fc57df2d`.
+- Local full verification: 236 tests, two existing opt-in skips, zero failures;
+  bundle, resources and code signatures passed.
+- [CI](https://github.com/fengdwx/codex-notch/actions/runs/34834445819) and
+  [hosted packaging](https://github.com/fengdwx/codex-notch/actions/runs/34834447664)
+  passed for that exact source. Hosted packaging also rejected missing/wrong keys.
+- Downloaded cloud ZIP passed independent Ed25519 verification with the app's
+  existing public key; both archives matched their SHA-256 checksum files.
+- Release v0.2.3 uses these cloud-built assets. No publisher key file was created.
+- Earlier CI failures exposed delayed file events bypassing bounded history
+  discovery. A deterministic failing regression reproduced eight reads instead
+  of five; the source fix passed both final CI runs without weakening assertions.
+- Fresh end-to-end in-app installation and physical-notch appearance were not
+  re-tested in this release operation.
