@@ -10,6 +10,8 @@ struct ActiveSessionStoreSnapshot: Equatable, Sendable {
 }
 
 actor ActiveSessionStore {
+    static let defaultStaleAfter: TimeInterval = 6 * 60 * 60
+
     private struct RolloutState {
         let active: [SessionActivity]
         let completed: [CompletedSession]
@@ -17,15 +19,10 @@ actor ActiveSessionStore {
     }
 
     private let staleAfter: TimeInterval
-    private let historyRetention: TimeInterval
     private var rollouts: [String: RolloutState] = [:]
 
-    init(
-        staleAfter: TimeInterval = 6 * 60 * 60,
-        historyRetention: TimeInterval = 24 * 60 * 60
-    ) {
+    init(staleAfter: TimeInterval = ActiveSessionStore.defaultStaleAfter) {
         self.staleAfter = staleAfter
-        self.historyRetention = historyRetention
     }
 
     func replace(
@@ -48,9 +45,8 @@ actor ActiveSessionStore {
 
     func snapshot(now: Date = .now) -> ActiveSessionStoreSnapshot {
         let activeCutoff = now.addingTimeInterval(-staleAfter)
-        let retentionCutoff = now.addingTimeInterval(-max(staleAfter, historyRetention))
-        rollouts = rollouts.filter { $0.value.lastModifiedAt >= retentionCutoff }
-
+        // Age only invalidates unfinished work. Completed conversations stay
+        // available until their rollout is removed or superseded in discovery.
         let active = rollouts.values
             .filter { $0.lastModifiedAt >= activeCutoff }
             .flatMap(\.active)

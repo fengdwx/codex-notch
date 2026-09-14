@@ -39,7 +39,7 @@ open dist/CodexNotch.app
 
 - The current ChatGPT/Codex app has bundle identifier `com.openai.codex`; `com.openai.chatgpt.classic` is Classic and must not be treated as the current target.
 - Quota comes from the local Codex/ChatGPT login state. Never commit authentication files, access tokens, or any private `~/.codex` content.
-- Session activity comes from local rollout/session logs. `ActiveSessionStore` retains recent completion records for 24 hours.
+- Session activity comes from local rollout/session logs. Recent conversations do not expire by age; show the latest configured number (0–5). The six-hour stale fallback applies only to unfinished tasks. See `ACTIVITY-STATE-007`.
 - An active task always shows the running state. With no active task but a recent completion, the compact notch remains in the completed state with a green check; a new task immediately switches back to the running animation.
 
 ## Confirmed Visual and Interaction Constraints

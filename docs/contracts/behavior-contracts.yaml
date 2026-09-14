@@ -2641,7 +2641,7 @@ contracts:
 
   - id: ACTIVITY-STATE-006
     title: Changed rollout files promptly publish ordered activity updates
-    status: active
+    status: superseded
     statement: >-
       Preserve top-level task priority, interrupted-turn supersession, explicit completion matching, child-rollout exclusion, six-hour stale fallback, and 24-hour completion retention from ACTIVITY-STATE-005. Use FSEvents with 0.1-second delivery latency and a bounded 0.1-second coalescing window, process the reported changed JSONL paths, commit store updates in scan order, and notify the main-thread runtime immediately after each store commit. Do not wait for the one-second display-clock tick to publish task state, and reject superseded asynchronous snapshot deliveries. Keep a five-second recovery scan for missed events or a late-created sessions directory. Recovery must skip reading unchanged files based on file identity, size, and modification time. Canonicalize filesystem paths consistently, reset cursors on replacement or truncation, remove deleted rollouts, retain partial lines until complete, and process the newest files first during initial discovery. Root/directory and dropped-event notifications may trigger a full recovery scan. No high-frequency idle poll, quota request increase, private message logging, or new external data source is introduced.
     rationale: The user reported delayed start and completion indicators and asked for more responsive detection with a measured performance cost. Event-driven state delivery removes deliberate waiting while targeted reads and unchanged-file skips bound the extra recovery work. Log-write delays upstream remain outside this detector's control.
@@ -2663,5 +2663,43 @@ contracts:
       - docs/decisions/031-responsive-rollout-events.md
       - "manual: compare process CPU under similar activity and measure real filesystem start/terminal notification latency; separately confirm real Codex UI-to-notch transitions"
     supersedes: [ACTIVITY-STATE-005]
+    superseded_by: ACTIVITY-STATE-007
+    last_verified_commit: null
+
+  - id: ACTIVITY-STATE-007
+    title: Recent conversations are limited by count, not age
+    status: active
+    statement: >-
+      Preserve ACTIVITY-STATE-006 except its 24-hour completion retention and discovery limit.
+      Top-level completed conversations remain eligible regardless of age, including after restart
+      or several days without local activity. Combine running tasks first with completed history
+      ordered by latest completion, deduplicate by thread ID, and apply the existing 0–5 setting
+      live (default 2, zero hides the list). The six-hour stale fallback still applies only to
+      unfinished tasks; old logs must not revive abandoned work. Scan file metadata newest first,
+      retain enough completed history for the maximum setting of five, and stop reading older logs
+      once their modification times precede both the active window and the fifth distinct completion.
+      Unchanged recovery scans must not reread logs. Deleted or replaced records must be removed
+      and older valid history must backfill on recovery. Preserve ordered event publication,
+      child exclusion, explicit lifecycle matching, title privacy and all unrelated settings,
+      quota, geometry and motion behavior. Do not introduce a separate persistent history cache.
+    rationale: The user set five recent tasks but saw zero after two idle days and only today's new conversations. A hidden age limit contradicts a count-based recent-task launcher.
+    source: user-confirmed
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [rollout-session-monitoring, recent-conversations, settings, compact-state, expanded-state]
+      exclude: [authentication, quota-semantics, physical-notch-geometry, releases]
+    examples:
+      positive: After a week without activity, restarting still lists five prior completed conversations when configured; switching to one or zero immediately limits or hides them, while an old unfinished task stays inactive.
+      negative: Resetting history at midnight or after 24 hours, counting child agents or duplicate turns as history slots, reviving stale tasks, or parsing the entire historical log archive once enough newer conversations have been found.
+    guards:
+      - Tests/CodexNotchTests/RecentConversationHistoryTests.swift
+      - Tests/CodexNotchTests/ActiveSessionStoreTests.swift
+      - Tests/CodexNotchTests/RolloutResponsivenessTests.swift
+      - Tests/CodexNotchTests/NotchPresentationReducerTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePreferencesTests.swift
+      - docs/decisions/053-count-based-recent-history.md
+      - "manual: restart the installed app and switch history between zero, one and five; confirm older local conversations remain available on physical-notch hardware"
+    supersedes: [ACTIVITY-STATE-006]
     superseded_by: null
     last_verified_commit: null

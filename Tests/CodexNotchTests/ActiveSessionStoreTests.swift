@@ -207,6 +207,28 @@ final class ActiveSessionStoreTests: XCTestCase {
         XCTAssertEqual(snapshot.recentCompletions.map(\.session.threadID), ["thread-completed"])
     }
 
+    func testCompletedHistoryDoesNotExpireWhileUnfinishedTasksStillBecomeStale() async {
+        let then = Date(timeIntervalSince1970: 2_000_000_000)
+        let store = ActiveSessionStore()
+        let completed = makeCompletedSession(threadID: "old-completed", turnID: "done", at: then)
+        await store.replace(
+            rolloutID: "completed",
+            reduction: ActiveSessionReduction(active: [], completed: [completed]),
+            lastModifiedAt: then
+        )
+        await store.replace(
+            rolloutID: "unfinished",
+            reduction: makeReduction(threadID: "old-unfinished", turnID: "pending", at: then),
+            lastModifiedAt: then
+        )
+
+        for days in [2, 30, 365] {
+            let snapshot = await store.snapshot(now: then.addingTimeInterval(Double(days * 86_400)))
+            XCTAssertTrue(snapshot.activeSessions.isEmpty)
+            XCTAssertEqual(snapshot.recentCompletions.map(\.session.threadID), ["old-completed"])
+        }
+    }
+
     private func makeReduction(threadID: String, turnID: String, at: Date) -> ActiveSessionReduction {
         ActiveSessionReducer.reduce([
             RolloutEvent(timestamp: at, kind: .sessionMeta(threadID: threadID, cwd: nil, originator: nil)),

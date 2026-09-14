@@ -15,6 +15,7 @@ final class RolloutActivityMonitor {
 
     private var cursors: [URL: FileCursor] = [:]
     private var eventsByFile: [URL: [RolloutEvent]] = [:]
+    private var completionDatesByFile: [URL: [String: Date]] = [:]
     private var pendingScan: DispatchWorkItem?
     private var pendingURLs: Set<URL> = []
     private var needsFullScan = false
@@ -98,7 +99,7 @@ final class RolloutActivityMonitor {
                 self.needsFullScan = false
                 self.pendingURLs.removeAll()
                 if fullScan {
-                    self.scanRecentRollouts()
+                    self.scanRollouts()
                 } else {
                     for url in changedURLs { self.process(url: url) }
                 }
@@ -108,26 +109,36 @@ final class RolloutActivityMonitor {
         }
     }
 
-    private func scanRecentRollouts() {
+    private func scanRollouts() {
         guard fileManager.fileExists(atPath: rootURL.path) else {
             for url in Array(eventsByFile.keys) { remove(url: url) }
             return
         }
 
-        let cutoff = Date().addingTimeInterval(-(24 * 60 * 60))
-        let files = recentRolloutFiles(cutoff: cutoff)
-        let currentURLs = Set(files)
-
-        for knownURL in Array(eventsByFile.keys) where !currentURLs.contains(knownURL) {
-            remove(url: knownURL)
+        let activeCutoff = Date().addingTimeInterval(-ActiveSessionStore.defaultStaleAfter)
+        var retainedURLs = Set<URL>()
+        var completionDates: [String: Date] = [:]
+        for (url, modifiedAt) in rolloutFiles() {
+            // Local rollout writes are chronological. Once five distinct
+            // completions are newer than every remaining file, older files
+            // cannot add a visible history row. Always discover active work.
+            let requiredDates = completionDates.values.sorted(by: >)
+            if modifiedAt < activeCutoff,
+               requiredDates.count >= RecentConversationLimit.five.rawValue,
+               modifiedAt < requiredDates[RecentConversationLimit.five.rawValue - 1] {
+                break
+            }
+            retainedURLs.insert(url)
+            process(url: url)
+            completionDates.merge(completionDatesByFile[url] ?? [:], uniquingKeysWith: max)
         }
 
-        for url in files {
-            process(url: url)
+        for knownURL in Array(eventsByFile.keys) where !retainedURLs.contains(knownURL) {
+            remove(url: knownURL)
         }
     }
 
-    private func recentRolloutFiles(cutoff: Date) -> [URL] {
+    private func rolloutFiles() -> [(URL, Date)] {
         guard let enumerator = fileManager.enumerator(
             at: rootURL,
             includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey],
@@ -141,14 +152,13 @@ final class RolloutActivityMonitor {
                   url.pathExtension == "jsonl",
                   let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey]),
                   values.isRegularFile == true,
-                  let modifiedAt = values.contentModificationDate,
-                  modifiedAt >= cutoff else {
+                  let modifiedAt = values.contentModificationDate else {
                 return nil
             }
             return (url.resolvingSymlinksInPath(), modifiedAt)
         }
         // Publish the newest task before parsing older, potentially large logs.
-        return files.sorted { $0.1 > $1.1 }.map(\.0)
+        return files.sorted { $0.1 > $1.1 }
     }
 
     private func process(url: URL) {
@@ -159,8 +169,7 @@ final class RolloutActivityMonitor {
             }
             let attributes = try fileManager.attributesOfItem(atPath: url.path)
             guard attributes[.type] as? FileAttributeType == .typeRegular,
-                  let modifiedAt = attributes[.modificationDate] as? Date,
-                  modifiedAt >= Date().addingTimeInterval(-24 * 60 * 60) else {
+                  let modifiedAt = attributes[.modificationDate] as? Date else {
                 remove(url: url)
                 return
             }
@@ -185,6 +194,10 @@ final class RolloutActivityMonitor {
             }
 
             let reduction = ActiveSessionReducer.reduce(eventsByFile[url, default: []])
+            completionDatesByFile[url] = Dictionary(
+                reduction.completed.map { ($0.threadID, $0.lastActivityAt) },
+                uniquingKeysWith: max
+            )
             let previous = publicationTask
             let store = store
             let notify = onChange
@@ -203,6 +216,7 @@ final class RolloutActivityMonitor {
         guard eventsByFile.removeValue(forKey: url) != nil else { return }
         cursors.removeValue(forKey: url)
         fingerprints.removeValue(forKey: url)
+        completionDatesByFile.removeValue(forKey: url)
         let previous = publicationTask
         let store = store
         let notify = onChange

@@ -34,4 +34,6 @@ Record decisions here only when they affect active behavior contracts, could be 
 
 | [047-sparkle-in-app-updates](047-sparkle-in-app-updates.md) | active | `APP-UPDATE-002` | Download, verify, install and relaunch signed updates inside the app |
 
+| [053-count-based-recent-history](053-count-based-recent-history.md) | active | `ACTIVITY-STATE-007` | Keep five recent conversation candidates without an age cutoff |
+
 New decisions must include `status`, `contract_ids`, rejected alternatives, and consequences. When a decision changes, retain the old document and point to the new one with `superseded_by`.
