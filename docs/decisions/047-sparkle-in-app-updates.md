@@ -74,3 +74,9 @@ References: [Sparkle setup](https://sparkle-project.org/documentation/),
 - This covers this Mac's ad-hoc installation. Fresh-download Gatekeeper behavior
   on another Mac and existing-window activation across Spaces still require
   physical confirmation; this change does not assert new animation verification.
+
+## Cloud packaging extension (2026-09-14)
+
+The maintainer subsequently authorized Actions Secret storage and cloud packaging.
+ADR 057 replaces the local-only storage choice above; the original Keychain
+remains available and the signing key and updater behavior are unchanged.

@@ -1,0 +1,53 @@
+name: Package signed release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: signed-release-package
+  cancel-in-progress: false
+
+jobs:
+  package:
+    if: github.repository == 'fengdwx/codex-notch' && github.ref == 'refs/heads/main'
+    runs-on: macos-14
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Record source and toolchain
+        run: |
+          git rev-parse HEAD
+          sw_vers
+          xcodebuild -version
+          swift --version
+          test "$(uname -m)" = arm64
+      - name: Verify contracts, tests, and app bundle
+        run: ./scripts/verify.sh
+      - name: Package and verify signed update
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          RUN_TESTS: '0'
+        run: |
+          test -n "$SPARKLE_PRIVATE_KEY" || { echo "Missing SPARKLE_PRIVATE_KEY secret" >&2; exit 1; }
+          ./scripts/release.sh
+          git rev-parse HEAD > dist/source-commit.txt
+      - name: Verify missing and wrong signing keys are rejected
+        run: python3 scripts/verify_signing_failures.py dist/*.zip
+      - name: Upload verified release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-release-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            dist/*.zip
+            dist/*.dmg
+            dist/*.sha256
+            dist/appcast.xml
+            dist/source-commit.txt

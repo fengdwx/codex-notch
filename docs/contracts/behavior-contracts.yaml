@@ -1,4 +1,36 @@
 contracts:
+  - id: RELEASE-SIGNING-001
+    title: Authorized cloud packaging uses the existing publisher key
+    status: active
+    statement: >-
+      A maintainer can manually package main on GitHub Actions using
+      SPARKLE_PRIVATE_KEY without accessing the publisher Mac. Full verification
+      precedes packaging. Stream the secret to Sparkle through stdin, never
+      persist or print it, and independently verify the ZIP with the embedded
+      public key before uploading artifacts. Missing or wrong keys fail closed.
+      Keep local Keychain signing available. Packaging does not publish a release
+      or change the live appcast; publish verified archives before the feed.
+    rationale: The user authorized storing the existing private key in Actions and requested cloud packaging and a release from another computer.
+    source: user-request
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [ci-packaging, update-signing, release-artifacts]
+      exclude: [key-rotation, notarization, app-behavior]
+    examples:
+      positive: A main workflow produces a signed ZIP, DMG, checksums and appcast on a hosted runner with the existing app public key.
+      negative: A missing or wrong secret produces a usable feed, or private keys appear in files or logs.
+    guards:
+      - scripts/verify_signing_failures.py
+      - .github/workflows/package.yml
+      - scripts/sign_update.sh
+      - scripts/verify_update.swift
+      - Tests/CodexNotchTests/UpdateArchiveVerificationTests.swift
+      - docs/decisions/057-actions-release-signing.md
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null
+
   - id: SETTINGS-TEXT-023
     title: Custom signature input gives immediate visible whitespace feedback
     status: active
@@ -259,8 +291,8 @@ contracts:
       profiling is disabled. Only public release information is exchanged, with
       no Codex credentials, conversations, or quota data. Invalid archives must
       be rejected before extraction and leave the installed app intact. Release
-      packaging must sign archives with the project key in the publisher's
-      Keychain and produce an appcast; no private key belongs in the repository,
+      packaging must sign archives with the existing project key from the publisher's
+      Keychain or the explicitly authorized GitHub Actions Secret and produce an appcast; no private key belongs in the repository,
       app, or release assets. Existing versions without Sparkle need one manual
       installation of the first updater-enabled release.
     rationale: The user requested native download and installation and explicitly authorized generating and storing a dedicated publisher signing key locally.

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set +x
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -17,9 +18,18 @@ if [[ -f "$NOTES_PATH" ]]; then
     cp "$NOTES_PATH" "$STAGING_DIR/$(basename "${ARCHIVE_PATH%.*}").md"
 fi
 # Isolating one ZIP prevents DMG/ZIP duplicates and unintended delta generation.
-"$TOOLS/generate_appcast" --account "$KEY_ACCOUNT" --maximum-deltas 0 \
-    --download-url-prefix "https://github.com/fengdwx/codex-notch/releases/download/v$VERSION/" \
-    --embed-release-notes -o "$STAGING_DIR/appcast.xml" "$STAGING_DIR"
+APPCAST_ARGS=(--maximum-deltas 0
+    --download-url-prefix "https://github.com/fengdwx/codex-notch/releases/download/v$VERSION/"
+    --embed-release-notes -o "$STAGING_DIR/appcast.xml" "$STAGING_DIR")
+if [[ -n "${SPARKLE_PRIVATE_KEY:-}" ]]; then
+    # Stream the Actions secret directly; never put it in argv or a key file.
+    printf '%s\n' "$SPARKLE_PRIVATE_KEY" | "$TOOLS/generate_appcast" --ed-key-file - "${APPCAST_ARGS[@]}"
+elif [[ "${GITHUB_ACTIONS:-false}" == "true" ]]; then
+    echo "error: SPARKLE_PRIVATE_KEY is required in GitHub Actions" >&2
+    exit 1
+else
+    "$TOOLS/generate_appcast" --account "$KEY_ACCOUNT" "${APPCAST_ARGS[@]}"
+fi
 # Independently verify with only the public key. Missing or wrong publisher
 # keys must fail the release, even if generate_appcast emitted an unsigned item.
 swift "$ROOT_DIR/scripts/verify_update.swift" "$STAGING_DIR/appcast.xml" \

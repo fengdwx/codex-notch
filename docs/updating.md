@@ -1,7 +1,7 @@
 # Publisher update workflow
 
-CodexNotch uses Sparkle 2.9.6 with an Ed25519 update key. The private key stays in
-the publisher's login Keychain, under account `com.david.codexnotch.sparkle` and
+CodexNotch uses Sparkle 2.9.6 with an Ed25519 update key. The private key is stored in the GitHub Actions repository Secret
+`SPARKLE_PRIVATE_KEY` and retained in the publisher's login Keychain, under account `com.david.codexnotch.sparkle` and
 service `https://sparkle-project.org`. Only the public key is in `Resources/Info.plist`.
 Users do not generate or download keys.
 
@@ -43,11 +43,35 @@ it does not generate deltas or beta channels.
 `swift test`, `build_app.sh`, and `verify.sh` do not need the private key. Only
 publisher release signing requires it. Forks need their own key, feed URL, and
 release destination; never share the publisher's key with application users.
-Keep the existing Keychain when moving the release workflow to another Mac.
-Key migration, backups, or CI storage are separate explicit operations; this
-setup does not export the key, add GitHub secrets, or obtain Apple certificates.
+Other computers can trigger the cloud workflow without possessing the private key.
+GitHub Secrets cannot be downloaded for local signing; local release signing
+still requires the existing Keychain. No Apple certificates are provisioned.
 
 Apple Developer ID signing/notarization is separate. The app still uses an
 ad-hoc signature; updating does not promise to eliminate Gatekeeper prompts.
 Restore the saved previous app if a local test fails. Withdraw a faulty public
 feed entry and publish a higher corrective build for users already updated.
+
+## Package from any computer with GitHub access
+
+After the version and release notes are committed to main, open Actions →
+Package signed release → Run workflow (main), or run:
+
+```bash
+gh workflow run package.yml --repo fengdwx/codex-notch --ref main
+```
+
+The hosted macOS runner runs full verification, builds the ZIP and DMG, signs
+with SPARKLE_PRIVATE_KEY, verifies against the existing public key, and uploads
+`signed-release-<source SHA>`. Download that artifact from the successful run:
+
+```bash
+gh run download <run-id> --repo fengdwx/codex-notch --dir release-artifacts
+```
+
+Confirm source-commit.txt matches the intended release and CI has passed for that
+SHA. Local full verification is still required before publication. Publish the
+ZIP, DMG and checksums using the existing release steps, then commit appcast.xml
+only after public archive verification. A package run does not publish anything.
+The Secret is scoped to the packaging step, streamed through stdin, and never
+included in uploaded artifacts. Missing or invalid keys fail the run.
