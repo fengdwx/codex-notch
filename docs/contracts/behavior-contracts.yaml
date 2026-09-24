@@ -31,6 +31,7 @@ contracts:
       negative: A measured 38pt camera still gets 32pt wings, a 24pt inset gets 28pt wings, hiding the menu bar changes camera height, or a display change retains the previous height.
     guards:
       - Tests/CodexNotchTests/NotchHeightTests.swift
+      - Tests/CodexNotchTests/NotchHeightViewTests.swift
       - Tests/CodexNotchTests/NotchGeometryTests.swift
       - Tests/CodexNotchTests/NotchDisplayRoutingTests.swift
       - Tests/CodexNotchTests/HiddenLeftWingTests.swift

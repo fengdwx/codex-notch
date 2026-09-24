@@ -40,8 +40,26 @@ Rejected alternatives:
 `NotchHeightTests` uses synthetic 24, 28, 29, 32, 37 and 38pt insets, explicitly
 not a table of MacBook models. Guards check matching top/bottom edges, sensor
 height, nonzero screen origins, left-wing cropping, preserved expanded detail
-space, menu-bar independence, unchanged floating geometry and fresh metrics
-after a route change. Existing geometry, routing and motion guards remain.
+space, menu-bar independence and unchanged floating geometry across independent
+screen-metric calculations. This does not exercise screen-change notifications.
+Existing geometry, routing and motion guards remain.
+
+`NotchHeightViewTests` hosts the production `NotchView` with a 2x display scale
+and synthetic 24/38pt heights, in both compact and expanded running states.
+It checks actual AppKit frames for both quota rings (including their inner
+glints), and for the status artwork's echo when five-hour quota is absent.
+The guards require the expected lane centers, unchanged 22/18pt artwork sizes,
+and vertical containment within the camera-height header. This is an L1 test
+addition; it does not change application behavior or validate animation frames.
+
+A negative-control run fixed the outer compact-content frames at 32pt in an
+isolated copy. All four geometry tests still passed, while both hosted-view
+tests failed on the resulting 4pt/3pt vertical offsets at 24/38pt. Reverting only
+the two inner lane-height changes does not reproduce those offsets because
+the enclosing view still centers its children; that is not the negative control.
+After restoring the isolated source, the full native-engine suite passed with
+241 tests, two existing opt-in skips and zero failures. The 97-contract check
+also passed. These results exclude the unrelated uncommitted glint changes.
 
 Run `swift test` and `./scripts/verify.sh`, rebuild/restart the app, and inspect
 real camera clearance, indicator centering, expansion/collapse, hidden hover
