@@ -261,10 +261,12 @@ enum NotchGeometry {
             compactSize.width,
             notchWidth + NotchCompactLayout.sideExtensionWidth * 2
         )
-        let compactHeight = min(
-            compactSize.height,
-            max(28, metrics.safeAreaInsets.top)
-        )
+        // A camera inset is a measured screen dimension, not a preferred UI
+        // height. Clamping it to 28...32pt misaligns the wings when the display
+        // scale changes. Retain the old fallback only when no inset is reported.
+        let compactHeight = metrics.safeAreaInsets.top > 0
+            ? metrics.safeAreaInsets.top
+            : min(compactSize.height, 28)
         // Expanded panels attach to the top edge like a single Dynamic Island.
         // Their drawable content is still kept below this camera attachment.
         let cameraAttachmentHeight = max(0, metrics.safeAreaInsets.top)

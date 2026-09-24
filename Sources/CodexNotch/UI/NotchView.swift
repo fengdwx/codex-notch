@@ -674,7 +674,7 @@ private struct CompactNotchView: View {
                 compactLeftIndicator
                     .frame(
                         width: NotchCompactLayout.indicatorLaneWidth,
-                        height: NotchCompactLayout.height
+                        height: compactHeight
                     )
 
                 Spacer(minLength: 0)
@@ -685,7 +685,8 @@ private struct CompactNotchView: View {
                     window: usage?.weeklyWindow,
                     activity: icon.quotaActivity,
                     style: quotaDisplayStyle,
-                    layoutMode: .notch
+                    layoutMode: .notch,
+                    compactHeight: compactHeight
                 )
             }
         }

@@ -1,4 +1,45 @@
 contracts:
+  - id: NOTCH-HEIGHT-001
+    title: Physical notch wings follow the measured camera height
+    status: active
+    statement: >-
+      With valid auxiliary camera areas and a positive safeAreaInsets.top,
+      use that measured height for the compact physical-notch surface, both
+      indicator lanes and the hidden hover sensor. Do not clamp a measured
+      camera height to a preferred UI height or derive it from the menu bar.
+      The compact bottom edge matches the camera attachment while the top
+      remains at the current screen frame's maxY, including nonzero screen
+      origins and after display changes. Preserve expanded content space,
+      camera-width calculation, icon sizes, optional left-wing cropping,
+      floating and mirrored-display rules, fixed-canvas downward transitions,
+      quota/task semantics and SETTINGS-MOTION-021. When auxiliary areas are
+      present but no positive camera inset is reported, retain the existing
+      fallback height until valid metrics arrive.
+    rationale: >-
+      Investigation of issue 4 found that the original two-wing implementation
+      capped camera height at 32pt and floored it at 28pt. Its 32pt fixture could
+      not detect misalignment at other display scales. The reporter's exact
+      screen configuration has not yet been reproduced.
+    source: issue-4-investigation
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [physical-notch-height, compact-indicator-lanes, hidden-hover-sensor, display-metrics]
+      exclude: [floating-layout, icon-artwork, quota-values, task-state, animation-design, releases]
+    examples:
+      positive: A 38pt camera inset produces 38pt wings and a 38pt hover sensor; a 24pt inset produces 24pt wings; the existing 32pt screen and mirrored 30pt floating bar keep their dimensions.
+      negative: A measured 38pt camera still gets 32pt wings, a 24pt inset gets 28pt wings, hiding the menu bar changes camera height, or a display change retains the previous height.
+    guards:
+      - Tests/CodexNotchTests/NotchHeightTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - Tests/CodexNotchTests/NotchDisplayRoutingTests.swift
+      - Tests/CodexNotchTests/HiddenLeftWingTests.swift
+      - docs/decisions/056-measured-physical-notch-height.md
+      - "manual: compare camera and wing bottom edges at different display scales; inspect both indicators, hover expansion/collapse and hidden recovery, then connect/disconnect an external display in extended and mirrored modes"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null
+
   - id: RELEASE-SIGNING-001
     title: Authorized cloud packaging uses the existing publisher key
     status: active
