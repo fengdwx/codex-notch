@@ -3,23 +3,22 @@
     <channel>
         <title>CodexNotch</title>
         <item>
-            <title>0.2.3</title>
-            <pubDate>Mon, 14 Sep 2026 10:43:56 +0000</pubDate>
-            <sparkle:version>21</sparkle:version>
-            <sparkle:shortVersionString>0.2.3</sparkle:shortVersionString>
+            <title>0.2.5</title>
+            <pubDate>Fri, 02 Oct 2026 12:13:41 +0000</pubDate>
+            <sparkle:version>23</sparkle:version>
+            <sparkle:shortVersionString>0.2.5</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# CodexNotch 0.2.3
+            <description sparkle:format="markdown"><![CDATA[# CodexNotch 0.2.5
 
-- **Recent tasks across days**: Recent conversations no longer disappear after 24 hours. Your selected count (0–5) applies to the latest available conversations, including after several days away or an app restart.
-- **Efficient history loading**: Stops reading older logs once enough recent conversations have been found. Running tasks still take priority, and abandoned tasks are not revived.
-- **Custom text editing**: Spaces at the end of a floating-bar signature are now visible immediately while typing.
+- **Quota ring alignment:** Fixed the rotating inner glint appearing off-center or doubled. The glint and halo stay centered on the quota ring, with crisp rendering on Retina displays.
+- **Notch height:** Compact wings and both indicator lanes now follow the display's measured camera area. This change was previously available in the 0.2.4 preview.
 
-Users on 0.2.1 or later can update through Settings → Check for Updates. Users on 0.2.0 or earlier should install this version manually. Existing preferences are preserved.
+Update from Settings → Check for Updates, or download the DMG or ZIP. Existing preferences are preserved.
 
-DMG and ZIP downloads are available for Apple Silicon on macOS 14 or later. The app has not been notarized by Apple. See the [installation guide](https://github.com/fengdwx/codex-notch/blob/v0.2.3/README.md#install).
+Downloads are available for Apple Silicon on macOS 14 or later. The app has not been notarized by Apple. See the [installation guide](https://github.com/fengdwx/codex-notch/blob/v0.2.5/README.md#install).
 ]]></description>
-            <enclosure url="https://github.com/fengdwx/codex-notch/releases/download/v0.2.3/CodexNotch-0.2.3-macOS-arm64.zip" length="3842536" type="application/octet-stream" sparkle:edSignature="Fe+YVIuD4EtwMK6w4/H8DkYunOZte2FE0C5XteRXP9+54OQOoDYaYis1y6vGug72D43F2605jJYN5SsCXvMZBA=="/>
+            <enclosure url="https://github.com/fengdwx/codex-notch/releases/download/v0.2.5/CodexNotch-0.2.5-macOS-arm64.zip" length="3843291" type="application/octet-stream" sparkle:edSignature="9OocxB6H3bq+LsIuQJXkXL2hGixfTkzdcpYZg0Lr+J3x76pEascW8JHxYU64bwYS7rBxk2OGfYwMxACXQjNyCg=="/>
         </item>
     </channel>
 </rss>
