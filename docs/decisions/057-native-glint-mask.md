@@ -46,3 +46,8 @@ of live compositor behavior. Run the focused motion/alignment checks and full
 verification, rebuild/restart the actual app, and inspect at least one complete
 rotation plus hover expansion/collapse on the physical notch. Physical-hardware
 confirmation is required for the recorded artifact and perceived smoothness.
+
+On 2026-10-02, after the rebuilt app was restarted on the reporting user's Mac,
+the user confirmed that the reported problem no longer occurred and requested a
+release. This accepts the supplied recording's glint artifact on that machine;
+it does not establish coverage of every display scale or external-display mode.
