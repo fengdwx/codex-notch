@@ -131,10 +131,17 @@ enum QuotaGradientStyle {
     case innerGlow
 }
 
+struct QuotaGradientCircularMask: Equatable {
+    let inset: CGFloat
+    let lineWidth: CGFloat
+}
+
 final class QuotaGradientLayerView: QuotaAnimatedLayerView {
     private let gradientLayer = CAGradientLayer()
+    private let circularMaskLayer = CAShapeLayer()
     private var currentColor: QuotaColorScale.RGB?
     private var currentStyle = QuotaGradientStyle.quota
+    private var currentCircularMask: QuotaGradientCircularMask?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -143,6 +150,8 @@ final class QuotaGradientLayerView: QuotaAnimatedLayerView {
         gradientLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
         gradientLayer.endPoint = CGPoint(x: 0.5, y: 0)
         gradientLayer.locations = [0, 0.18, 0.36, 0.52, 0.66, 0.82, 1]
+        circularMaskLayer.fillColor = nil
+        circularMaskLayer.strokeColor = NSColor.white.cgColor
         layer?.addSublayer(gradientLayer)
     }
 
@@ -156,14 +165,34 @@ final class QuotaGradientLayerView: QuotaAnimatedLayerView {
             gradientLayer.contentsScale = window?.backingScaleFactor ?? layer?.contentsScale ?? 1
             gradientLayer.bounds = CGRect(origin: .zero, size: bounds.size)
             gradientLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
+            if let mask = currentCircularMask {
+                let localBounds = gradientLayer.bounds
+                let radius = max(0, min(localBounds.width, localBounds.height) / 2 - mask.inset)
+                circularMaskLayer.contentsScale = gradientLayer.contentsScale
+                circularMaskLayer.bounds = localBounds
+                circularMaskLayer.position = CGPoint(x: localBounds.midX, y: localBounds.midY)
+                circularMaskLayer.lineWidth = mask.lineWidth
+                circularMaskLayer.path = CGPath(ellipseIn: CGRect(
+                    x: localBounds.midX - radius, y: localBounds.midY - radius,
+                    width: radius * 2, height: radius * 2
+                ), transform: nil)
+            }
         }
     }
 
     func configure(
         color: QuotaColorScale.RGB,
         isAnimating: Bool,
-        style: QuotaGradientStyle = .quota
+        style: QuotaGradientStyle = .quota,
+        circularMask: QuotaGradientCircularMask? = nil
     ) {
+        if currentCircularMask != circularMask {
+            currentCircularMask = circularMask
+            CATransaction.performWithoutAnimation {
+                gradientLayer.mask = circularMask == nil ? nil : circularMaskLayer
+            }
+            needsLayout = true
+        }
         let styleChanged = currentStyle != style
         if currentColor != color || styleChanged {
             currentColor = color
@@ -224,11 +253,12 @@ struct QuotaGradientLayer: NSViewRepresentable {
     let color: QuotaColorScale.RGB
     let isAnimating: Bool
     var style = QuotaGradientStyle.quota
+    var circularMask: QuotaGradientCircularMask? = nil
 
     func makeNSView(context _: Context) -> QuotaGradientLayerView {
         let view = QuotaGradientLayerView(frame: .zero)
         view.setAccessibilityElement(false)
-        view.configure(color: color, isAnimating: isAnimating, style: style)
+        view.configure(color: color, isAnimating: isAnimating, style: style, circularMask: circularMask)
         return view
     }
 
@@ -236,7 +266,7 @@ struct QuotaGradientLayer: NSViewRepresentable {
         _ nsView: QuotaGradientLayerView,
         context _: Context
     ) {
-        nsView.configure(color: color, isAnimating: isAnimating, style: style)
+        nsView.configure(color: color, isAnimating: isAnimating, style: style, circularMask: circularMask)
     }
 
     static func dismantleNSView(

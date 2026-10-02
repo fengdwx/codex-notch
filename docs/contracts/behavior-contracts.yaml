@@ -118,8 +118,19 @@ contracts:
       the hosting window's pixel density for managed gradient and halo layers,
       refreshing after attachment or backing-scale changes. Preserve
       the independent inner glint, readable number, existing clearance,
-      fixed-canvas transitions and animation removal when inactive.
-    rationale: The user reported a pale ring displaced from the quota indicator; the halo duplicated a nonzero hosting bounds origin in both its frame and path.
+      fixed-canvas transitions and animation removal when inactive. The inner
+      glint's one-point circular clipping path belongs to its native gradient
+      layer, at the same local center and pixel density. Its circular track
+      and quarter-point clearance remain fixed throughout a full rotation,
+      rather than depending on a SwiftUI mask around an animated AppKit view.
+    rationale: >-
+      The user reported a pale ring displaced from the quota indicator; the
+      halo duplicated a nonzero hosting bounds origin in both its frame and
+      path. A later recording showed doubled, off-center inner glint arcs
+      while the value and quota track stayed still. Static hosted geometry
+      and software-rendered samples did not reproduce that live composition
+      artifact, so the glint now owns its clipping geometry in its native
+      layer coordinates.
     source: user-reported-incident
     owner: project-maintainer
     risk: medium
@@ -134,6 +145,7 @@ contracts:
       - Tests/CodexNotchTests/AdditiveRunningMotionTests.swift
       - Tests/CodexNotchTests/QuotaRunningHaloMotionTests.swift
       - docs/decisions/054-concentric-quota-layers.md
+      - docs/decisions/057-native-glint-mask.md
       - "manual: inspect the actual running notch at multiple glint phases and after hover expansion/collapse; confirm the inner glint and outer halo share the quota center"
     supersedes: []
     superseded_by: null

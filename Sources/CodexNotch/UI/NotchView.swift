@@ -1312,13 +1312,15 @@ struct QuotaRing: View {
                     QuotaGradientLayer(
                         color: QuotaInnerGlowMotion.color,
                         isAnimating: true,
-                        style: .innerGlow
+                        style: .innerGlow,
+                        circularMask: QuotaGradientCircularMask(
+                            inset: QuotaInnerGlowMotion.strokeInset(quotaLineWidth: lineWidth),
+                            lineWidth: QuotaInnerGlowMotion.lineWidth
+                        )
                     )
-                    .mask {
-                        Circle()
-                            .inset(by: QuotaInnerGlowMotion.strokeInset(quotaLineWidth: lineWidth))
-                            .stroke(Color.white, lineWidth: QuotaInnerGlowMotion.lineWidth)
-                    }
+                    // Keep rotation and circular clipping in one native layer
+                    // coordinate space, at the same diameter as the quota.
+                    .frame(width: diameter, height: diameter)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
                 }

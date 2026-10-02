@@ -26,6 +26,10 @@ static cues, app animation settings, visibility/detachment gates, and window
 geometry. Do not compensate with a guessed SwiftUI x/y offset or move the
 quota number. No new mask, animation or rendering dependency is introduced.
 
+[Decision 057](057-native-glint-mask.md) later updates the no-new-mask
+restriction for the inner glint while retaining this geometry and density
+handling.
+
 The geometry regression demonstrates a code defect; it does not alone prove
 that the user's live rendering takes that exact offset-bounds path. Check the
 rebuilt app on the actual notch at multiple phases and after hover cycles.
