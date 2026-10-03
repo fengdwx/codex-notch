@@ -6,8 +6,8 @@ enum QuotaRunningHaloMotion {
     static let duration: CFTimeInterval = 2.8
     static let visualDiameter: CGFloat = 24
     static let lineWidth: CGFloat = 1.4
-    static let minimumOpacity: Float = 0.06
-    static let maximumOpacity: Float = 0.24
+    static let minimumOpacity: Float = 0.03
+    static let maximumOpacity: Float = 0.12
     static let minimumScale: CGFloat = 0.92
     static let maximumScale: CGFloat = 1.02
 

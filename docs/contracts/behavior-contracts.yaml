@@ -1,4 +1,46 @@
 contracts:
+  - id: UI-READABILITY-058
+    title: Settings fit their content and decorative quota light stays secondary
+    status: active
+    statement: >-
+      Preserve QUOTA-ALIGNMENT-056 geometry, native circular glint masking,
+      backing density, quota values, color tiers, trim direction, dimensions,
+      timing, task states and motion/lifecycle gates. Override only the
+      decorative light intensity: the native glint uses 0.55 layer opacity,
+      and the halo pulses between 0.03 and 0.12. Never attenuate the quota
+      arc or number. Settings retains its 560pt width, native controls, tabs,
+      keys, defaults and SETTINGS-WINDOW-022 activation behavior. General
+      uses 360pt content height, reserving 460pt for login approval/errors;
+      Appearance uses 320pt and Floating Bar retains 580pt. Explanatory text
+      uses 11pt secondary text, leading alignment and wrapping. The labelled
+      floating example shares the real quota renderer with a fixed 75 percent
+      sample and the chosen quota style, without reading live data or creating
+      a timer. Its quota stays static; center motion still follows
+      SETTINGS-MOTION-021. Preserve live notch geometry, expansion, task and
+      quota updates, login behavior, privacy and release/update behavior.
+    rationale: The user approved a UI review's four suggestions to reduce Settings whitespace, separate explanatory text, soften quota decoration and complete the safe preview.
+    source: user-approved-ui-review
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [settings-layout, settings-typography, decorative-quota-opacity, floating-example]
+      exclude: [notch-geometry, animation-timing, quota-semantics, task-state, preferences, releases]
+    examples:
+      positive: General Settings no longer reserves the preview page's empty area; all controls remain reachable, the quota arc and number retain their contrast, and the labelled example shows 75 using either quota style.
+      negative: Smaller windows hide controls, descriptions clip in either language, decorative attenuation dims the actual quota, a new mask causes glint drift, or the example displays real task/quota data.
+    guards:
+      - Tests/CodexNotchTests/SettingsReadabilityTests.swift
+      - Tests/CodexNotchTests/QuotaRingAlignmentTests.swift
+      - Tests/CodexNotchTests/AdditiveRunningMotionTests.swift
+      - Tests/CodexNotchTests/QuotaRunningHaloMotionTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePreferencesTests.swift
+      - Tests/CodexNotchTests/SettingsWindowPresenterTests.swift
+      - docs/decisions/058-settings-and-quota-readability.md
+      - "manual: inspect all Settings pages in Chinese and English, switch pages repeatedly, check popups and login notices, confirm the labelled 75 percent example in both styles, and inspect a full glint rotation plus hover/collapse on the real notch"
+    supersedes: [QUOTA-ALIGNMENT-056]
+    superseded_by: null
+    last_verified_commit: null
+
   - id: NOTCH-HEIGHT-001
     title: Physical notch wings follow the measured camera height
     status: active
@@ -107,7 +149,7 @@ contracts:
 
   - id: QUOTA-ALIGNMENT-056
     title: Quota layers stay concentric in offset and resized hosts
-    status: active
+    status: superseded
     statement: >-
       Preserve SETTINGS-MOTION-021 and all inherited quota values, colors,
       trim direction, dimensions, positions, glint timing, halo timing and
@@ -148,7 +190,7 @@ contracts:
       - docs/decisions/057-native-glint-mask.md
       - "manual: inspect the actual running notch at multiple glint phases and after hover expansion/collapse; confirm the inner glint and outer halo share the quota center"
     supersedes: []
-    superseded_by: null
+    superseded_by: UI-READABILITY-058
     last_verified_commit: null
 
   - id: CI-VERIFICATION-001

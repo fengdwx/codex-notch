@@ -894,7 +894,7 @@ private struct RunningStatusIcon: View {
     }
 }
 
-private struct QuotaIndicatorView: View {
+struct QuotaIndicatorView: View {
     let style: QuotaDisplayStyle
     let window: UsageWindow?
     let activity: QuotaRingActivity

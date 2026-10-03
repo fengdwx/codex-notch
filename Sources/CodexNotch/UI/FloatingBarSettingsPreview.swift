@@ -58,8 +58,10 @@ struct FloatingBarSettingsPreview: View {
     let state: FloatingPreviewState
     let language: AppLanguage
     let animationsEnabled: Bool
+    var quotaStyle: QuotaDisplayStyle = .clockwiseRing
     // This fixed example never reads real tasks or starts a second task clock.
     private let sampleNow = Date(timeIntervalSince1970: 1_000)
+    private let sampleQuota = UsageWindow(id: "settings-example", kind: .weekly, usedPercent: 25)
 
     var body: some View {
         VStack(spacing: 14) {
@@ -71,11 +73,11 @@ struct FloatingBarSettingsPreview: View {
                     startedAt: sampleNow.addingTimeInterval(-138), now: sampleNow, isExpanded: false
                 )
                 .frame(width: NotchFloatingBarLayout.battleLaneWidth, height: 30)
-                ZStack {
-                    Circle().stroke(.white.opacity(0.4), lineWidth: 2)
-                    Text("–").font(.system(size: 9, design: .monospaced)).foregroundStyle(.white.opacity(0.7))
-                }
-                .frame(width: 20, height: 20)
+                QuotaIndicatorView(
+                    style: quotaStyle, window: sampleQuota, activity: .idle,
+                    diameter: 20, lineWidth: 2, fontSize: 9
+                )
+                .environment(\.notchMotionEnabled, false)
                 .frame(width: NotchFloatingBarLayout.quotaLaneWidth)
             }
             .padding(.horizontal, NotchFloatingBarLayout.horizontalInset)
@@ -86,13 +88,12 @@ struct FloatingBarSettingsPreview: View {
             .allowsHitTesting(false)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(language.localized(
-                chinese: "\(style.title(for: language))的\(state.title(for: language))示例",
-                english: "\(style.title(for: language)) example: \(state.title(for: language))"
+                chinese: "\(style.title(for: language))的\(state.title(for: language))示例，示例额度 75%",
+                english: "\(style.title(for: language)) example: \(state.title(for: language)), sample quota 75%"
             ))
 
             Text(language.localized(chinese: "仅供预览，任务和额度为示例。", english: "Preview only. Tasks and quota use sample data."))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .modifier(SettingsHelpTextStyle())
         }
         .frame(maxWidth: .infinity)
         .padding(.bottom, 8)

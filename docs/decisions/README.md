@@ -36,5 +36,6 @@ Record decisions here only when they affect active behavior contracts, could be 
 
 | [053-count-based-recent-history](053-count-based-recent-history.md) | active | `ACTIVITY-STATE-007` | Keep five recent conversation candidates without an age cutoff |
 | [057-native-glint-mask](057-native-glint-mask.md) | active | `QUOTA-ALIGNMENT-056`, `SETTINGS-MOTION-021` | Keep the rotating inner glint and circular clipping in one native layer coordinate space |
+| [058-settings-and-quota-readability](058-settings-and-quota-readability.md) | active | `UI-READABILITY-058` | Fit Settings to its content, quiet explanations and decoration, and show a labelled sample quota |
 
 New decisions must include `status`, `contract_ids`, rejected alternatives, and consequences. When a decision changes, retain the old document and point to the new one with `superseded_by`.

@@ -76,7 +76,7 @@ struct NotchSettingsView: View {
                 .tag(SettingsTab.floating)
         }
         .padding(16)
-        .frame(width: 560, height: 580)
+        .frame(width: 560, height: contentHeight)
         .onAppear {
             refreshSystemState()
             SettingsWindowPresenter.bringToFront()
@@ -110,6 +110,7 @@ struct NotchSettingsView: View {
                     chinese: "将指针移至屏幕顶部可查看最近任务。设为 0 时隐藏列表。",
                     english: "Hover over CodexNotch at the top of the screen to view recent tasks. Set to 0 to hide the list."
                 ))
+                .modifier(SettingsHelpTextStyle())
             }
 
             Section {
@@ -182,6 +183,7 @@ struct NotchSettingsView: View {
                     chinese: "刘海左侧优先显示 5 小时额度。选择“关闭”可减少菜单栏遮挡，额度仍可展开查看。",
                     english: "Five-hour quota takes priority beside the notch. Select Off to reduce overlap with the menu bar. Quota remains available in the expanded card."
                 ))
+                .modifier(SettingsHelpTextStyle())
             }
 
             Section {
@@ -193,6 +195,7 @@ struct NotchSettingsView: View {
                     chinese: "关闭动画可减少开销，额度和任务状态照常更新。",
                     english: "Turn off animations to reduce resource use. Quota and task status keep updating."
                 ))
+                .modifier(SettingsHelpTextStyle())
             }
         }
         .formStyle(.grouped)
@@ -205,7 +208,7 @@ struct NotchSettingsView: View {
                     Label(floatingContext.title(for: appLanguage), systemImage: "info.circle")
                         .font(.headline)
                     Text(floatingContext.explanation(for: appLanguage))
-                        .font(.callout).foregroundStyle(.secondary)
+                        .modifier(SettingsHelpTextStyle())
                 }
                 .padding(.vertical, 2)
             }
@@ -214,7 +217,8 @@ struct NotchSettingsView: View {
                 if selectedTab == .floating {
                     FloatingBarSettingsPreview(
                         style: floatingStyle, customText: floatingCenterText, state: previewState,
-                        language: appLanguage, animationsEnabled: animationsEnabled
+                        language: appLanguage, animationsEnabled: animationsEnabled,
+                        quotaStyle: selectedStyle
                     )
                 }
                 Picker(appLanguage.localized(chinese: "预览状态", english: "Preview state"), selection: $previewState) {
@@ -229,6 +233,7 @@ struct NotchSettingsView: View {
             } footer: {
                 if !animationsEnabled {
                     Text(appLanguage.localized(chinese: "动画已关闭，可在“外观”中开启。", english: "Animations are off. Enable them in Appearance."))
+                        .modifier(SettingsHelpTextStyle())
                 }
             }
 
@@ -255,6 +260,7 @@ struct NotchSettingsView: View {
                         Text(appLanguage.localized(chinese: "最多 12 个字符，留空时显示 Codex。", english: "Up to 12 characters. Leave blank to display Codex."))
                     }
                 }
+                .modifier(SettingsHelpTextStyle())
             }
         }
         .formStyle(.grouped)
@@ -272,4 +278,27 @@ struct NotchSettingsView: View {
     }
 
     private var currentVersion: AppVersion { AppVersion.fromBundle() ?? .zero }
+
+    private var contentHeight: CGFloat {
+        switch selectedTab {
+        case .general:
+            // Reserve additional space only when login approval/errors need it.
+            return launchAtLogin.status == .requiresApproval || launchAtLogin.errorMessage != nil ? 460 : 360
+        case .appearance:
+            return 320
+        case .floating:
+            return 580
+        }
+    }
+}
+
+struct SettingsHelpTextStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .font(.system(size: 11))
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+    }
 }

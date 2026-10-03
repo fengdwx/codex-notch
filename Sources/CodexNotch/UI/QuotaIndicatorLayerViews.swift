@@ -200,10 +200,12 @@ final class QuotaGradientLayerView: QuotaAnimatedLayerView {
             CATransaction.performWithoutAnimation {
                 switch style {
                 case .quota:
+                    gradientLayer.opacity = 1
                     gradientLayer.locations = [0, 0.18, 0.36, 0.52, 0.66, 0.82, 1]
                     gradientLayer.colors = [0.24, 0.42, 0.78, 1, 0.82, 0.46, 0.24]
                         .map { color.cgColor(alpha: $0) }
                 case .innerGlow:
+                    gradientLayer.opacity = 0.55
                     gradientLayer.locations = [0, 0.63, 0.69, 0.77, 0.87, 0.94, 0.98, 1]
                     gradientLayer.colors = [0, 0, 0.08, 0.35, 0.75, 0.95, 0, 0]
                         .map { color.cgColor(alpha: $0) }
