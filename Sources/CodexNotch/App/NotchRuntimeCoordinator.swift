@@ -42,6 +42,8 @@ final class NotchRuntimeCoordinator {
     private var sessionTimer: Timer?
     private var rolloutRescanTimer: Timer?
     private var usageTask: Task<Void, Never>?
+    private var resetTask: Task<Void, Never>?
+    private var resetController: ResetCreditRedemptionController?
     private var started = false
     private var isChatGPTFrontmost = false
     private var isHovered = false
@@ -56,6 +58,7 @@ final class NotchRuntimeCoordinator {
     private var lastTitleRefreshAt: Date?
     private var titleRefreshInFlight = false
     private var usage: UsageSnapshot?
+    private var usageCredentials: CodexCredentials?
     private var lastUsageRequestAt: Date?
     private var usageRequestID: UUID?
     private var hoverExpandWorkItem: DispatchWorkItem?
@@ -71,7 +74,7 @@ final class NotchRuntimeCoordinator {
         authReader: CodexAuthReader = CodexAuthReader(),
         sessionStore: ActiveSessionStore = ActiveSessionStore(),
         threadTitleReader: ThreadTitleReading? = nil,
-        urlSession: URLSession = .shared,
+        urlSession: URLSession = CodexUsageClient.defaultSession,
         usageEndpoint: URL = CodexUsageClient.defaultEndpoint,
         nowProvider: @escaping () -> Date = { .now },
         userDefaults: UserDefaults = .standard
@@ -117,6 +120,9 @@ final class NotchRuntimeCoordinator {
         }
         viewModel.onResetScheduleExpandedChanged = { [weak self] isExpanded in
             self?.setResetScheduleExpanded(isExpanded)
+        }
+        viewModel.onUseResetCredit = { [weak self] credit in
+            Task { @MainActor [weak self] in self?.useResetCredit(credit) }
         }
 
         windowController.onScreenParametersChanged = { [weak self] in
@@ -171,6 +177,9 @@ final class NotchRuntimeCoordinator {
         usageTask?.cancel()
         usageTask = nil
         usageRequestID = nil
+        resetTask?.cancel()
+        resetTask = nil
+        viewModel.isUsingResetCredit = false
         hoverExpandWorkItem?.cancel()
         hoverExpandWorkItem = nil
         hoverCollapseWorkItem?.cancel()
@@ -195,6 +204,7 @@ final class NotchRuntimeCoordinator {
         sessionTimer?.invalidate()
         rolloutRescanTimer?.invalidate()
         usageTask?.cancel()
+        resetTask?.cancel()
         hoverExpandWorkItem?.cancel()
         hoverCollapseWorkItem?.cancel()
         visibilityShortcut = nil
@@ -311,6 +321,7 @@ final class NotchRuntimeCoordinator {
     }
 
     private func refreshUsage() {
+        guard !viewModel.isUsingResetCredit else { return }
         let requestID = UUID()
         usageRequestID = requestID
         lastUsageRequestAt = nowProvider()
@@ -331,6 +342,7 @@ final class NotchRuntimeCoordinator {
                 await MainActor.run { [weak self] in
                     guard let self, self.usageRequestID == requestID else { return }
                     self.usage = snapshot
+                    self.usageCredentials = credentials
                     self.render()
                 }
             } catch {
@@ -342,6 +354,98 @@ final class NotchRuntimeCoordinator {
                     self.render()
                 }
             }
+        }
+    }
+
+    @MainActor
+    private func useResetCredit(_ credit: ResetCredit) {
+        guard started, !viewModel.isUsingResetCredit,
+              credit.canRedeem(at: nowProvider()),
+              usage?.resetCredits.contains(credit) == true,
+              let expectedCredentials = usageCredentials else { return }
+
+        // Block both duplicate actions and old reads before opening the modal.
+        viewModel.isUsingResetCredit = true
+        usageTask?.cancel()
+        usageRequestID = nil
+        let language = AppLanguage.fromStoredValue(userDefaults.string(forKey: AppLanguage.storageKey))
+        let confirmation = NSAlert()
+        confirmation.alertStyle = .warning
+        confirmation.messageText = language.localized(chinese: "使用这次额度重置？", english: "Use this saved reset?")
+        confirmation.informativeText = language.localized(
+            chinese: "成功重置符合条件的额度时会消耗 1 次已存重置机会；如果无需重置，则保留该机会。周重置时间可能改变，成功后无法撤销。",
+            english: "A successful reset of eligible usage limits consumes one saved reset. If no reset is needed, the credit is kept. Your weekly reset date may change. A successful reset cannot be undone."
+        )
+        confirmation.addButton(withTitle: language.localized(chinese: "取消", english: "Cancel"))
+        confirmation.addButton(withTitle: language.localized(chinese: "使用重置", english: "Use reset"))
+        NSApp.activate(ignoringOtherApps: true)
+        guard confirmation.runModal() == .alertSecondButtonReturn else {
+            viewModel.isUsingResetCredit = false
+            refreshUsage()
+            return
+        }
+        guard started else {
+            viewModel.isUsingResetCredit = false
+            return
+        }
+
+        let reader = authReader
+        let session = urlSession
+        let endpoint = usageEndpoint
+        if resetController == nil {
+            resetController = ResetCreditRedemptionController(
+                readCredentials: { try reader.read() },
+                fetchCredits: { credentials in
+                    try await CodexUsageClient(credentials: credentials, session: session, endpoint: endpoint)
+                        .fetchResetCredits().availableCredits
+                },
+                consume: { credentials, creditID, key in
+                    try await CodexUsageClient(credentials: credentials, session: session, endpoint: endpoint)
+                        .consumeResetCredit(creditID: creditID, idempotencyKey: key)
+                },
+                now: nowProvider
+            )
+        }
+        guard let controller = resetController else { return }
+        resetTask = Task { @MainActor [weak self] in
+            let result: Result<ResetCreditConsumptionOutcome, Error>
+            do {
+                result = .success(try await controller.redeem(credit, expectedCredentials: expectedCredentials))
+            } catch {
+                result = .failure(error)
+            }
+            guard !Task.isCancelled, let self, self.started else { return }
+            // Keep polling paused until the post-action read completes. Never
+            // fabricate 100% or decrement a count from the POST response alone.
+            var refreshed = false
+            do {
+                let credentials = try reader.read()
+                guard ResetCreditRedemptionController.sameAccount(credentials, expectedCredentials) else {
+                    throw ResetCreditRedemptionError.accountChanged
+                }
+                let snapshot = try await CodexUsageClient(
+                    credentials: credentials, session: session, endpoint: endpoint
+                ).fetch(requireResetCredits: true)
+                try Task.checkCancellation()
+                guard ResetCreditRedemptionController.sameAccount(credentials, try reader.read()) else {
+                    throw ResetCreditRedemptionError.accountChanged
+                }
+                self.usage = snapshot
+                self.usageCredentials = credentials
+                self.lastUsageRequestAt = self.nowProvider()
+                refreshed = true
+            } catch { /* The result dialog explicitly reports a failed refresh. */ }
+            guard !Task.isCancelled, self.started else { return }
+            self.viewModel.isUsingResetCredit = false
+            self.resetTask = nil
+            self.render()
+            let alert = NSAlert()
+            alert.alertStyle = .informational
+            alert.messageText = language.localized(chinese: "额度重置", english: "Usage reset")
+            alert.informativeText = ResetCreditFeedback.message(result, refreshed: refreshed, language: language)
+            alert.addButton(withTitle: language.localized(chinese: "好", english: "OK"))
+            NSApp.activate(ignoringOtherApps: true)
+            alert.runModal()
         }
     }
 

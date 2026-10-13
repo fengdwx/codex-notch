@@ -99,6 +99,7 @@ struct ResetCreditsDTO: Decodable {
             .map { index, credit in
                 ResetCredit(
                     id: credit.id ?? "reset-credit-\(index)-\(credit.expiresAt?.timeIntervalSince1970 ?? 0)",
+                    redemptionID: credit.hasValidExpiry ? credit.id : nil,
                     title: credit.title,
                     expiresAt: credit.expiresAt
                 )
@@ -111,6 +112,7 @@ struct ResetCreditDTO: Decodable {
     let title: String?
     let status: String?
     let expiresAt: Date?
+    let hasValidExpiry: Bool
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -125,7 +127,25 @@ struct ResetCreditDTO: Decodable {
         title = try container.decodeIfPresent(String.self, forKey: .title)
         status = try container.decodeIfPresent(String.self, forKey: .status)
         expiresAt = FlexibleDate.decode(from: container, forKey: .expiresAt)
+        // A malformed expiration must not become a redeemable, nonexpiring
+        // credit. Missing/null expiration is explicitly supported by the API.
+        if expiresAt != nil || !container.contains(.expiresAt) {
+            hasValidExpiry = true
+        } else {
+            hasValidExpiry = try container.decodeNil(forKey: .expiresAt)
+        }
     }
+}
+
+enum ResetCreditConsumptionOutcome: String, Decodable, Equatable, Sendable {
+    case reset
+    case nothingToReset = "nothing_to_reset"
+    case noCredit = "no_credit"
+    case alreadyRedeemed = "already_redeemed"
+}
+
+struct ResetCreditConsumptionResponseDTO: Decodable {
+    let code: ResetCreditConsumptionOutcome
 }
 
 private enum FlexibleDate {

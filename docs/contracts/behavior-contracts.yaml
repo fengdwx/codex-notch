@@ -41,6 +41,63 @@ contracts:
     superseded_by: null
     last_verified_commit: null
 
+  - id: QUOTA-RESET-058
+    title: Reset credits are redeemed only after an explicit per-credit confirmation
+    status: active
+    statement: >-
+      Replace only the historical read-only reset-action restriction from
+      QUOTA-SEMANTICS-008 and its QUOTA-SEMANTICS-004 predecessor. Preserve
+      SETTINGS-MOTION-021 and all inherited quota display, activity, language,
+      fixed-canvas downward expansion, camera clearance and mouse recovery
+      behavior, plus NOTCH-HEIGHT-001, QUOTA-ALIGNMENT-056 and
+      PRIVACY-BOUNDARY-006. Opening reset-credit details remains read-only.
+      Each available credit has a localized Use reset action and retains its
+      precise expiry and countdown. A missing server ID or an expired credit
+      cannot be redeemed; a synthetic display ID is never sent to the server.
+      Require a native confirmation before submitting any mutation. Cancel
+      submits no mutation. Only one confirmation/redemption flow may be
+      active across the app, and every credit action is disabled while it is
+      active. Before submission, reread credentials, require the same account
+      context that supplied the displayed credits, refresh the authoritative
+      available-credit list, and recheck credentials and credit eligibility.
+      Use an in-memory UUID idempotency key for the logical attempt; reuse it
+      after an ambiguous failure if the user explicitly retries the same
+      account and credit. Never automatically retry, consume another credit,
+      buy credits or fabricate quota values. Show distinct native feedback
+      for reset, nothing_to_reset, no_credit and already_redeemed outcomes,
+      or an error, and refresh usage and credit data after the attempt. A
+      nothing_to_reset outcome must not claim that a credit was consumed.
+      Treat an authoritative zero count or empty available-credit list as empty, so
+      redeeming the last credit cannot leave a stale action visible. Preserve
+      tokens only in process memory and never log credentials or full server
+      responses. Automated checks must not spend a real user's credit.
+    rationale: >-
+      The user explicitly requested viewing and using existing reset-credit
+      opportunities from the notch because the main app cannot currently be
+      used for resetting. A confirmation, account recheck, authoritative list,
+      single in-flight mutation and stable retry key bound the irreversible
+      credit consumption without changing ordinary read-only quota refreshes.
+    source: user-confirmed
+    owner: project-maintainer
+    risk: critical
+    scope:
+      include: [reset-credit-details, confirmed-credit-redemption, quota-refresh, credential-consistency]
+      exclude: [automatic-redemption, credit-purchases, billing, authentication-writes, task-state, compact-artwork, window-animation, releases]
+    examples:
+      positive: Opening details sends no mutation; confirming one server-identified available credit submits one request, shows its actual result, refreshes the quota, and removes the row when the server returns no available credits.
+      negative: Clicking the disclosure consumes a credit, canceling sends a mutation, concurrent buttons submit two writes, an account switch consumes a different account's credit, a timeout triggers an automatic retry, a synthetic ID is submitted, a local success sets quota to 100 percent, or a final empty response retains the last credit.
+    guards:
+      - Tests/CodexNotchTests/ResetCreditRedemptionTests.swift
+      - Tests/CodexNotchTests/CodexUsageClientTests.swift
+      - Tests/CodexNotchTests/ResetCreditActionViewTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - docs/decisions/058-manual-reset-credits.md
+      - "manual: inspect disclosure, per-credit buttons, confirmation cancellation and focus recovery on the rebuilt real-notch app; verify downward expansion, compact state and collapsed mouse recovery without confirming a real credit"
+      - "manual: an actual confirmed redemption spends an existing credit and requires separate user-driven acceptance; report it as unverified until performed"
+    supersedes: [QUOTA-SEMANTICS-008]
+    superseded_by: null
+    last_verified_commit: null
+
   - id: NOTCH-HEIGHT-001
     title: Physical notch wings follow the measured camera height
     status: active

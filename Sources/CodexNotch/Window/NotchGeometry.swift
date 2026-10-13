@@ -151,7 +151,7 @@ enum NotchExpandedLayout {
         + settingsFooterHeight
     static let conversationRowHeight: CGFloat = 40
     static let conversationSeparatorHeight: CGFloat = 0.5
-    static let resetScheduleRowHeight: CGFloat = 34
+    static let resetScheduleRowHeight: CGFloat = 48
     static let resetScheduleDetailSpacing: CGFloat = 6
     static let resetScheduleDetailVerticalPadding: CGFloat = 6
     // The base quota height reserves the weekly row. Add one measured row when

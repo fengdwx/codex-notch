@@ -11,6 +11,7 @@ final class NotchViewModel: ObservableObject {
     @Published private(set) var compactLeadingInset: CGFloat = 0
     @Published private(set) var surfaceSize: CGSize
     @Published private(set) var isResetScheduleExpanded = false
+    @Published var isUsingResetCredit = false
     @Published private(set) var animationsEnabled: Bool
     @Published private(set) var surfaceExpansionLimit: CGSize?
     @Published private(set) var isPointerInside = false
@@ -19,6 +20,7 @@ final class NotchViewModel: ObservableObject {
     var onActivateChatGPT: () -> Void
     var onHoverChanged: (Bool) -> Void
     var onResetScheduleExpandedChanged: (Bool) -> Void
+    var onUseResetCredit: (ResetCredit) -> Void
 
     init(
         state: NotchPresentationState = .hidden,
@@ -35,7 +37,8 @@ final class NotchViewModel: ObservableObject {
         onOpenThread: @escaping (String) -> Void = { _ in },
         onActivateChatGPT: @escaping () -> Void = {},
         onHoverChanged: @escaping (Bool) -> Void = { _ in },
-        onResetScheduleExpandedChanged: @escaping (Bool) -> Void = { _ in }
+        onResetScheduleExpandedChanged: @escaping (Bool) -> Void = { _ in },
+        onUseResetCredit: @escaping (ResetCredit) -> Void = { _ in }
     ) {
         self.state = state
         self.now = now
@@ -50,6 +53,7 @@ final class NotchViewModel: ObservableObject {
         self.onActivateChatGPT = onActivateChatGPT
         self.onHoverChanged = onHoverChanged
         self.onResetScheduleExpandedChanged = onResetScheduleExpandedChanged
+        self.onUseResetCredit = onUseResetCredit
     }
 
     @discardableResult
@@ -353,9 +357,11 @@ struct NotchView: View {
             quotaDisplayStyle: quotaDisplayStyle,
             language: appLanguage,
             isResetScheduleExpanded: model.isResetScheduleExpanded,
+            isUsingResetCredit: model.isUsingResetCredit,
             onActivateChatGPT: model.onActivateChatGPT,
             onOpenThread: model.onOpenThread,
             onResetScheduleExpandedChanged: model.onResetScheduleExpandedChanged,
+            onUseResetCredit: model.onUseResetCredit,
             notchDisplayEnabled: notchDisplayEnabled,
             onNotchDisplayEnabledChanged: { notchDisplayEnabled = $0 }
         )
@@ -1439,9 +1445,11 @@ private struct ExpandedNotchView: View {
     let quotaDisplayStyle: QuotaDisplayStyle
     let language: AppLanguage
     let isResetScheduleExpanded: Bool
+    let isUsingResetCredit: Bool
     let onActivateChatGPT: () -> Void
     let onOpenThread: (String) -> Void
     let onResetScheduleExpandedChanged: (Bool) -> Void
+    let onUseResetCredit: (ResetCredit) -> Void
     let notchDisplayEnabled: Bool
     let onNotchDisplayEnabledChanged: (Bool) -> Void
 
@@ -1472,7 +1480,9 @@ private struct ExpandedNotchView: View {
                 usage: content.usage,
                 now: now,
                 isResetScheduleExpanded: isResetScheduleExpanded,
-                onResetScheduleExpandedChanged: onResetScheduleExpandedChanged
+                isUsingResetCredit: isUsingResetCredit,
+                onResetScheduleExpandedChanged: onResetScheduleExpandedChanged,
+                onUseResetCredit: onUseResetCredit
             )
 
             if !content.conversations.isEmpty {
@@ -1753,7 +1763,9 @@ private struct QuotaWindowsProgressView: View {
     let usage: UsageSnapshot?
     let now: Date
     let isResetScheduleExpanded: Bool
+    let isUsingResetCredit: Bool
     let onResetScheduleExpandedChanged: (Bool) -> Void
+    let onUseResetCredit: (ResetCredit) -> Void
     @Environment(\.notchAppLanguage) private var language
 
     private var weeklyWindow: UsageWindow? {
@@ -1788,8 +1800,10 @@ private struct QuotaWindowsProgressView: View {
                 credits: resetCredits,
                 now: now,
                 isExpanded: isResetScheduleExpanded,
+                isUsingResetCredit: isUsingResetCredit,
                 title: NotchText.resetCredits(usage: usage, language: language),
-                onExpandedChanged: onResetScheduleExpandedChanged
+                onExpandedChanged: onResetScheduleExpandedChanged,
+                onUseResetCredit: onUseResetCredit
             )
         }
         .frame(maxWidth: .infinity, minHeight: 52, alignment: .top)
@@ -1886,12 +1900,14 @@ private struct QuotaWindowProgressRow: View {
     }
 }
 
-private struct ResetScheduleDisclosure: View {
+struct ResetScheduleDisclosure: View {
     let credits: [ResetCredit]
     let now: Date
     let isExpanded: Bool
+    let isUsingResetCredit: Bool
     let title: String
     let onExpandedChanged: (Bool) -> Void
+    let onUseResetCredit: (ResetCredit) -> Void
     @Environment(\.notchAppLanguage) private var language
 
     var body: some View {
@@ -1954,7 +1970,13 @@ private struct ResetScheduleDisclosure: View {
             if isExpanded, !credits.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(Array(credits.enumerated()), id: \.element.id) { index, credit in
-                        ResetScheduleRow(credit: credit, now: now, language: language)
+                        ResetScheduleRow(
+                            credit: credit,
+                            now: now,
+                            language: language,
+                            isUsingResetCredit: isUsingResetCredit,
+                            onUseResetCredit: onUseResetCredit
+                        )
 
                         if index < credits.count - 1 {
                             Rectangle()
@@ -1977,27 +1999,52 @@ private struct ResetScheduleRow: View {
     let credit: ResetCredit
     let now: Date
     let language: AppLanguage
+    let isUsingResetCredit: Bool
+    let onUseResetCredit: (ResetCredit) -> Void
 
     var body: some View {
         HStack(spacing: 10) {
-            Text(NotchText.resetCreditExpiry(credit, language: language))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(NotchText.resetCreditExpiry(credit, language: language))
+                    .monospacedDigit()
+                    .font(.system(size: 12.5, weight: .regular))
+                    .foregroundStyle(NotchPalette.primaryText.opacity(0.82))
+
+                Text(
+                    credit.expiresAt.map {
+                        language.localized(
+                            chinese: "还剩 \(NotchText.resetCountdown(resetAt: $0, now: now, language: language))",
+                            english: "\(NotchText.resetCountdown(resetAt: $0, now: now, language: language)) remaining"
+                        )
+                    } ?? "—"
+                )
                 .monospacedDigit()
-                .font(.system(size: 12.5, weight: .regular))
-                .foregroundStyle(NotchPalette.primaryText.opacity(0.82))
+                .font(.system(size: 10.5, weight: .regular))
+                .foregroundStyle(NotchPalette.secondaryText)
+            }
 
             Spacer(minLength: 4)
 
-            Text(
-                credit.expiresAt.map {
-                    language.localized(
-                        chinese: "还剩 \(NotchText.resetCountdown(resetAt: $0, now: now, language: language))",
-                        english: "\(NotchText.resetCountdown(resetAt: $0, now: now, language: language)) remaining"
-                    )
-                } ?? "—"
-            )
-            .monospacedDigit()
-            .font(.system(size: 10.5, weight: .regular))
-            .foregroundStyle(NotchPalette.secondaryText)
+            Button {
+                guard !isUsingResetCredit, credit.canRedeem(at: now) else { return }
+                onUseResetCredit(credit)
+            } label: {
+                Text(language.localized(
+                    chinese: isUsingResetCredit ? "使用中…" : "使用重置",
+                    english: isUsingResetCredit ? "Using…" : "Use reset"
+                ))
+                .font(.system(size: 11.5, weight: .medium))
+                .padding(.horizontal, 8)
+                .frame(minHeight: 28)
+                .background(NotchPalette.row, in: RoundedRectangle(cornerRadius: 6))
+            }
+            .buttonStyle(NotchButtonStyle())
+            .disabled(isUsingResetCredit || !credit.canRedeem(at: now))
+            .fixedSize()
+            .accessibilityHint(language.localized(
+                chinese: "使用这次重置恢复额度",
+                english: "Use this reset credit to restore your quota"
+            ))
         }
         .lineLimit(1)
         .padding(.horizontal, 12)

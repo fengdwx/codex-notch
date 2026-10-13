@@ -80,6 +80,8 @@ Codex 的额度很容易被其他窗口挡住。CodexNotch 把最关心的三个
 - 所有可用重置额度的精确到期时间
 - 当前活动任务与最近对话
 
+展开重置额度明细后，点击可用额度旁的“使用重置”并确认，即可使用该次重置机会；CodexNotch 不会自动使用或购买重置额度。
+
 额度窗口根据接口返回的 `limit_window_seconds` 动态识别。刘海和浮动横条模式下，周额度均显示在右侧；左侧有 5 小时额度时显示额度，选择“关闭”后隐藏。展开卡片先列出 5 小时额度明细。
 
 ### 切换应用，额度还在
@@ -134,7 +136,7 @@ CodexNotch 默认读取 `~/.codex`。如果你的 Codex 使用其他目录，可
 ## 数据与隐私
 
 - 认证令牌只从 `CODEX_HOME/auth.json` 读取并保存在进程内存，不写入 CodexNotch 缓存或日志。
-- 额度与可用重置额度明细分别请求 ChatGPT 的只读 usage 和重置额度接口。
+- 额度与可用重置额度明细通过 ChatGPT 的只读接口获取；仅在确认“使用重置”后，才向 ChatGPT 提交使用该次重置额度的请求。
 - 任务状态只解析本地 `CODEX_HOME/sessions` 中的 rollout JSONL 文件。
 - 对话标题按 thread ID 优先匹配 `CODEX_HOME/session_index.jsonl` 中最新的简短 `thread_name`，再回退到只读 `CODEX_HOME/state_5.sqlite` 中的 `threads.title`；解析标题时不读取 rollout 消息正文、`first_user_message` 或 `preview`。
 - 不记录 Authorization header、完整 usage 响应、用户消息正文或对话标题缓存。

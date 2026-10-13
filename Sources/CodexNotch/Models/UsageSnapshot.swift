@@ -27,13 +27,29 @@ struct UsageWindow: Equatable, Identifiable, Sendable {
 
 struct ResetCredit: Equatable, Identifiable, Sendable {
     let id: String
+    // `id` also identifies display-only fallback rows. Only this server ID may
+    // be submitted when redeeming a credit.
+    let redemptionID: String?
     let title: String?
     let expiresAt: Date?
 
     init(id: String, title: String? = nil, expiresAt: Date? = nil) {
+        self.init(id: id, redemptionID: id, title: title, expiresAt: expiresAt)
+    }
+
+    init(id: String, redemptionID: String?, title: String? = nil, expiresAt: Date? = nil) {
         self.id = id
+        self.redemptionID = redemptionID
         self.title = title
         self.expiresAt = expiresAt
+    }
+
+    func canRedeem(at date: Date) -> Bool {
+        guard let redemptionID,
+              !redemptionID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return false
+        }
+        return expiresAt.map { $0 > date } ?? true
     }
 }
 
@@ -80,13 +96,13 @@ struct UsageSnapshot: Equatable, Sendable {
 
     func replacingResetCredits(
         availableCount: Int?,
-        credits: [ResetCredit]
+        credits: [ResetCredit]?
     ) -> UsageSnapshot {
         UsageSnapshot(
             windows: windows,
             resetCreditsAvailable: availableCount
-                ?? (credits.isEmpty ? resetCreditsAvailable : credits.count),
-            resetCredits: credits.isEmpty ? resetCredits : credits,
+                ?? credits?.count ?? resetCreditsAvailable,
+            resetCredits: availableCount == 0 ? [] : (credits ?? resetCredits),
             fetchedAt: fetchedAt
         )
     }

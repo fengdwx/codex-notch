@@ -80,6 +80,8 @@ Hover over the notch to reveal:
 - The precise expiry time of every available reset credit
 - Active tasks and recent conversations
 
+Expand reset-credit details, choose **Use reset** beside an available credit, and confirm to use that credit; CodexNotch never uses credits automatically or purchases credits.
+
 Quota windows are identified from the returned `limit_window_seconds`. On both notch and floating-bar layouts, weekly quota stays on the right; the left side shows five-hour quota when available unless Off is selected. The expanded card lists five-hour detail first.
 
 ### Your quota follows you across apps
@@ -134,7 +136,7 @@ Displays without a notch, including mirrored displays, use a floating bar center
 ## Data and privacy
 
 - The authentication token is read only from `CODEX_HOME/auth.json` and remains in process memory. CodexNotch never writes it to a cache or log.
-- Quota and reset-credit details come from ChatGPT's read-only usage and reset-credit endpoints.
+- Quota and reset-credit details use ChatGPT's read-only endpoints; only a confirmed **Use reset** action sends a credit-redemption request to ChatGPT.
 - Task state is parsed only from rollout JSONL files in `CODEX_HOME/sessions`.
 - Conversation labels use the latest short `thread_name` in `CODEX_HOME/session_index.jsonl`, falling back to `threads.title` in read-only `CODEX_HOME/state_5.sqlite`. Rollout message bodies, `first_user_message`, and `preview` are ignored when resolving titles.
 - CodexNotch never records Authorization headers, complete usage responses, user-message bodies, or conversation-title caches.
