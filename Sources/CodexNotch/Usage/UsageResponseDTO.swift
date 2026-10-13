@@ -93,7 +93,10 @@ struct ResetCreditsDTO: Decodable {
     }
 
     var availableCredits: [ResetCredit] {
-        (credits ?? [])
+        // A zero summary is authoritative even if individual rows are stale.
+        // Apply it here so both display refresh and redemption preflight agree.
+        guard availableCount != 0 else { return [] }
+        return (credits ?? [])
             .filter { $0.status == "available" }
             .enumerated()
             .map { index, credit in

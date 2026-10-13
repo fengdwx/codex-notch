@@ -37,6 +37,13 @@ final class ResetCreditDialogPresenter: NSObject, NSWindowDelegate {
         finish(confirmed: false)
     }
 
+    func bringToFront() {
+        guard let window = alert?.window else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
+    }
+
     private func present(_ alert: NSAlert, completion: ((Bool) -> Void)?) {
         self.alert = alert
         self.completion = completion
@@ -59,9 +66,7 @@ final class ResetCreditDialogPresenter: NSObject, NSWindowDelegate {
         window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         window.hidesOnDeactivate = false
         window.center()
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
-        window.orderFrontRegardless()
+        bringToFront()
     }
 
     @objc private func buttonPressed(_ sender: NSButton) {

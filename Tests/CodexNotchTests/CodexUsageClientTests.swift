@@ -116,6 +116,62 @@ final class CodexUsageClientTests: XCTestCase {
         XCTAssertTrue(snapshot.resetCredits.isEmpty)
     }
 
+    @MainActor
+    func testAuthoritativeZeroCountRejectsStaleAvailableRowBeforeConsumption() async throws {
+        let client = makeClient()
+        let usageData = Data(#"{"rate_limit_reset_credits":{"available_count":1}}"#.utf8)
+        let creditData = Data("""
+        {"available_count":0,"credits":[
+          {"id":"previous-credit","status":"available","expires_at":null}
+        ]}
+        """.utf8)
+        var consumeRequests = 0
+        MockURLProtocol.requestHandler = { request in
+            if request.httpMethod == "POST" {
+                consumeRequests += 1
+                return (self.response(status: 200), Data(#"{"code":"reset"}"#.utf8))
+            }
+            let data = request.url?.lastPathComponent == "usage" ? usageData : creditData
+            return (self.response(status: 200), data)
+        }
+        let controller = ResetCreditRedemptionController(
+            readCredentials: { client.credentials },
+            fetchCredits: { _ in try await client.fetchResetCredits().availableCredits },
+            consume: { _, creditID, key in
+                try await client.consumeResetCredit(creditID: creditID, idempotencyKey: key)
+            }
+        )
+
+        do {
+            _ = try await controller.redeem(
+                ResetCredit(id: "previous-credit"), expectedCredentials: client.credentials
+            )
+            XCTFail("An authoritative zero count must reject even a stale available row")
+        } catch let error as ResetCreditRedemptionError {
+            XCTAssertEqual(error, .unavailable)
+        }
+        XCTAssertEqual(consumeRequests, 0)
+        let snapshot = try await client.fetch(requireResetCredits: true)
+        XCTAssertEqual(snapshot.resetCreditsAvailable, 0)
+        XCTAssertTrue(snapshot.resetCredits.isEmpty)
+    }
+
+    func testMissingCountStillUsesAvailableCreditRows() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let data = request.url?.lastPathComponent == "usage"
+                ? Data("{}".utf8)
+                : Data(#"{"credits":[{"id":"credit-without-count","status":"available"}]}"#.utf8)
+            return (self.response(status: 200), data)
+        }
+        let client = makeClient()
+        let details = try await client.fetchResetCredits()
+        XCTAssertNil(details.availableCount)
+        XCTAssertEqual(details.availableCredits.map(\.redemptionID), ["credit-without-count"])
+        let snapshot = try await client.fetch(requireResetCredits: true)
+        XCTAssertEqual(snapshot.resetCreditsAvailable, 1)
+        XCTAssertEqual(snapshot.resetCredits.map(\.redemptionID), ["credit-without-count"])
+    }
+
     func testForbiddenIsNotReportedAsExpiredAuthentication() async throws {
         MockURLProtocol.requestHandler = { _ in
             (self.response(status: 403), Data())

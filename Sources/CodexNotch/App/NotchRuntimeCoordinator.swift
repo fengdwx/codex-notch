@@ -44,7 +44,7 @@ final class NotchRuntimeCoordinator {
     private var usageTask: Task<Void, Never>?
     private var resetTask: Task<Void, Never>?
     private var resetController: ResetCreditRedemptionController?
-    private let resetDialogs = ResetCreditDialogPresenter()
+    private let resetDialogs: ResetCreditDialogPresenter
     private var started = false
     private var isChatGPTFrontmost = false
     private var isHovered = false
@@ -78,7 +78,9 @@ final class NotchRuntimeCoordinator {
         urlSession: URLSession = CodexUsageClient.defaultSession,
         usageEndpoint: URL = CodexUsageClient.defaultEndpoint,
         nowProvider: @escaping () -> Date = { .now },
-        userDefaults: UserDefaults = .standard
+        userDefaults: UserDefaults = .standard,
+        viewModel: NotchViewModel = NotchViewModel(),
+        resetDialogs: ResetCreditDialogPresenter = ResetCreditDialogPresenter()
     ) {
         self.windowController = windowController
         self.frontmostMonitor = frontmostMonitor
@@ -89,7 +91,8 @@ final class NotchRuntimeCoordinator {
         self.usageEndpoint = usageEndpoint
         self.nowProvider = nowProvider
         self.userDefaults = userDefaults
-        self.viewModel = NotchViewModel()
+        self.viewModel = viewModel
+        self.resetDialogs = resetDialogs
 
         let codexHome = CodexHomeLocator.home(
             environment: authReader.environment,
@@ -362,7 +365,12 @@ final class NotchRuntimeCoordinator {
 
     @MainActor
     private func useResetCredit(_ credit: ResetCredit) {
-        guard started, !viewModel.isUsingResetCredit, !resetDialogs.isPresenting,
+        guard started else { return }
+        if resetDialogs.isPresenting {
+            resetDialogs.bringToFront()
+            return
+        }
+        guard !viewModel.isUsingResetCredit,
               credit.canRedeem(at: nowProvider()),
               usage?.resetCredits.contains(credit) == true,
               let expectedCredentials = usageCredentials else { return }

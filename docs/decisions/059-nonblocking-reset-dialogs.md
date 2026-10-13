@@ -68,13 +68,34 @@ computer-use readback showed the compact card. The user then opened confirmation
 computer-use accessibility and screenshot readback verified the visible native
 **使用这次额度重置？** dialog and two readable buttons. Clicking only
 **取消** removed the dialog and restored the compact notch, confirmed by the
-accessibility tree and screenshot. This
-provides real-device evidence for button readability, expansion, visible
+accessibility tree and screenshot. This provides real-device evidence for button readability, expansion, visible
 confirmation and cancellation back to the compact state. Clocks, app/Space
 switching, window close, result dismissal, animation and mouse recovery remain
 unverified on the actual notch. No real credit was consumed. Do not
 consume a real credit to validate this UI repair. Keep actual server redemption
 unverified until the user deliberately performs it and the result is read back.
+
+## Follow-up review
+
+The full review reproduced an inconsistent credit response in an isolated
+fixture: `available_count: 0` with a stale `status: available` row was empty
+on display but still eligible in redemption preflight. Parse authoritative
+zero as an empty available list at the shared DTO boundary. Preserve missing
+count compatibility and all ID, expiry, account and idempotency checks. The
+fixture submitted one mock request before the fix and zero afterward; this
+does not establish that the live service has emitted such a response.
+
+A result window could remain open while a new action looked enabled and did
+nothing. Reuse and bring forward that existing window when another action is
+invoked, without constructing a new confirmation or sending another request.
+The existing confirmation and result lifecycle remains nonmodal.
+
+Inject the existing view model and dialog presenter through defaulted runtime
+initializer arguments to test the real coordinator path with fixture-only
+authentication, isolated preferences and a URLProtocol that intercepts every
+request. This adds no production mode or alternate reset implementation.
+The runtime guards complement the earlier component tests; they do not
+replace physical-notch acceptance or establish real server redemption.
 
 Rollback the presenter and label changes to the preceding verified build if
 needed, or remove the reset action to restore read-only details. Restoring a
