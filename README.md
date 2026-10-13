@@ -40,7 +40,7 @@ Your browser, IDE, or any other app can be frontmost—your quota remains visibl
 
 - Gentle hover feedback, a spring opening with a small landing rebound, and a smoother collapse.
 - Cleaner typography and spacing, with text staying at its natural size during transitions.
-- Four floating-bar center styles: a custom signature, orbit, elapsed time, and light flow. Signature lighting moves continuously while the compact bar is visible and motion is enabled.
+- Four floating-bar center styles: a custom signature, orbit, elapsed time, and light flow. Signature lighting moves while a task is running, the compact bar is visible and motion is enabled.
 - Better-balanced floating status icons and current Codex task names, filtering attachment headers and decoding escaped characters in conversation labels.
 
 ## Why CodexNotch exists
@@ -127,7 +127,7 @@ Displays without a notch, including mirrored displays, use a floating bar center
 
 - Both compact indicators use matching 24pt alignment containers, keeping icons clear of the camera cutout.
 - The quota ring starts at 12 o'clock and progresses clockwise. It is green at 20% or above, red below 20%, and gray when data is unavailable.
-- The quota gradient or wave moves only while a task is running. Signature lighting also continues while idle or completed; disabling animations in the app keeps both still.
+- Quota and center animations move only while a task is running. Idle and completion keep clear static cues; disabling animations in the app keeps every state still.
 - The card expands downward from the compact island. Its transparent canvas is reclaimed after collapse so it does not intercept clicks outside the notch.
 - The quota number stays inside the indicator and is never repeated beside it.
 

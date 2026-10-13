@@ -24,7 +24,6 @@ struct FloatingCenterMotionLayer: NSViewRepresentable {
 }
 
 final class FloatingCenterLayerView: QuotaAnimatedLayerView {
-    private let track = CAShapeLayer()
     private let rotor = CALayer()
     private let bead = CALayer()
     private let glint = CAGradientLayer()
@@ -37,7 +36,6 @@ final class FloatingCenterLayerView: QuotaAnimatedLayerView {
         super.init(frame: frameRect)
         wantsLayer = true
         layer?.masksToBounds = true
-        layer?.addSublayer(track)
         layer?.addSublayer(rotor)
         rotor.addSublayer(bead)
         layer?.addSublayer(glint)
@@ -65,12 +63,8 @@ final class FloatingCenterLayerView: QuotaAnimatedLayerView {
         case .completed: color = NSColor(srgbRed: 0.48, green: 0.86, blue: 0.65, alpha: 1)
         case .idle: color = NSColor(white: 0.52, alpha: 1)
         }
-        track.fillColor = style == .flow ? color.withAlphaComponent(0.22).cgColor : nil
-        track.strokeColor = style == .orbit ? color.withAlphaComponent(0.28).cgColor : nil
-        track.lineWidth = 1
-        // Flow's rail and nonanimated highlight are SwiftUI shapes. This
-        // layer contributes only the moving light, without a second track.
-        track.isHidden = style != .orbit
+        // SwiftUI owns static state shapes. Native layers contribute only
+        // the moving bead and light, without duplicated tracks or marks.
         bead.backgroundColor = color.cgColor
         if style == .signature {
             // Two matching periods keep a highlight inside the word and make
@@ -95,13 +89,6 @@ final class FloatingCenterLayerView: QuotaAnimatedLayerView {
         lastLayoutSize = bounds.size
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        track.frame = bounds
-        if style == .orbit {
-            track.path = CGPath(ellipseIn: bounds.insetBy(dx: 2, dy: 2), transform: nil)
-        } else {
-            track.path = CGPath(roundedRect: bounds, cornerWidth: bounds.height / 2,
-                                cornerHeight: bounds.height / 2, transform: nil)
-        }
         rotor.bounds = CGRect(origin: .zero, size: bounds.size)
         rotor.position = CGPoint(x: bounds.midX, y: bounds.midY)
         bead.frame = CGRect(x: bounds.width / 2 - 1.75, y: bounds.height - 3.75, width: 3.5, height: 3.5)

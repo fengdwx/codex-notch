@@ -39,5 +39,6 @@ Record decisions here only when they affect active behavior contracts, could be 
 | [058-settings-and-quota-readability](058-settings-and-quota-readability.md) | active | `UI-READABILITY-058` | Fit Settings to its content, quiet explanations and decoration, and show a labelled sample quota |
 | [060-transient-completion-and-distinct-states](060-transient-completion-and-distinct-states.md) | active | `ACTIVITY-FEEDBACK-060` | Keep running and idle steady, show completion briefly, and share legible floating states with Settings |
 | [061-single-row-running-flow](061-single-row-running-flow.md) | active | `FLOATING-FLOW-061` | Make the minimal flow a single centered light, with a static fallback and brief check |
+| [062-refined-single-row-styles](062-refined-single-row-styles.md) | active | `FLOATING-STYLES-062` | Refine signature, orbit and timer with single-row marks and quiet resting states |
 
 New decisions must include `status`, `contract_ids`, rejected alternatives, and consequences. When a decision changes, retain the old document and point to the new one with `superseded_by`.

@@ -129,30 +129,41 @@ final class NotchRuntimePreferencesTests: XCTestCase {
         }
         for appAnimations in [true, false] {
             let now = Date(timeIntervalSince1970: 1_700_000_000)
-            let model = NotchViewModel(
-                state: .quotaCompact(nil), now: now, layoutMode: .floatingBar,
-                compactWidth: 212, compactHeight: 30,
-                surfaceSize: CGSize(width: 212, height: 30), animationsEnabled: appAnimations
-            )
-            let live = NSHostingView(rootView: NotchView(model: model)
-                .defaultAppStorage(defaults)
-                .frame(width: 212, height: 30))
-            let preview = NSHostingView(rootView: FloatingBarSettingsPreview(
-                style: .signature, customText: "Example", state: .idle,
-                language: .english, animationsEnabled: appAnimations
-            )
-                .frame(width: 500, height: 140))
-            for hosting in [live as NSView, preview as NSView] {
-                hosting.layoutSubtreeIfNeeded()
-                let motion = try XCTUnwrap(findMotion(in: hosting))
-                XCTAssertEqual(motion.animationIsRequested, appAnimations,
-                               "The live surface and preview must both follow the app switch")
-                XCTAssertFalse(motion.layerAnimationIsRunning,
-                               "Detached surfaces must still avoid animation work")
+            let session = SessionActivity(threadID: "motion-fixture", turnID: "turn", cwd: nil,
+                                          originator: nil, startedAt: now.addingTimeInterval(-138),
+                                          lastActivityAt: now)
+            for previewState in FloatingPreviewState.allCases {
+                let state: NotchPresentationState
+                switch previewState {
+                case .running: state = .workingCompact(primary: session, count: 1, usage: nil)
+                case .idle: state = .quotaCompact(nil)
+                case .completed: state = .completedCompact(session, usage: nil)
+                }
+                let model = NotchViewModel(
+                    state: state, now: now, layoutMode: .floatingBar,
+                    compactWidth: 212, compactHeight: 30,
+                    surfaceSize: CGSize(width: 212, height: 30), animationsEnabled: appAnimations
+                )
+                let live = NSHostingView(rootView: NotchView(model: model)
+                    .defaultAppStorage(defaults)
+                    .frame(width: 212, height: 30))
+                let preview = NSHostingView(rootView: FloatingBarSettingsPreview(
+                    style: .signature, customText: "Example", state: previewState,
+                    language: .english, animationsEnabled: appAnimations
+                )
+                    .frame(width: 500, height: 140))
+                for hosting in [live as NSView, preview as NSView] {
+                    hosting.layoutSubtreeIfNeeded()
+                    let motion = try XCTUnwrap(findMotion(in: hosting))
+                    XCTAssertEqual(motion.animationIsRequested, appAnimations && previewState == .running,
+                                   "FLOATING-STYLES-062: live and preview shimmer only while running and enabled")
+                    XCTAssertFalse(motion.layerAnimationIsRunning,
+                                   "Detached surfaces must still avoid animation work")
+                }
+                model.updateClock(now: now.addingTimeInterval(1))
+                XCTAssertEqual(model.now, now.addingTimeInterval(1), "Turning off motion must not freeze clocks")
+                XCTAssertEqual(model.state, state)
             }
-            model.updateClock(now: now.addingTimeInterval(1))
-            XCTAssertEqual(model.now, now.addingTimeInterval(1), "Turning off motion must not freeze clocks")
-            XCTAssertEqual(model.state, .quotaCompact(nil))
         }
     }
 

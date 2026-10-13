@@ -8,6 +8,9 @@ created_at: 2026-10-14
 
 # A single centered running light
 
+The user accepted the installed flow with “这个可以了”. Decision 062 preserves
+this flow and changes only the other three center styles.
+
 The user rejected the flow style's status text stacked above a thin line.
 The screenshot shows that the label dominates the bar and the light is pushed
 towards its bottom edge. The existing sweep is running; a static screenshot

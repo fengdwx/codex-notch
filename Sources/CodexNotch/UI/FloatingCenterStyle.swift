@@ -28,11 +28,11 @@ enum FloatingCenterStyle: String, CaseIterable, Identifiable, Sendable {
     func explanation(for language: AppLanguage) -> String {
         switch self {
         case .signature:
-            return language.localized(chinese: "显示个人文字与柔和微光；旁边的符号表示任务状态。", english: "Personal text with a subtle shimmer. The symbol beside it shows task activity.")
+            return language.localized(chinese: "运行时文字明亮、微光流动；空闲时文字变淡，光标变为短横。", english: "Bright text and a subtle shimmer while running; quiet text and a dash while idle.")
         case .orbit:
-            return language.localized(chinese: "显示个人文字；轨道仅在运行时转动，静止时仍有状态符号。", english: "Personal text with an orbit that moves only while running. A static symbol keeps the state clear.")
+            return language.localized(chinese: "运行时圆点沿轨道转动；空闲时显示静态圆环与短横。", english: "A bead orbits while running; a quiet ring and dash indicate idle.")
         case .elapsed:
-            return language.localized(chinese: "运行时显示已用时间，其余时间显示空闲或短暂完成提示。", english: "Elapsed time while running, otherwise Idle or a brief completion cue.")
+            return language.localized(chinese: "运行时显示时钟与已用时间；空闲时显示“空闲”，完成时短暂提示。", english: "A clock and elapsed time while running, Idle while resting, and a brief completion cue.")
         case .flow:
             return language.localized(chinese: "居中的单条光带：运行时流动，空闲时收短变淡，完成时短暂显示绿勾。", english: "One centered light: flowing while running, shorter and dimmer while idle, with a brief green check on completion.")
         }
@@ -41,14 +41,6 @@ enum FloatingCenterStyle: String, CaseIterable, Identifiable, Sendable {
 
 /// Shapes and words retain the state when motion and color cannot help.
 enum FloatingActivityPresentation {
-    static func symbol(for activity: QuotaRingActivity) -> String {
-        switch activity {
-        case .running: return "ellipsis"
-        case .idle: return "minus"
-        case .completed: return "checkmark"
-        }
-    }
-
     static func title(for activity: QuotaRingActivity, language: AppLanguage) -> String {
         switch activity {
         case .running: return language.localized(chinese: "运行中", english: "Running")
@@ -93,8 +85,7 @@ enum FloatingCenterMotionPolicy {
     ) -> Bool {
         guard motionEnabled, !isExpanded else { return false }
         switch style {
-        case .signature: return true
-        case .orbit, .flow: return activity == .running
+        case .signature, .orbit, .flow: return activity == .running
         case .elapsed: return false
         }
     }

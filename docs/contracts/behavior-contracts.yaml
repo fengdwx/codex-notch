@@ -1,7 +1,49 @@
 contracts:
+  - id: FLOATING-STYLES-062
+    title: Signature orbit and elapsed use refined single-row activity cues
+    status: active
+    statement: >-
+      Preserve all FLOATING-FLOW-061 behavior and its accepted flow exactly.
+      Refine only signature, orbit and elapsed styles into a 16pt indicator
+      slot and one text region with 6pt spacing. Signature shows a steady
+      vertical cursor while running, a horizontal dash while idle, and a
+      green completion check; running text is brighter and idle text quieter.
+      Override inherited all-state signature shimmer: it now runs only while
+      running, retaining its five-second period and all visibility, expansion,
+      app-switch and detach gates. Orbit contains its ring and moving bead in
+      one 16pt mark with no separate ellipsis; idle is a static ring and dash,
+      completed is a check, and motion-off running retains a static bead.
+      Elapsed uses clock plus time only while running, dash plus localized Idle
+      otherwise, and check plus Finished for completion. Keep all content on
+      one row, readable without motion or color, with stored text, normalization,
+      truncation, selected style, quota position and geometry unchanged.
+      Preserve the shared fixture/live renderer, activity timing, history,
+      reset, hover, privacy, other preferences and release behavior.
+    rationale: The user accepted the flow but requested more refined and immediately distinguishable remaining styles; redundant marks and inconsistent emphasis made the compact bar feel cluttered.
+    source: user-request-other-style-refinement
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [signature-presentation, orbit-presentation, elapsed-presentation, signature-motion-gate]
+      exclude: [flow-presentation, activity-state, quota, reset, physical-notch-geometry, preferences, releases]
+    examples:
+      positive: A single orbit mark replaces the redundant ellipsis and ring, running signature is bright with a cursor, and idle is still with a dash, including motion disabled and left Off.
+      negative: Orbit has two adjacent activity marks, idle signature keeps shimmering, a clock has an extra running symbol, state is distinguished only by color, or the accepted flow changes.
+    guards:
+      - Tests/CodexNotchTests/FloatingStyleRefinementTests.swift
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - Tests/CodexNotchTests/FloatingActivityPresentationTests.swift
+      - Tests/CodexNotchTests/FloatingFlowTests.swift
+      - Tests/CodexNotchTests/NotchRuntimePreferencesTests.swift
+      - docs/decisions/062-refined-single-row-styles.md
+      - "manual: inspect all three refined styles in the rebuilt app and preview, running versus idle, motion on/off and long text; preserve accepted flow and restore preferences"
+    supersedes: [FLOATING-FLOW-061]
+    superseded_by: null
+    last_verified_commit: null
+
   - id: FLOATING-FLOW-061
     title: Minimal flow is one centered light with no stacked status label
-    status: active
+    status: superseded
     statement: >-
       Preserve all ACTIVITY-FEEDBACK-060 behavior except the flow style's
       text-and-line composition. Running is a centered 96x4pt blue capsule
@@ -29,7 +71,7 @@ contracts:
       - docs/decisions/061-single-row-running-flow.md
       - "manual: inspect rebuilt live and preview flow across different running phases, idle, completion, motion off and left Off; confirm a single centered row without consuming a reset credit"
     supersedes: [ACTIVITY-FEEDBACK-060]
-    superseded_by: null
+    superseded_by: FLOATING-STYLES-062
     last_verified_commit: null
 
   - id: ACTIVITY-FEEDBACK-060

@@ -30,37 +30,34 @@ struct FloatingCenterContent: View {
     @Environment(\.notchAppLanguage) private var language
 
     private var signature: String { FloatingCenterText.displayText(customText) }
-    private var color: Color {
-        switch activity {
-        case .running: return Color(red: 0.57, green: 0.78, blue: 0.94)
-        case .completed: return Color(red: 0.48, green: 0.86, blue: 0.65)
-        case .idle: return Color.white.opacity(0.6)
-        }
-    }
+    private var color: Color { FloatingActivityPresentation.tint(for: activity) }
 
     var body: some View {
         Group {
             switch style {
             case .signature:
                 HStack(spacing: 6) {
-                    activityGlyph
+                    FloatingActivityMark(activity: activity)
                     signatureLabel
                 }
             case .orbit:
                 HStack(spacing: 6) {
-                    activityGlyph
-                    motionLayer.frame(width: 18, height: 18)
+                    FloatingOrbitActivityMark(activity: activity, isAnimating: shouldAnimate)
                     signatureLabel
                 }
             case .elapsed:
                 HStack(spacing: 6) {
-                    activityGlyph
-                    if let elapsed = FloatingCenterText.elapsedText(activity: activity, startedAt: startedAt, now: now) {
-                        Text(elapsed)
+                    if activity == .running {
+                        Image(systemName: "clock")
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundStyle(color)
+                            .frame(width: 16, height: 16)
+                        Text(FloatingCenterText.elapsedText(activity: activity, startedAt: startedAt, now: now) ?? "--:--")
                             .font(.system(size: 12, weight: .medium, design: .monospaced))
                             .monospacedDigit()
-                            .foregroundStyle(Color.white.opacity(0.82))
+                            .foregroundStyle(Color.white.opacity(0.88))
                     } else {
+                        FloatingActivityMark(activity: activity)
                         activityLabel
                     }
                 }
@@ -107,24 +104,16 @@ struct FloatingCenterContent: View {
         }
     }
 
-    private var activityGlyph: some View {
-        Image(systemName: FloatingActivityPresentation.symbol(for: activity))
-            .font(.system(size: 10, weight: .bold))
-            .foregroundStyle(color)
-            .frame(width: 12, height: 12)
-            .fixedSize()
-    }
-
     private var activityLabel: some View {
         Text(FloatingActivityPresentation.title(for: activity, language: language))
-            .font(.system(size: 10.5, weight: .medium))
-            .foregroundStyle(activity == .completed ? color : Color.white.opacity(0.78))
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(activity == .completed ? color : Color.white.opacity(0.48))
             .lineLimit(1)
     }
 
     private var signatureLabel: some View {
         signatureGlyphs
-            .foregroundStyle(Color.white.opacity(style == .signature && shouldAnimate ? 0.3 : 0.7))
+            .foregroundStyle(Color.white.opacity(signatureOpacity))
             .overlay {
                 if style == .signature {
                     motionLayer.mask(signatureGlyphs.foregroundStyle(Color.white))
@@ -132,10 +121,17 @@ struct FloatingCenterContent: View {
             }
     }
 
+    private var signatureOpacity: Double {
+        switch activity {
+        case .running: return style == .signature && shouldAnimate ? 0.66 : 0.88
+        case .idle: return 0.48
+        case .completed: return 0.78
+        }
+    }
+
     private var signatureGlyphs: some View {
         Text(signature)
-            .font(.system(size: 11, weight: .regular, design: .monospaced))
-            .tracking(0.2)
+            .font(.system(size: 11, weight: .medium))
             .lineLimit(1)
             .truncationMode(.tail)
     }
@@ -154,5 +150,73 @@ struct FloatingCenterContent: View {
             isAnimating: shouldAnimate
         )
         .allowsHitTesting(false)
+    }
+}
+
+/// A quiet, fixed-size state mark leaves the signature itself in focus.
+struct FloatingActivityMark: View {
+    let activity: QuotaRingActivity
+
+    var body: some View {
+        Group {
+            switch activity {
+            case .running:
+                Capsule().frame(width: 2, height: 8)
+            case .idle:
+                Capsule().frame(width: 6, height: 1.5)
+            case .completed:
+                Image(systemName: "checkmark")
+                    .font(.system(size: 12, weight: .medium))
+            }
+        }
+        .foregroundStyle(FloatingActivityPresentation.tint(for: activity))
+        .frame(width: 16, height: 16)
+        .fixedSize()
+    }
+}
+
+/// The orbit is the activity mark; a second status symbol would repeat it.
+struct FloatingOrbitActivityMark: View {
+    let activity: QuotaRingActivity
+    let isAnimating: Bool
+
+    var body: some View {
+        ZStack {
+            if activity == .completed {
+                FloatingActivityMark(activity: .completed)
+            } else {
+                Circle()
+                    .stroke(FloatingActivityPresentation.tint(for: activity).opacity(0.35), lineWidth: 1)
+                    .frame(width: 12, height: 12)
+                if activity == .running {
+                    if isAnimating {
+                        FloatingCenterMotionLayer(style: .orbit, activity: .running, isAnimating: true)
+                            .frame(width: 16, height: 16)
+                            .allowsHitTesting(false)
+                    } else {
+                        Circle()
+                            .fill(FloatingActivityPresentation.tint(for: .running))
+                            .frame(width: 3.5, height: 3.5)
+                            .offset(y: -6)
+                    }
+                } else {
+                    Capsule()
+                        .fill(FloatingActivityPresentation.tint(for: .idle))
+                        .frame(width: 6, height: 1.5)
+                }
+            }
+        }
+        .frame(width: 16, height: 16)
+        .fixedSize()
+    }
+}
+
+extension FloatingActivityPresentation {
+    static func tint(for activity: QuotaRingActivity) -> Color {
+        switch activity {
+        case .running: return Color(red: 0.57, green: 0.78, blue: 0.94)
+        case .completed: return Color(red: 0.48, green: 0.86, blue: 0.65)
+        case .idle: return Color.white.opacity(0.6)
+        }
     }
 }

@@ -48,12 +48,12 @@ final class FloatingCenterTests: XCTestCase {
         XCTAssertNil(FloatingCenterText.elapsedText(activity: .running, startedAt: .distantPast, now: start))
     }
 
-    func testSignatureContinuesAtRestWhileOtherMotionKeepsItsRunningGate() {
+    func testCenterMotionRunsOnlyDuringActivity() {
         for style in FloatingCenterStyle.allCases {
-            // FLOATING-CENTER-054 permits only signature shimmer at rest.
+            // FLOATING-STYLES-062 supersedes the signature's all-state shimmer.
             XCTAssertEqual(FloatingCenterMotionPolicy.shouldAnimate(style: style, activity: .running, motionEnabled: true, isExpanded: false), style != .elapsed)
             for activity in [QuotaRingActivity.idle, .completed] {
-                XCTAssertEqual(FloatingCenterMotionPolicy.shouldAnimate(style: style, activity: activity, motionEnabled: true, isExpanded: false), style == .signature)
+                XCTAssertFalse(FloatingCenterMotionPolicy.shouldAnimate(style: style, activity: activity, motionEnabled: true, isExpanded: false))
             }
             XCTAssertFalse(FloatingCenterMotionPolicy.shouldAnimate(style: style, activity: .running, motionEnabled: false, isExpanded: false))
             XCTAssertFalse(FloatingCenterMotionPolicy.shouldAnimate(style: style, activity: .running, motionEnabled: true, isExpanded: true))
@@ -97,14 +97,14 @@ final class FloatingCenterTests: XCTestCase {
             hosting.rootView = content(state.0, motion: state.1, expanded: state.2)
             hosting.layoutSubtreeIfNeeded()
             let stopped = try XCTUnwrap(findMotion(in: hosting))
-            XCTAssertEqual(stopped.animationIsRequested, state.1 && !state.2)
+            XCTAssertEqual(stopped.animationIsRequested, state.0 == .running && state.1 && !state.2)
             XCTAssertFalse(stopped.layerAnimationIsRunning)
             XCTAssertEqual(stopped.bounds, bounds, "Stopping shimmer must not move or resize the signature")
         }
     }
 
     @MainActor
-    func testVisibleSignatureContinuesThroughClockAndTaskStateUpdates() async throws {
+    func testVisibleSignatureKeepsRunningPhaseAcrossClockUpdatesAndStopsAtRest() async throws {
         // Like the screen-recording fixture, this check needs an unlocked
         // interactive desktop. A skipped fixture is not visual acceptance.
         guard ProcessInfo.processInfo.environment["NOTCH_SIGNATURE_FRAMES"] != nil else {
@@ -129,8 +129,8 @@ final class FloatingCenterTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set(FloatingCenterStyle.signature.rawValue, forKey: FloatingCenterStyle.storageKey)
         defaults.set("Codex", forKey: FloatingCenterText.storageKey)
-        func content(_ activity: QuotaRingActivity, motion: Bool = true) -> some View {
-            FloatingCenterView(activity: activity, startedAt: .now, now: .now, isExpanded: false)
+        func content(_ activity: QuotaRingActivity, motion: Bool = true, expanded: Bool = false) -> some View {
+            FloatingCenterView(activity: activity, startedAt: .now, now: .now, isExpanded: expanded)
                 .environment(\.notchMotionEnabled, motion)
                 .defaultAppStorage(defaults)
                 .frame(width: 136, height: 30)
@@ -170,10 +170,10 @@ final class FloatingCenterTests: XCTestCase {
         for index in 0..<58 {
             serviceWindowEvents()
             if index.isMultiple(of: 8) {
-                hosting.rootView = content(index < 16 ? .running : (index < 32 ? .completed : .idle))
+                hosting.rootView = content(.running)
                 hosting.layoutSubtreeIfNeeded()
             }
-            XCTAssertTrue(highlight.layerAnimationIsRunning, "Completion and idle must retain the active shimmer")
+            XCTAssertTrue(highlight.layerAnimationIsRunning, "Clock updates must preserve the running shimmer phase")
             XCTAssertFalse(glint.isHidden)
             let x = try XCTUnwrap(glint.presentation()?.value(forKeyPath: "transform.translation.x") as? NSNumber)
             positions.append(x.doubleValue)
@@ -211,12 +211,17 @@ final class FloatingCenterTests: XCTestCase {
         // beyond both ends of the word. Discrete samples cover nearly a period.
         XCTAssertGreaterThan(try XCTUnwrap(positions.max()) - XCTUnwrap(positions.min()), initialBounds.width * 0.9,
                              "The highlight must traverse a full period despite one-second view updates")
-        hosting.rootView = content(.completed, motion: false)
-        hosting.layoutSubtreeIfNeeded()
-        XCTAssertFalse(highlight.animationIsRequested)
-        XCTAssertFalse(highlight.layerAnimationIsRunning)
-        XCTAssertTrue(glint.animationKeys()?.isEmpty ?? true)
-        XCTAssertEqual(highlight.bounds, initialBounds)
+        // FLOATING-STYLES-062 replaces all-state continuity with running-only
+        // shimmer, while keeping the existing visibility and app-switch gates.
+        for state in [(QuotaRingActivity.idle, true, false), (.completed, true, false),
+                      (.running, false, false), (.running, true, true)] {
+            hosting.rootView = content(state.0, motion: state.1, expanded: state.2)
+            hosting.layoutSubtreeIfNeeded()
+            XCTAssertFalse(highlight.animationIsRequested)
+            XCTAssertFalse(highlight.layerAnimationIsRunning)
+            XCTAssertTrue(glint.animationKeys()?.isEmpty ?? true)
+            XCTAssertEqual(highlight.bounds, initialBounds)
+        }
     }
 
     @MainActor
