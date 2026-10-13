@@ -47,7 +47,7 @@ enum FloatingPreviewState: String, CaseIterable, Identifiable {
         switch self {
         case .running: return language.localized(chinese: "运行中", english: "Running")
         case .idle: return language.localized(chinese: "空闲", english: "Idle")
-        case .completed: return language.localized(chinese: "已完成", english: "Completed")
+        case .completed: return language.localized(chinese: "完成提示", english: "Completion cue")
         }
     }
 }
@@ -59,32 +59,15 @@ struct FloatingBarSettingsPreview: View {
     let language: AppLanguage
     let animationsEnabled: Bool
     var quotaStyle: QuotaDisplayStyle = .clockwiseRing
+    var iconStyle: StatusIconStyle = .defaultStyle
+    var showsFiveHourQuota = false
     // This fixed example never reads real tasks or starts a second task clock.
     private let sampleNow = Date(timeIntervalSince1970: 1_000)
     private let sampleQuota = UsageWindow(id: "settings-example", kind: .weekly, usedPercent: 25)
 
     var body: some View {
         VStack(spacing: 14) {
-            HStack(spacing: 0) {
-                StatusMark(style: .codex, size: 18)
-                    .frame(width: NotchFloatingBarLayout.appLaneWidth)
-                FloatingCenterContent(
-                    style: style, customText: customText, activity: state.activity,
-                    startedAt: sampleNow.addingTimeInterval(-138), now: sampleNow, isExpanded: false
-                )
-                .frame(width: NotchFloatingBarLayout.battleLaneWidth, height: 30)
-                QuotaIndicatorView(
-                    style: quotaStyle, window: sampleQuota, activity: .idle,
-                    diameter: 20, lineWidth: 2, fontSize: 9
-                )
-                .environment(\.notchMotionEnabled, false)
-                .frame(width: NotchFloatingBarLayout.quotaLaneWidth)
-            }
-            .padding(.horizontal, NotchFloatingBarLayout.horizontalInset)
-            .frame(width: NotchFloatingBarLayout.compactWidth, height: 30)
-            .background(.black, in: UnevenRoundedRectangle(bottomLeadingRadius: 9, bottomTrailingRadius: 9))
-            .environment(\.notchAppLanguage, language)
-            .environment(\.notchMotionEnabled, animationsEnabled)
+            sampleBar
             .allowsHitTesting(false)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(language.localized(
@@ -92,10 +75,37 @@ struct FloatingBarSettingsPreview: View {
                 english: "\(style.title(for: language)) example: \(state.title(for: language)), sample quota 75%"
             ))
 
-            Text(language.localized(chinese: "仅供预览，任务和额度为示例。", english: "Preview only. Tasks and quota use sample data."))
+            Text(language.localized(
+                chinese: "仅供预览，额度为示例。实际完成提示约 5 秒后消失，不影响历史记录。",
+                english: "Sample data only. The live completion cue lasts about 5 seconds; history is retained."
+            ))
                 .modifier(SettingsHelpTextStyle())
         }
         .frame(maxWidth: .infinity)
         .padding(.bottom, 8)
+    }
+
+    /// Exposes the exact fixture surface for static rendering regression checks.
+    var sampleBar: some View {
+        let windows = showsFiveHourQuota
+            ? [UsageWindow(id: "settings-five-hour", kind: .rolling(hours: 5), usedPercent: 40), sampleQuota]
+            : [sampleQuota]
+        let shape = NotchSurfaceShape(
+            layoutMode: .floatingBar, shoulderDepth: 6, bottomRadius: 14,
+            leadingInset: iconStyle.showsLeftIndicator ? 0 : NotchFloatingBarLayout.appLaneWidth
+        )
+        return FloatingBarContent(
+            activity: state.activity,
+            usage: UsageSnapshot(windows: windows, fetchedAt: sampleNow),
+            quotaDisplayStyle: quotaStyle, iconStyle: iconStyle,
+            centerStyle: style, customText: customText,
+            startedAt: sampleNow.addingTimeInterval(-138), now: sampleNow,
+            quotaActivity: .idle, quotaMotionEnabled: false
+        )
+        .frame(width: NotchFloatingBarLayout.compactWidth, height: NotchFloatingBarLayout.preferredHeight)
+        .background(.black, in: shape)
+        .clipShape(shape)
+        .environment(\.notchAppLanguage, language)
+        .environment(\.notchMotionEnabled, animationsEnabled)
     }
 }

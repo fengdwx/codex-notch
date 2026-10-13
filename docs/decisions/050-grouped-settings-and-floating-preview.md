@@ -8,6 +8,11 @@ created_at: 2026-09-13
 
 # Group Settings and make floating-only choices understandable on any screen
 
+Display follow-up: decision 060 replaces only elapsed mode's non-running
+signature fallback and the preview's incomplete activity rendering. The
+grouped Settings structure, preference keys, sample-data isolation and native
+keyboard controls below remain preserved.
+
 The maintainer found the long Settings form disorganized. The floating-center
 paragraph did not explain why changing a style produces no visible change on
 a physical-notch screen, where users cannot try another display configuration.

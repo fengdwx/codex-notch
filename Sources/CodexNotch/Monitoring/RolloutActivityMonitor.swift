@@ -5,6 +5,7 @@ final class RolloutActivityMonitor {
 
     // Delivered on the main queue after the ordered store update has committed.
     var onChange: (() -> Void)?
+    var onInitialScanCompleted: ((ActiveSessionStoreSnapshot) -> Void)?
 
     private let rootURL: URL
     private let store: ActiveSessionStore
@@ -20,6 +21,8 @@ final class RolloutActivityMonitor {
     private var pendingURLs: Set<URL> = []
     private var needsFullScan = false
     private var running = false
+    private var initialScanPublished = false
+    private var initialScanHandler: ((ActiveSessionStoreSnapshot) -> Void)?
     private var publicationTask: Task<Void, Never>?
     private var fingerprints: [URL: FileFingerprint] = [:]
 
@@ -44,7 +47,12 @@ final class RolloutActivityMonitor {
     }
 
     func start() {
-        scanQueue.async { [weak self] in self?.running = true }
+        let initialScanHandler = onInitialScanCompleted
+        scanQueue.async { [weak self] in
+            self?.running = true
+            self?.initialScanPublished = false
+            self?.initialScanHandler = initialScanHandler
+        }
         scheduleScan(urls: nil, after: 0)
         changeSource.start()
     }
@@ -116,6 +124,7 @@ final class RolloutActivityMonitor {
     }
 
     private func scanRollouts() {
+        defer { publishInitialScanCompletionIfNeeded() }
         guard fileManager.fileExists(atPath: rootURL.path) else {
             for url in Array(eventsByFile.keys) { remove(url: url) }
             return
@@ -141,6 +150,19 @@ final class RolloutActivityMonitor {
 
         for knownURL in Array(eventsByFile.keys) where !retainedURLs.contains(knownURL) {
             remove(url: knownURL)
+        }
+    }
+
+    private func publishInitialScanCompletionIfNeeded() {
+        guard !initialScanPublished else { return }
+        initialScanPublished = true
+        let previous = publicationTask
+        let notify = initialScanHandler
+        let store = store
+        publicationTask = Task {
+            await previous?.value
+            let snapshot = await store.snapshot()
+            DispatchQueue.main.async { notify?(snapshot) }
         }
     }
 

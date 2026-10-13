@@ -17,24 +17,43 @@ enum FloatingCenterStyle: String, CaseIterable, Identifiable, Sendable {
     func title(for language: AppLanguage) -> String {
         switch self {
         case .signature: return language.localized(chinese: "个人签名", english: "Signature")
-        case .orbit: return language.localized(chinese: "轨道签名", english: "Orbit")
-        case .elapsed: return language.localized(chinese: "运行计时", english: "Elapsed time")
-        case .flow: return language.localized(chinese: "细流光", english: "Light flow")
+        case .orbit: return language.localized(chinese: "轨道签名", english: "Orbit text")
+        case .elapsed: return language.localized(chinese: "任务计时", english: "Task timer")
+        case .flow: return language.localized(chinese: "极简光带", english: "Minimal flow")
         }
     }
 
-    var usesCustomText: Bool { self != .flow }
+    var usesCustomText: Bool { self == .signature || self == .orbit }
 
     func explanation(for language: AppLanguage) -> String {
         switch self {
         case .signature:
-            return language.localized(chinese: "显示自定义文字，带有柔和的流光效果。", english: "Displays custom text with a subtle shimmer.")
+            return language.localized(chinese: "显示个人文字与柔和微光；旁边的符号表示任务状态。", english: "Personal text with a subtle shimmer. The symbol beside it shows task activity.")
         case .orbit:
-            return language.localized(chinese: "任务运行时，文字旁的圆点沿轨道旋转。", english: "A dot orbits beside the text while a task is running.")
+            return language.localized(chinese: "显示个人文字；轨道仅在运行时转动，静止时仍有状态符号。", english: "Personal text with an orbit that moves only while running. A static symbol keeps the state clear.")
         case .elapsed:
-            return language.localized(chinese: "任务运行时显示已用时间，结束后显示自定义文字。", english: "Displays elapsed time while a task is running, then custom text when it ends.")
+            return language.localized(chinese: "运行时显示已用时间，其余时间显示空闲或短暂完成提示。", english: "Elapsed time while running, otherwise Idle or a brief completion cue.")
         case .flow:
-            return language.localized(chinese: "任务运行时播放流光动画，结束后停止。", english: "Displays an animated light while a task is running. The animation stops when the task ends.")
+            return language.localized(chinese: "用简短文字和细光带显示状态；运行时流动，空闲时静止。", english: "Short status text and a thin line. The light moves while running and rests while idle.")
+        }
+    }
+}
+
+/// Shapes and words retain the state when motion and color cannot help.
+enum FloatingActivityPresentation {
+    static func symbol(for activity: QuotaRingActivity) -> String {
+        switch activity {
+        case .running: return "ellipsis"
+        case .idle: return "minus"
+        case .completed: return "checkmark"
+        }
+    }
+
+    static func title(for activity: QuotaRingActivity, language: AppLanguage) -> String {
+        switch activity {
+        case .running: return language.localized(chinese: "运行中", english: "Running")
+        case .idle: return language.localized(chinese: "空闲", english: "Idle")
+        case .completed: return language.localized(chinese: "刚完成", english: "Finished")
         }
     }
 }

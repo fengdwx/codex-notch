@@ -34,7 +34,7 @@ struct FloatingCenterContent: View {
         switch activity {
         case .running: return Color(red: 0.57, green: 0.78, blue: 0.94)
         case .completed: return Color(red: 0.48, green: 0.86, blue: 0.65)
-        case .idle: return Color.white.opacity(0.4)
+        case .idle: return Color.white.opacity(0.6)
         }
     }
 
@@ -42,28 +42,36 @@ struct FloatingCenterContent: View {
         Group {
             switch style {
             case .signature:
-                signatureLabel
+                HStack(spacing: 6) {
+                    activityGlyph
+                    signatureLabel
+                }
             case .orbit:
-                HStack(spacing: 7) {
+                HStack(spacing: 6) {
+                    activityGlyph
                     motionLayer.frame(width: 18, height: 18)
                     signatureLabel
                 }
             case .elapsed:
-                if let elapsed = FloatingCenterText.elapsedText(activity: activity, startedAt: startedAt, now: now) {
-                    HStack(spacing: 6) {
-                        Text(language.localized(chinese: "运行", english: "RUN"))
-                            .font(.system(size: 8.5, weight: .medium))
-                            .foregroundStyle(color.opacity(0.85))
+                HStack(spacing: 6) {
+                    activityGlyph
+                    if let elapsed = FloatingCenterText.elapsedText(activity: activity, startedAt: startedAt, now: now) {
                         Text(elapsed)
                             .font(.system(size: 12, weight: .medium, design: .monospaced))
                             .monospacedDigit()
                             .foregroundStyle(Color.white.opacity(0.82))
+                    } else {
+                        activityLabel
                     }
-                } else {
-                    signatureContent
                 }
             case .flow:
-                motionLayer.frame(width: 96, height: 3)
+                VStack(spacing: 3) {
+                    HStack(spacing: 5) {
+                        activityGlyph
+                        activityLabel
+                    }
+                    motionLayer.frame(width: 96, height: 2)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -73,11 +81,19 @@ struct FloatingCenterContent: View {
         .accessibilityHidden(true)
     }
 
-    private var signatureContent: some View {
-        HStack(spacing: 6) {
-            Circle().fill(color).frame(width: 4, height: 4)
-            signatureLabel
-        }
+    private var activityGlyph: some View {
+        Image(systemName: FloatingActivityPresentation.symbol(for: activity))
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(color)
+            .frame(width: 12, height: 12)
+            .fixedSize()
+    }
+
+    private var activityLabel: some View {
+        Text(FloatingActivityPresentation.title(for: activity, language: language))
+            .font(.system(size: 10.5, weight: .medium))
+            .foregroundStyle(activity == .completed ? color : Color.white.opacity(0.78))
+            .lineLimit(1)
     }
 
     private var signatureLabel: some View {

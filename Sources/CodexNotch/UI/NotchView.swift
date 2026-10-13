@@ -332,8 +332,8 @@ struct NotchView: View {
                     title: NotchText.compactActivityTitle(
                         session.title,
                         fallback: appLanguage.localized(
-                            chinese: "Codex 已完成",
-                            english: "Codex completed"
+                            chinese: "Codex 刚完成",
+                            english: "Codex just finished"
                         )
                     ),
                     subtitle: NotchText.projectName(cwd: session.cwd, language: appLanguage),
@@ -607,6 +607,51 @@ enum CompactLeftIndicatorPolicy {
     }
 }
 
+/// The same compact content is used by the live button and fixture-only preview.
+/// Preferences and sample data are supplied explicitly; this view owns no actions.
+struct FloatingBarContent: View {
+    let activity: QuotaRingActivity
+    let usage: UsageSnapshot?
+    let quotaDisplayStyle: QuotaDisplayStyle
+    let iconStyle: StatusIconStyle
+    let centerStyle: FloatingCenterStyle
+    let customText: String
+    let startedAt: Date?
+    let now: Date
+    var isExpanded = false
+    var compactHeight = NotchFloatingBarLayout.preferredHeight
+    var quotaActivity: QuotaRingActivity? = nil
+    var quotaMotionEnabled: Bool? = nil
+    @Environment(\.notchMotionEnabled) private var motionEnabled
+
+    var body: some View {
+        HStack(spacing: 0) {
+            CompactLeftIndicatorView(
+                layoutMode: .floatingBar, compactHeight: compactHeight,
+                activity: activity, usage: usage,
+                quotaDisplayStyle: quotaDisplayStyle, iconStyle: iconStyle,
+                quotaActivity: quotaActivity, quotaMotionEnabled: quotaMotionEnabled
+            )
+            .frame(width: NotchFloatingBarLayout.appLaneWidth, height: compactHeight)
+
+            FloatingCenterContent(
+                style: centerStyle, customText: customText, activity: activity,
+                startedAt: startedAt, now: now, isExpanded: isExpanded
+            )
+            .frame(width: NotchFloatingBarLayout.battleLaneWidth, height: compactHeight)
+
+            CompactQuotaView(
+                window: usage?.weeklyWindow, activity: quotaActivity ?? activity,
+                style: quotaDisplayStyle, layoutMode: .floatingBar,
+                laneWidth: NotchFloatingBarLayout.quotaLaneWidth,
+                compactHeight: compactHeight
+            )
+            .environment(\.notchMotionEnabled, quotaMotionEnabled ?? motionEnabled)
+        }
+        .padding(.horizontal, NotchFloatingBarLayout.horizontalInset)
+    }
+}
+
 private struct CompactNotchView: View {
     enum IconKind: Equatable {
         case quota
@@ -636,6 +681,10 @@ private struct CompactNotchView: View {
     let action: () -> Void
     @Environment(\.notchAppLanguage) private var language
     @Environment(\.notchStatusIconStyle) private var iconStyle
+    @AppStorage(FloatingCenterStyle.storageKey)
+    private var centerStyleRaw = FloatingCenterStyle.defaultStyle.rawValue
+    @AppStorage(FloatingCenterText.storageKey)
+    private var customText = FloatingCenterText.defaultText
 
     var body: some View {
         Button(action: action) {
@@ -649,34 +698,13 @@ private struct CompactNotchView: View {
     @ViewBuilder
     private var compactContent: some View {
         if layoutMode == .floatingBar {
-            HStack(spacing: 0) {
-                compactLeftIndicator
-                    .frame(
-                        width: NotchFloatingBarLayout.appLaneWidth,
-                        height: compactHeight
-                    )
-
-                FloatingCenterView(
-                    activity: icon.quotaActivity,
-                    startedAt: runningStartedAt,
-                    now: now,
-                    isExpanded: isExpanded
-                )
-                    .frame(
-                        width: NotchFloatingBarLayout.battleLaneWidth,
-                        height: compactHeight
-                    )
-
-                CompactQuotaView(
-                    window: usage?.weeklyWindow,
-                    activity: icon.quotaActivity,
-                    style: quotaDisplayStyle,
-                    layoutMode: .floatingBar,
-                    laneWidth: NotchFloatingBarLayout.quotaLaneWidth,
-                    compactHeight: compactHeight
-                )
-            }
-            .padding(.horizontal, NotchFloatingBarLayout.horizontalInset)
+            FloatingBarContent(
+                activity: icon.quotaActivity, usage: usage,
+                quotaDisplayStyle: quotaDisplayStyle, iconStyle: iconStyle,
+                centerStyle: .fromStoredValue(centerStyleRaw), customText: customText,
+                startedAt: runningStartedAt, now: now,
+                isExpanded: isExpanded, compactHeight: compactHeight
+            )
         } else {
             HStack(spacing: 0) {
                 compactLeftIndicator
@@ -700,38 +728,12 @@ private struct CompactNotchView: View {
         }
     }
 
-    @ViewBuilder
     private var compactLeftIndicator: some View {
-        switch CompactLeftIndicatorPolicy.content(
-            layoutMode: layoutMode,
-            hasFiveHourWindow: usage?.fiveHourWindow != nil,
-            iconStyle: iconStyle
-        ) {
-        case .fiveHourQuota:
-            if let fiveHourWindow = usage?.fiveHourWindow {
-                CompactQuotaView(
-                    window: fiveHourWindow,
-                    activity: icon.quotaActivity,
-                    style: quotaDisplayStyle,
-                    layoutMode: layoutMode,
-                    laneWidth: layoutMode == .floatingBar
-                        ? NotchFloatingBarLayout.appLaneWidth
-                        : NotchCompactLayout.indicatorLaneWidth,
-                    compactHeight: compactHeight
-                )
-            } else {
-                compactAppIcon
-            }
-        case .appStatus:
-            compactAppIcon
-        case .hidden:
-            Color.clear
-        }
-    }
-
-    private var compactAppIcon: some View {
-        CompactAppIconView(status: icon, theme: StatusIconTheme(usage: usage),
-                           layoutMode: layoutMode, compactHeight: compactHeight)
+        CompactLeftIndicatorView(
+            layoutMode: layoutMode, compactHeight: compactHeight,
+            activity: icon.quotaActivity, usage: usage,
+            quotaDisplayStyle: quotaDisplayStyle, iconStyle: iconStyle
+        )
     }
 
     private var accessibilityText: String {
@@ -744,25 +746,66 @@ private struct CompactNotchView: View {
 
 }
 
+private struct CompactLeftIndicatorView: View {
+    let layoutMode: NotchLayoutMode
+    let compactHeight: CGFloat
+    let activity: QuotaRingActivity
+    let usage: UsageSnapshot?
+    let quotaDisplayStyle: QuotaDisplayStyle
+    let iconStyle: StatusIconStyle
+    var quotaActivity: QuotaRingActivity? = nil
+    var quotaMotionEnabled: Bool? = nil
+    @Environment(\.notchMotionEnabled) private var motionEnabled
+
+    @ViewBuilder
+    var body: some View {
+        switch CompactLeftIndicatorPolicy.content(
+            layoutMode: layoutMode,
+            hasFiveHourWindow: usage?.fiveHourWindow != nil,
+            iconStyle: iconStyle
+        ) {
+        case .fiveHourQuota:
+            if let fiveHourWindow = usage?.fiveHourWindow {
+                CompactQuotaView(
+                    window: fiveHourWindow, activity: quotaActivity ?? activity,
+                    style: quotaDisplayStyle, layoutMode: layoutMode,
+                    laneWidth: layoutMode == .floatingBar
+                        ? NotchFloatingBarLayout.appLaneWidth
+                        : NotchCompactLayout.indicatorLaneWidth,
+                    compactHeight: compactHeight
+                )
+                .environment(\.notchMotionEnabled, quotaMotionEnabled ?? motionEnabled)
+            }
+        case .appStatus:
+            CompactAppIconView(
+                activity: activity, theme: StatusIconTheme(usage: usage),
+                layoutMode: layoutMode, compactHeight: compactHeight, iconStyle: iconStyle
+            )
+        case .hidden:
+            Color.clear
+        }
+    }
+}
+
 private struct CompactAppIconView: View {
-    let status: CompactNotchView.IconKind
+    let activity: QuotaRingActivity
     let theme: StatusIconTheme
     let layoutMode: NotchLayoutMode
     let compactHeight: CGFloat
-    @Environment(\.notchStatusIconStyle) private var iconStyle
+    let iconStyle: StatusIconStyle
 
     private var isFloating: Bool { layoutMode == .floatingBar }
     private var markSize: CGFloat { isFloating ? 20 : NotchCompactLayout.appMarkSize }
 
     var body: some View {
         Group {
-            switch status {
-            case .working:
+            switch activity {
+            case .running:
                 RunningStatusIcon(iconStyle: iconStyle, size: markSize, theme: theme)
             case .completed:
                 CompletedStatusIcon(iconStyle: iconStyle, size: markSize, theme: theme,
                                     badgeDiameter: isFloating ? 9 : 11, centersComposite: isFloating)
-            case .quota:
+            case .idle:
                 StatusMark(style: iconStyle, size: markSize, theme: theme)
             }
         }
@@ -1437,6 +1480,13 @@ struct QuotaRing: View {
     }
 }
 
+enum ExpandedHeaderActivity {
+    static func resolve(_ content: ExpandedContent) -> QuotaRingActivity {
+        if content.completionFeedback != nil { return .completed }
+        return content.sessions.isEmpty ? .idle : .running
+    }
+}
+
 private struct ExpandedNotchView: View {
     let content: ExpandedContent
     let now: Date
@@ -1611,13 +1661,11 @@ private struct ExpandedNotchView: View {
     }
 
     private var headerIcon: CompactNotchView.IconKind {
-        if !content.sessions.isEmpty {
-            return .working
+        switch ExpandedHeaderActivity.resolve(content) {
+        case .completed: return .completed
+        case .running: return .working
+        case .idle: return .quota
         }
-        if content.headerConversation != nil {
-            return .completed
-        }
-        return .quota
     }
 
     private var headerTitle: String {
@@ -1632,10 +1680,10 @@ private struct ExpandedNotchView: View {
             )
         case .completed:
             return NotchText.compactActivityTitle(
-                content.headerConversation?.title,
+                content.completionFeedback?.session.title,
                 fallback: language.localized(
-                    chinese: "Codex 已完成",
-                    english: "Codex completed"
+                    chinese: "Codex 刚完成",
+                    english: "Codex just finished"
                 )
             )
         case .quota:
@@ -1644,6 +1692,9 @@ private struct ExpandedNotchView: View {
     }
 
     private var headerSubtitle: String {
+        if let completion = content.completionFeedback {
+            return NotchText.projectName(cwd: completion.session.cwd, language: language)
+        }
         if let session = content.sessions.first {
             return NotchText.sessionSubtitle(session, now: now, language: language)
         }
@@ -1654,6 +1705,9 @@ private struct ExpandedNotchView: View {
     }
 
     private var headerAction: () -> Void {
+        if let completion = content.completionFeedback {
+            return { onOpenThread(completion.session.threadID) }
+        }
         if let session = content.sessions.first {
             return { onOpenThread(session.threadID) }
         }
@@ -1664,7 +1718,7 @@ private struct ExpandedNotchView: View {
     }
 }
 
-private struct ConversationRowView: View {
+struct ConversationRowView: View {
     let conversation: ConversationSummary
     let isPrimary: Bool
     let now: Date
@@ -1705,7 +1759,7 @@ private struct ConversationRowView: View {
         .buttonStyle(NotchButtonStyle())
     }
 
-    private var metadataText: String {
+    var metadataText: String {
         let project = NotchText.projectName(cwd: conversation.cwd, language: language)
         switch conversation.activity {
         case let .running(startedAt):
@@ -1717,6 +1771,11 @@ private struct ConversationRowView: View {
             return language.localized(
                 chinese: "已完成 · \(NotchText.relativeTime(from: completedAt, now: now, language: language)) · \(project)",
                 english: "Completed · \(NotchText.relativeTime(from: completedAt, now: now, language: language)) · \(project)"
+            )
+        case let .stopped(completedAt):
+            return language.localized(
+                chinese: "已停止 · \(NotchText.relativeTime(from: completedAt, now: now, language: language)) · \(project)",
+                english: "Stopped · \(NotchText.relativeTime(from: completedAt, now: now, language: language)) · \(project)"
             )
         }
     }
@@ -1733,6 +1792,10 @@ private struct ConversationStatusView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(NotchPalette.success)
+        case .stopped:
+            Image(systemName: "stop.circle")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(NotchPalette.secondaryText)
         }
     }
 }

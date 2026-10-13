@@ -218,7 +218,8 @@ struct NotchSettingsView: View {
                     FloatingBarSettingsPreview(
                         style: floatingStyle, customText: floatingCenterText, state: previewState,
                         language: appLanguage, animationsEnabled: animationsEnabled,
-                        quotaStyle: selectedStyle
+                        quotaStyle: selectedStyle,
+                        iconStyle: StatusIconStyle.fromStoredValue(statusIconStyleRaw)
                     )
                 }
                 Picker(appLanguage.localized(chinese: "预览状态", english: "Preview state"), selection: $previewState) {

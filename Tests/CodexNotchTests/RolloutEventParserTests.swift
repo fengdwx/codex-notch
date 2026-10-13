@@ -10,6 +10,7 @@ final class RolloutEventParserTests: XCTestCase {
         XCTAssertTrue(result.active.isEmpty)
         XCTAssertEqual(result.completed.count, 1)
         XCTAssertEqual(result.completed.first?.threadID, "thread-1")
+        XCTAssertEqual(result.completed.first?.termination, .completed)
     }
 
     func testAbortedTurnIsRemovedFromActiveState() throws {
@@ -18,6 +19,8 @@ final class RolloutEventParserTests: XCTestCase {
 
         XCTAssertTrue(result.active.isEmpty)
         XCTAssertEqual(result.completed.first?.turnID, "turn-aborted")
+        XCTAssertEqual(result.completed.first?.termination, .aborted,
+                       "ACTIVITY-FEEDBACK-060 keeps interruption distinct from normal completion")
     }
 
     func testMalformedLineDoesNotDiscardFollowingEvent() throws {

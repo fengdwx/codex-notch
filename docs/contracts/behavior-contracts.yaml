@@ -1,4 +1,61 @@
 contracts:
+  - id: ACTIVITY-FEEDBACK-060
+    title: Running and idle are steady states with brief completion feedback
+    status: active
+    statement: >-
+      Preserve ACTIVITY-STATE-007 history retention, bounded discovery, child
+      exclusion, explicit turn matching, stale fallback and privacy. Replace
+      only inherited persistent completion presentation and conflation of
+      aborted and normally completed turns. After initial discovery, a newly
+      observed normal completion produces a five-second green cue independent
+      of history, then restores current running or idle state. A newly started
+      task interrupts an older cue. Startup history, duplicate/older events,
+      title refresh and unchanged snapshots never retrigger or prolong it;
+      the existing clock expires it even without a data change. Aborted turns
+      remain distinguishable as Stopped in history and never signal success.
+      No unread queue, acknowledgment operation or persistent cache is added.
+      Preserve SETTINGS-MOTION-021's independent app animation switch,
+      preference keys/defaults and visible-only lifecycle. Preserve
+      UI-READABILITY-058 while the labelled sample now shares
+      the real pure floating renderer and chosen icon, including Off, across
+      sample states. Keep fixture quota, no real actions and no task timer.
+      The 212x30 floating center has distinguishable busy, neutral idle and
+      green check glyphs even without a left status icon. These non-dot glyphs
+      replace the inherited signature-only no-indicator assumption; retain
+      saved text, five-second signature shimmer, styles, defaults and motion
+      gates. Minimal flow is blue and moving only while running, neutral and
+      static while idle, with an explicit completion check. Elapsed mode uses
+      localized idle/completion text when not running. Settings calls the
+      completion sample Completion cue and explains its five-second duration.
+      Preserve all quota values, physical-notch camera and lane geometry,
+      left Off and five-hour priority, reset behavior, hover trigger and
+      fixed-canvas collapse, privacy, update and release behavior.
+    rationale: The user chose a glanceable activity utility over persistent completion or unread-result management, and reported indistinguishable preview states.
+    source: user-approved-two-steady-states-and-transient-feedback
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [activity-feedback, terminal-reason, compact-state, floating-center, settings-preview, recent-conversation-labels]
+      exclude: [quota-semantics, authentication, reset-api, physical-notch-geometry, notification-permissions, releases]
+    examples:
+      positive: A live normal completion shows a green check for five seconds, then becomes idle or resumes existing work while its history row remains available; an animation-disabled floating preview still distinguishes all three appearances.
+      negative: Old history keeps the island completed forever, restart replays old completions, an aborted turn produces a green check, opening a card deletes history, a new task stays hidden behind an old cue, or changing sample state leaves the same icon and content.
+    guards:
+      - Tests/CodexNotchTests/CompletionFeedbackTests.swift
+      - Tests/CodexNotchTests/CompletionFeedbackRuntimeTests.swift
+      - Tests/CodexNotchTests/NotchPresentationReducerTests.swift
+      - Tests/CodexNotchTests/RolloutActivityMonitorTests.swift
+      - Tests/CodexNotchTests/RolloutEventParserTests.swift
+      - Tests/CodexNotchTests/ActiveSessionStoreTests.swift
+      - Tests/CodexNotchTests/RecentConversationHistoryTests.swift
+      - Tests/CodexNotchTests/FloatingActivityPresentationTests.swift
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - docs/decisions/060-transient-completion-and-distinct-states.md
+      - "manual: inspect rebuilt running, idle and five-second completion transitions, preserved history, stopped-task labeling, all preview styles, motion off, left Off and physical notch/floating geometry without consuming a reset credit"
+    supersedes: [ACTIVITY-STATE-007, SETTINGS-MOTION-021]
+    superseded_by: null
+    last_verified_commit: null
+
   - id: UI-READABILITY-058
     title: Settings fit their content and decorative quota light stays secondary
     status: active
@@ -379,7 +436,7 @@ contracts:
 
   - id: SETTINGS-MOTION-021
     title: The app animation switch is independent of system Reduce Motion
-    status: active
+    status: superseded
     statement: >-
       Preserve SETTINGS-PREFERENCES-020 and every inherited contract except the
       requirement to gate app animations on system Reduce Motion. Only the
@@ -410,7 +467,7 @@ contracts:
       - docs/decisions/051-independent-animation-switch.md
       - "manual: read both settings panes, toggle the app animation switch and check preview/live motion; system accessibility settings must remain untouched"
     supersedes: [SETTINGS-PREFERENCES-020]
-    superseded_by: null
+    superseded_by: ACTIVITY-FEEDBACK-060
     last_verified_commit: null
 
   - id: SETTINGS-PREFERENCES-020
@@ -3014,7 +3071,7 @@ contracts:
 
   - id: ACTIVITY-STATE-007
     title: Recent conversations are limited by count, not age
-    status: active
+    status: superseded
     statement: >-
       Preserve ACTIVITY-STATE-006 except its 24-hour completion retention and discovery limit.
       Top-level completed conversations remain eligible regardless of age, including after restart
@@ -3049,5 +3106,5 @@ contracts:
       - docs/decisions/053-count-based-recent-history.md
       - "manual: restart the installed app and switch history between zero, one and five; confirm older local conversations remain available on physical-notch hardware"
     supersedes: [ACTIVITY-STATE-006]
-    superseded_by: null
+    superseded_by: ACTIVITY-FEEDBACK-060
     last_verified_commit: null

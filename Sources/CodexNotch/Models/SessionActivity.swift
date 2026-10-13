@@ -13,6 +13,11 @@ struct RolloutEvent: Equatable, Sendable {
     let kind: RolloutEventKind
 }
 
+enum SessionTermination: Equatable, Sendable {
+    case completed
+    case aborted
+}
+
 struct SessionActivity: Equatable, Identifiable, Sendable {
     let threadID: String
     let turnID: String
@@ -21,6 +26,7 @@ struct SessionActivity: Equatable, Identifiable, Sendable {
     let originator: String?
     let startedAt: Date
     let lastActivityAt: Date
+    let termination: SessionTermination?
 
     var id: String { "\(threadID)#\(turnID)" }
 
@@ -31,7 +37,8 @@ struct SessionActivity: Equatable, Identifiable, Sendable {
         cwd: String?,
         originator: String?,
         startedAt: Date,
-        lastActivityAt: Date
+        lastActivityAt: Date,
+        termination: SessionTermination? = nil
     ) {
         self.threadID = threadID
         self.turnID = turnID
@@ -40,13 +47,15 @@ struct SessionActivity: Equatable, Identifiable, Sendable {
         self.originator = originator
         self.startedAt = startedAt
         self.lastActivityAt = lastActivityAt
+        self.termination = termination
     }
 
     func updating(
         threadID: String = "",
         cwd: String? = nil,
         originator: String? = nil,
-        lastActivityAt: Date? = nil
+        lastActivityAt: Date? = nil,
+        termination: SessionTermination? = nil
     ) -> SessionActivity {
         SessionActivity(
             threadID: threadID.isEmpty ? self.threadID : threadID,
@@ -55,7 +64,8 @@ struct SessionActivity: Equatable, Identifiable, Sendable {
             cwd: cwd ?? self.cwd,
             originator: originator ?? self.originator,
             startedAt: startedAt,
-            lastActivityAt: lastActivityAt ?? self.lastActivityAt
+            lastActivityAt: lastActivityAt ?? self.lastActivityAt,
+            termination: termination ?? self.termination
         )
     }
 
@@ -67,7 +77,8 @@ struct SessionActivity: Equatable, Identifiable, Sendable {
             cwd: cwd,
             originator: originator,
             startedAt: startedAt,
-            lastActivityAt: lastActivityAt
+            lastActivityAt: lastActivityAt,
+            termination: termination
         )
     }
 }
@@ -129,7 +140,13 @@ enum ActiveSessionReducer {
                       let item = active.removeValue(forKey: key) else {
                     continue
                 }
-                completed.append(item.updating(lastActivityAt: event.timestamp ?? item.lastActivityAt))
+                let termination: SessionTermination
+                if case .turnAborted = event.kind { termination = .aborted }
+                else { termination = .completed }
+                completed.append(item.updating(
+                    lastActivityAt: event.timestamp ?? item.lastActivityAt,
+                    termination: termination
+                ))
             }
         }
 

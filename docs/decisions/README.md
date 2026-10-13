@@ -28,7 +28,7 @@ Record decisions here only when they affect active behavior contracts, could be 
 | [041-continuous-signature-shimmer](041-continuous-signature-shimmer.md) | superseded | `FLOATING-CENTER-054` | Keep personal signatures shimmering slowly through running, completion and idle |
 | [042-seamless-signature-light](042-seamless-signature-light.md) | superseded | `FLOATING-CENTER-055` | Move a repeating light band at constant speed without pauses or dark intervals |
 | [043-faster-signature-light](043-faster-signature-light.md) | superseded | `FLOATING-CENTER-056` | Shorten the seamless signature light period to five seconds |
-| [044-signature-without-status-dot](044-signature-without-status-dot.md) | active | `FLOATING-CENTER-057` | Center personal signature text without its preceding status dot |
+| [044-signature-without-status-dot](044-signature-without-status-dot.md) | superseded | `FLOATING-CENTER-057` | Center personal signature text without its preceding status dot |
 | [045-hover-response-and-shadow](045-hover-response-and-shadow.md) | active | `NOTCH-MOTION-008` | Add a small compact hover response and a faint exterior shadow while retaining main transitions |
 | [046-settings-window-activation](046-settings-window-activation.md) | active | `SETTINGS-WINDOW-019` | Activate and reveal the existing Settings window on every request |
 
@@ -37,5 +37,6 @@ Record decisions here only when they affect active behavior contracts, could be 
 | [053-count-based-recent-history](053-count-based-recent-history.md) | active | `ACTIVITY-STATE-007` | Keep five recent conversation candidates without an age cutoff |
 | [057-native-glint-mask](057-native-glint-mask.md) | active | `QUOTA-ALIGNMENT-056`, `SETTINGS-MOTION-021` | Keep the rotating inner glint and circular clipping in one native layer coordinate space |
 | [058-settings-and-quota-readability](058-settings-and-quota-readability.md) | active | `UI-READABILITY-058` | Fit Settings to its content, quiet explanations and decoration, and show a labelled sample quota |
+| [060-transient-completion-and-distinct-states](060-transient-completion-and-distinct-states.md) | active | `ACTIVITY-FEEDBACK-060` | Keep running and idle steady, show completion briefly, and share legible floating states with Settings |
 
 New decisions must include `status`, `contract_ids`, rejected alternatives, and consequences. When a decision changes, retain the old document and point to the new one with `superseded_by`.

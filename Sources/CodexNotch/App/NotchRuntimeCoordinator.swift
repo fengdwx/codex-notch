@@ -52,6 +52,9 @@ final class NotchRuntimeCoordinator {
     private var isResetScheduleExpanded = false
     private var activeSessions: [SessionActivity] = []
     private var recentCompletions: [CompletedSession] = []
+    private var completionFeedback = CompletionFeedbackTracker()
+    private var initialSessionScanComplete = false
+    private var sessionObservationGeneration = UUID()
     private var lastSessionSnapshot: ActiveSessionStoreSnapshot?
     private var snapshotRequestSequence: UInt64 = 0
     private var lastAppliedSnapshotSequence: UInt64 = 0
@@ -108,6 +111,14 @@ final class NotchRuntimeCoordinator {
     func start() {
         guard !started else { return }
         started = true
+        initialSessionScanComplete = false
+        completionFeedback = CompletionFeedbackTracker()
+        completionFeedback.observe(
+            ActiveSessionStoreSnapshot(activeSessions: [], recentCompletions: []),
+            initialScanComplete: false, now: nowProvider()
+        )
+        sessionObservationGeneration = UUID()
+        let observationGeneration = sessionObservationGeneration
         observePreferenceChanges()
         visibilityShortcut = NotchVisibilityShortcut { [weak self] in
             self?.toggleNotchDisplay()
@@ -150,6 +161,17 @@ final class NotchRuntimeCoordinator {
             guard let self, self.started else { return }
             self.pollSessions()
         }
+        rolloutMonitor.onInitialScanCompleted = { [weak self] snapshot in
+            guard let self, self.started,
+                  self.sessionObservationGeneration == observationGeneration else { return }
+            // A partial-discovery read may have obtained its snapshot before
+            // this marker but still be awaiting MainActor delivery. Retire all
+            // such requests before installing the exact initial baseline.
+            self.lastAppliedSnapshotSequence = self.snapshotRequestSequence
+            self.initialSessionScanComplete = true
+            self.completionFeedback.observe(snapshot, initialScanComplete: true, now: self.nowProvider())
+            self.pollSessions()
+        }
         rolloutMonitor.start()
 
         sessionTimer = Timer.scheduledTimer(
@@ -173,6 +195,8 @@ final class NotchRuntimeCoordinator {
     func stop() {
         guard started else { return }
         started = false
+        initialSessionScanComplete = false
+        completionFeedback = CompletionFeedbackTracker()
 
         sessionTimer?.invalidate()
         sessionTimer = nil
@@ -221,6 +245,7 @@ final class NotchRuntimeCoordinator {
 
     private func handleTimerTick() {
         let now = nowProvider()
+        if completionFeedback.expire(now: now) { render(now: now) }
         pollSessions()
         if now.timeIntervalSince(lastUsageRequestAt ?? .distantPast) >= Self.usageRefreshInterval {
             refreshUsage()
@@ -230,12 +255,15 @@ final class NotchRuntimeCoordinator {
     private func pollSessions() {
         snapshotRequestSequence += 1
         let sequence = snapshotRequestSequence
+        let observationGeneration = sessionObservationGeneration
         let store = sessionStore
         let now = nowProvider()
         Task {
             let snapshot = await store.snapshot(now: now)
             await MainActor.run { [weak self] in
-                guard let self, sequence > self.lastAppliedSnapshotSequence else { return }
+                guard let self, self.started,
+                      self.sessionObservationGeneration == observationGeneration,
+                      sequence > self.lastAppliedSnapshotSequence else { return }
                 self.lastAppliedSnapshotSequence = sequence
                 self.apply(snapshot: snapshot, now: now)
             }
@@ -244,9 +272,13 @@ final class NotchRuntimeCoordinator {
 
     private func apply(snapshot: ActiveSessionStoreSnapshot, now: Date) {
         guard started else { return }
+        let feedbackChanged = completionFeedback.observe(
+            snapshot, initialScanComplete: initialSessionScanComplete, now: now
+        )
         guard snapshot != lastSessionSnapshot else {
             viewModel.updateClock(now: now)
             refreshTitlesIfNeeded(now: now)
+            if feedbackChanged { render(now: now) }
             return
         }
 
@@ -684,7 +716,10 @@ final class NotchRuntimeCoordinator {
             activeSessions: activeSessions,
             recentCompletions: recentCompletions,
             usage: usage,
-            isHovered: isHovered
+            isHovered: isHovered,
+            completionFeedback: completionFeedback.feedback.map {
+                CompletedSession(session: $0.session.withTitle(threadTitles[$0.session.threadID]), completedAt: $0.completedAt)
+            }
         )
 
         let state = NotchPresentationReducer.reduce(input)
@@ -697,7 +732,8 @@ final class NotchRuntimeCoordinator {
                     activeSessions: input.activeSessions,
                     recentCompletions: input.recentCompletions,
                     usage: input.usage,
-                    isHovered: true
+                    isHovered: true,
+                    completionFeedback: input.completionFeedback
                 )
             )
         } else {

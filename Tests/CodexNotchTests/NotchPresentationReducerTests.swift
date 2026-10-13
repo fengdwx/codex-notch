@@ -44,7 +44,7 @@ final class NotchPresentationReducerTests: XCTestCase {
         XCTFail("Expected working compact state")
     }
 
-    func testRecentCompletionUsesCompletedCompactState() {
+    func testHistoricalCompletionDoesNotTriggerCompactFeedback() {
         let now = Date(timeIntervalSince1970: 2_000_000_000)
         let task = makeSession(id: "thread-completed", at: now.addingTimeInterval(-2))
         let completion = CompletedSession(session: task, completedAt: now.addingTimeInterval(-2))
@@ -59,13 +59,11 @@ final class NotchPresentationReducerTests: XCTestCase {
             )
         )
 
-        guard case let .completedCompact(session, _) = state else {
-            return XCTFail("Expected completed compact state")
-        }
-        XCTAssertEqual(session.threadID, "thread-completed")
+        // ACTIVITY-FEEDBACK-060 supersedes permanent completion from history.
+        XCTAssertEqual(state, .quotaCompact(nil))
     }
 
-    func testMostRecentCompletionKeepsCompactCompletionState() {
+    func testOldCompletionHistoryKeepsIdleStateRegardlessOfFrontmostApp() {
         let now = Date(timeIntervalSince1970: 2_000_000_000)
         let task = makeSession(id: "thread-completed", at: now.addingTimeInterval(-4))
         let completion = CompletedSession(session: task, completedAt: now.addingTimeInterval(-4))
@@ -92,8 +90,8 @@ final class NotchPresentationReducerTests: XCTestCase {
             )
         )
 
-        XCTAssertEqual(frontmostState, .completedCompact(task, usage: usage))
-        XCTAssertEqual(hiddenState, .completedCompact(task, usage: usage))
+        XCTAssertEqual(frontmostState, .quotaCompact(usage))
+        XCTAssertEqual(hiddenState, .quotaCompact(usage))
     }
 
     func testIdleQuotaIsAlwaysVisible() {
@@ -224,7 +222,7 @@ final class NotchPresentationReducerTests: XCTestCase {
         XCTAssertEqual(content.headerConversation?.threadID, "thread-active")
     }
 
-    func testZeroRecentConversationLimitKeepsCompletedHeaderState() {
+    func testZeroRecentConversationLimitKeepsHistoryNavigationWithoutCompletionFeedback() {
         let now = Date(timeIntervalSince1970: 2_000_000_000)
         let session = makeSession(id: "thread-completed", at: now.addingTimeInterval(-30))
         let state = NotchPresentationReducer.reduce(
@@ -245,6 +243,7 @@ final class NotchPresentationReducerTests: XCTestCase {
         }
         XCTAssertTrue(content.conversations.isEmpty)
         XCTAssertEqual(content.headerConversation?.threadID, "thread-completed")
+        XCTAssertNil(content.completionFeedback, "History supplies navigation, not permanent completion feedback")
         if let headerConversation = content.headerConversation,
            case .completed = headerConversation.activity {
             return

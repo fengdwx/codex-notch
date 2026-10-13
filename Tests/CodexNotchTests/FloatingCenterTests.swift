@@ -36,7 +36,7 @@ final class FloatingCenterTests: XCTestCase {
         XCTAssertEqual(FloatingCenterText.displayText("abcdefghijklmnop"), "abcdefghijkl")
     }
 
-    func testTimerUsesTaskStartAndReturnsToSignatureWhenNotRunning() {
+    func testTimerUsesTaskStartOnlyWhileRunning() {
         let start = Date(timeIntervalSince1970: 1_700_000_000)
         XCTAssertEqual(FloatingCenterText.elapsedText(activity: .running, startedAt: start, now: start.addingTimeInterval(158.9)), "02:38")
         XCTAssertEqual(FloatingCenterText.elapsedText(activity: .running, startedAt: start, now: start.addingTimeInterval(3_661)), "1:01:01")

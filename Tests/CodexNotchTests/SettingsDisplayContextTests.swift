@@ -12,7 +12,7 @@ final class SettingsDisplayContextTests: XCTestCase {
         }
     }
 
-    func testPreviewStatesExerciseTheRealElapsedTimeFallbackWithoutRealTasks() {
+    func testPreviewStatesExerciseRealElapsedTimeWithoutRealTasks() {
         let now = Date(timeIntervalSince1970: 1_000)
         let start = now.addingTimeInterval(-138)
         XCTAssertEqual(FloatingCenterText.elapsedText(
@@ -21,7 +21,8 @@ final class SettingsDisplayContextTests: XCTestCase {
         for state in [FloatingPreviewState.idle, .completed] {
             XCTAssertNil(FloatingCenterText.elapsedText(activity: state.activity, startedAt: start, now: now))
         }
-        XCTAssertTrue(FloatingCenterStyle.elapsed.usesCustomText, "The fallback text stays editable")
+        XCTAssertFalse(FloatingCenterStyle.elapsed.usesCustomText,
+                       "ACTIVITY-FEEDBACK-060 replaces the signature fallback with explicit state text")
         XCTAssertFalse(FloatingCenterStyle.flow.usesCustomText, "Flow must not offer an ineffective text control")
     }
 }

@@ -7,6 +7,9 @@ enum NotchPresentationReducer {
         if input.isHovered {
             return .expanded(expandedContent(input: input, sessions: sessions))
         }
+        if let completion = input.completionFeedback, completion.session.termination == .completed {
+            return .completedCompact(completion.session, usage: input.usage)
+        }
         if let primary = sessions.first {
             return .workingCompact(
                 primary: primary,
@@ -14,15 +17,6 @@ enum NotchPresentationReducer {
                 usage: input.usage
             )
         }
-        if let completion = input.recentCompletions.first {
-            // The compact island still shows quota on the right, while its
-            // left app mark remains a completion acknowledgement until the
-            // next active task supersedes it. Recent-completion history is
-            // already retained by ActiveSessionStore, so do not discard this
-            // visible state after a couple of seconds.
-            return .completedCompact(completion.session, usage: input.usage)
-        }
-
         return .quotaCompact(input.usage)
     }
 
@@ -46,7 +40,9 @@ enum NotchPresentationReducer {
             conversations.append(
                 ConversationSummary(
                     session: completion.session,
-                    activity: .completed(completedAt: completion.completedAt)
+                    activity: completion.session.termination == .aborted
+                        ? .stopped(completedAt: completion.completedAt)
+                        : .completed(completedAt: completion.completedAt)
                 )
             )
         }
@@ -59,7 +55,10 @@ enum NotchPresentationReducer {
                 conversations.prefix(RecentConversationLimit.five.rawValue)
             ),
             headerConversation: conversations.first,
-            usage: input.usage
+            usage: input.usage,
+            completionFeedback: input.completionFeedback.flatMap {
+                $0.session.termination == .completed ? $0 : nil
+            }
         )
     }
 }

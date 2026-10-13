@@ -63,7 +63,7 @@ They remain beside the physical notch while you code, browse, write, or work in 
 | **When will quota reset?** | The exact reset timestamp plus a second-by-second countdown in the expanded card. |
 | **When does each reset credit expire?** | Click **N reset credits available** to reveal every precise expiry time and countdown. |
 | **What happens when I switch apps?** | Nothing disappears. Quota and status stay visible while another app is frontmost. |
-| **Is the task running?** | A blue activity echo while Codex works, then a clear green check when it finishes. |
+| **Is the task running?** | Running and idle have distinct cues. A normal completion shows a green check for about five seconds, then restores the current activity state. |
 
 ## The experience
 
@@ -90,7 +90,7 @@ CodexNotch is a standalone native macOS app. It does not depend on Atoll, CodexI
 
 ### Task status in the same place
 
-While Codex works, a blue activity echo and restrained halos behind the real visible quota indicators show that the task is still running; completion switches to a clear green check. Click a task in the expanded card to open `codex://threads/<thread-id>` instead of searching for the conversation again.
+Running and idle are the two steady states. A normal completion shows a green check for about five seconds, then restores running or idle; stopping a task does not signal success. Floating-bar state symbols remain distinct with animations disabled, and recent conversations remain available after the cue fades. Click a task in the expanded card to open `codex://threads/<thread-id>` instead of searching for the conversation again.
 
 ## Install
 

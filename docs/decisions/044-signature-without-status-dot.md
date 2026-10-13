@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [FLOATING-CENTER-057, SETTINGS-PREFERENCES-018]
 supersedes: [043-faster-signature-light]
-superseded_by: null
+superseded_by: 060-transient-completion-and-distinct-states
 owner: project-maintainer
 created_at: 2026-09-13
 ---

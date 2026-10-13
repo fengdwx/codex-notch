@@ -190,3 +190,7 @@ The green-color follow-up passed full verification with the native backend:
 The exact rebuilt bundle was restarted and its live compact surface read back.
 No reset was submitted. Real-device confirmation of the new green appearance
 remains pending; the prior hover enter/exit acceptance is retained.
+
+The user then confirmed the green appearance on the real device ("绿色可以了").
+Together with the earlier entry/exit confirmation, the green hover feedback is
+user-accepted. This is user-reported visual acceptance, not another redemption.

@@ -8,6 +8,7 @@ struct CompletedSession: Equatable, Sendable {
 enum ConversationActivity: Equatable, Sendable {
     case running(startedAt: Date)
     case completed(completedAt: Date)
+    case stopped(completedAt: Date)
 
     var isRunning: Bool {
         if case .running = self { return true }
@@ -38,6 +39,7 @@ struct ExpandedContent: Equatable, Sendable {
     let conversations: [ConversationSummary]
     let headerConversation: ConversationSummary?
     let usage: UsageSnapshot?
+    var completionFeedback: CompletedSession? = nil
 
     func limitingRecentConversations(
         to limit: RecentConversationLimit
@@ -46,7 +48,8 @@ struct ExpandedContent: Equatable, Sendable {
             sessions: sessions,
             conversations: Array(conversations.prefix(limit.rawValue)),
             headerConversation: headerConversation,
-            usage: usage
+            usage: usage,
+            completionFeedback: completionFeedback
         )
     }
 }
@@ -75,4 +78,5 @@ struct NotchPresentationInput: Equatable {
     let recentCompletions: [CompletedSession]
     let usage: UsageSnapshot?
     let isHovered: Bool
+    var completionFeedback: CompletedSession? = nil
 }
