@@ -63,7 +63,7 @@ contracts:
       dialogs, place Cancel on the left and Use reset on the right. Bind
       confirmation and Escape to button roles, independent of insertion order.
       Hovering the confirmation's Use reset button visibly highlights its
-      native button with a thin system-accent outline and faint fill; pointer exit restores its resting
+      native button with a thin system-green outline and faint green fill; pointer exit restores its resting
       appearance. Hover never submits or dismisses, changes keyboard bindings,
       or replaces native pressed feedback. Remove hover tracking on dismissal.
       An action while an existing result

@@ -141,14 +141,14 @@ the compact notch. No reset was submitted during this verification.
 ## Confirmation hover feedback — 2026-10-14
 
 The user requested pointer feedback on Use reset after accepting the corrected
-button placement. This L2 change adds an accent highlight only while that
+button placement. This L2 change adds a green highlight only while that
 confirmation button is hovered. Preserve its native layout, pressed feedback,
 keyboard focus, explicit click action, Return safety, Escape/close cancellation,
 and all QUOTA-RESET-059 guarantees. Expanded-card redesign, API calls, real credit
 consumption, geometry and releases are out of scope.
 
 Attach an NSTrackingArea to the existing native button with a retained responder
-that shows a paint-only overlay: 1.5pt system-accent outline and 8 percent accent
+that shows a paint-only overlay: 1.5pt system-green outline and 8 percent green
 fill, hidden again on exit/dismissal. The overlay returns nil from hitTest and
 has no accessibility element, so the native button retains event handling.
 Do not use timers, transforms, a new click target, or synthetic pressed state.
@@ -172,3 +172,21 @@ the native backend passed 293 tests (2 skipped, zero failures), release build,
 bundled resources and signature checks. The rebuilt app was then restarted
 from the verified bundle path. Pointer appearance remains a real-device check,
 not an inference from those tests.
+
+The user subsequently confirmed on the real device that pointer entry shows
+the highlight and pointer exit restores the resting appearance. This accepts
+the hover interaction in that build. The user then requested green feedback.
+This follow-up L2 change replaces only the outline/fill color with systemGreen,
+which adapts to the system appearance while remaining green independently of
+the user's accent setting. Preserve the accepted hover lifecycle, 1.5pt width,
+8 percent fill, native button events and QUOTA-RESET-059 guarantees. Other UI,
+geometry, API behavior, credit consumption and releases remain out of scope.
+Reuse the existing interaction guards, run full verification and restart the
+same bundle. The new green appearance is separate from the already accepted
+hover behavior and still requires real-device visual confirmation.
+
+The green-color follow-up passed full verification with the native backend:
+293 tests, 2 skipped, zero failures, plus release build, resources and signing.
+The exact rebuilt bundle was restarted and its live compact surface read back.
+No reset was submitted. Real-device confirmation of the new green appearance
+remains pending; the prior hover enter/exit acceptance is retained.

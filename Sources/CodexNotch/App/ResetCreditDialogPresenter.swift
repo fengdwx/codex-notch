@@ -148,9 +148,9 @@ private final class ResetConfirmationHighlight: NSView {
     override func draw(_ dirtyRect: NSRect) {
         let rect = bounds.insetBy(dx: 1, dy: 1)
         let path = NSBezierPath(roundedRect: rect, xRadius: rect.height / 2, yRadius: rect.height / 2)
-        NSColor.controlAccentColor.withAlphaComponent(0.08).setFill()
+        NSColor.systemGreen.withAlphaComponent(0.08).setFill()
         path.fill()
-        NSColor.controlAccentColor.setStroke()
+        NSColor.systemGreen.setStroke()
         path.lineWidth = 1.5
         path.stroke()
     }
