@@ -69,9 +69,12 @@ computer-use accessibility and screenshot readback verified the visible native
 **使用这次额度重置？** dialog and two readable buttons. Clicking only
 **取消** removed the dialog and restored the compact notch, confirmed by the
 accessibility tree and screenshot. This provides real-device evidence for button readability, expansion, visible
-confirmation and cancellation back to the compact state. Clocks, app/Space
-switching, window close, result dismissal, animation and mouse recovery remain
-unverified on the actual notch. No real credit was consumed. Do not
+confirmation and cancellation back to the compact state. The user subsequently
+reported successful real-device checks of both Space switching and fullscreen
+behavior, with no issues; these two scenarios are user-accepted. Clocks,
+window close, result dismissal, animation and mouse recovery remain separately
+unverified on the actual notch. This acceptance does not establish real credit
+redemption. Do not
 consume a real credit to validate this UI repair. Keep actual server redemption
 unverified until the user deliberately performs it and the result is read back.
 

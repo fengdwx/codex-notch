@@ -34,6 +34,8 @@
 
 此前用户与电脑操作共同确认：浅色按钮可见、确认窗可见、点击取消后窗口关闭且刘海回到 compact。本轮最终构建已重新启动，并核对实际路径及 compact 显示；这不能证明所有真实硬件交互均已复验。
 
-实际消耗重置、真实服务端幂等行为、跨 Space/全屏切换、动画细节及收起后全部鼠标命中区域仍未验收。本次没有消耗真实重置次数；模拟成功响应不算真实兑换成功。
+随后用户明确反馈已完成实机检测：跨桌面（Space）切换、全屏两项均通过，没有问题。这两项记为用户实机验收通过。
+
+实际消耗重置、真实服务端幂等行为、动画细节及收起后全部鼠标命中区域仍未单独验收。用户此次确认未涉及真实兑换；模拟成功响应不算真实兑换成功。
 
 接口格式复核来源：[官方 Codex 请求实现](https://github.com/openai/codex/blob/main/codex-rs/backend-client/src/client/rate_limit_resets.rs)、[官方响应类型](https://github.com/openai/codex/blob/main/codex-rs/backend-client/src/types.rs)、[官方 banked resets 说明](https://help.openai.com/en/articles/20001498-how-banked-codex-resets-work)。这些源码观察不构成公开稳定 API 的承诺。
