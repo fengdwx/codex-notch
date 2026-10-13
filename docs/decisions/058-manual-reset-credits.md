@@ -1,7 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [QUOTA-RESET-058, PRIVACY-BOUNDARY-006, SETTINGS-MOTION-021, NOTCH-HEIGHT-001, QUOTA-ALIGNMENT-056]
 supersedes: []
+superseded_by: 059-nonblocking-reset-dialogs
 owner: project-maintainer
 created_at: 2026-10-13
 ---

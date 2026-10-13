@@ -12,6 +12,7 @@ final class NotchViewModel: ObservableObject {
     @Published private(set) var surfaceSize: CGSize
     @Published private(set) var isResetScheduleExpanded = false
     @Published var isUsingResetCredit = false
+    @Published var isAwaitingResetConfirmation = false
     @Published private(set) var animationsEnabled: Bool
     @Published private(set) var surfaceExpansionLimit: CGSize?
     @Published private(set) var isPointerInside = false
@@ -358,6 +359,7 @@ struct NotchView: View {
             language: appLanguage,
             isResetScheduleExpanded: model.isResetScheduleExpanded,
             isUsingResetCredit: model.isUsingResetCredit,
+            isAwaitingResetConfirmation: model.isAwaitingResetConfirmation,
             onActivateChatGPT: model.onActivateChatGPT,
             onOpenThread: model.onOpenThread,
             onResetScheduleExpandedChanged: model.onResetScheduleExpandedChanged,
@@ -1446,6 +1448,7 @@ private struct ExpandedNotchView: View {
     let language: AppLanguage
     let isResetScheduleExpanded: Bool
     let isUsingResetCredit: Bool
+    let isAwaitingResetConfirmation: Bool
     let onActivateChatGPT: () -> Void
     let onOpenThread: (String) -> Void
     let onResetScheduleExpandedChanged: (Bool) -> Void
@@ -1481,6 +1484,7 @@ private struct ExpandedNotchView: View {
                 now: now,
                 isResetScheduleExpanded: isResetScheduleExpanded,
                 isUsingResetCredit: isUsingResetCredit,
+                isAwaitingResetConfirmation: isAwaitingResetConfirmation,
                 onResetScheduleExpandedChanged: onResetScheduleExpandedChanged,
                 onUseResetCredit: onUseResetCredit
             )
@@ -1764,6 +1768,7 @@ private struct QuotaWindowsProgressView: View {
     let now: Date
     let isResetScheduleExpanded: Bool
     let isUsingResetCredit: Bool
+    let isAwaitingResetConfirmation: Bool
     let onResetScheduleExpandedChanged: (Bool) -> Void
     let onUseResetCredit: (ResetCredit) -> Void
     @Environment(\.notchAppLanguage) private var language
@@ -1801,6 +1806,7 @@ private struct QuotaWindowsProgressView: View {
                 now: now,
                 isExpanded: isResetScheduleExpanded,
                 isUsingResetCredit: isUsingResetCredit,
+                isAwaitingResetConfirmation: isAwaitingResetConfirmation,
                 title: NotchText.resetCredits(usage: usage, language: language),
                 onExpandedChanged: onResetScheduleExpandedChanged,
                 onUseResetCredit: onUseResetCredit
@@ -1905,6 +1911,7 @@ struct ResetScheduleDisclosure: View {
     let now: Date
     let isExpanded: Bool
     let isUsingResetCredit: Bool
+    var isAwaitingResetConfirmation = false
     let title: String
     let onExpandedChanged: (Bool) -> Void
     let onUseResetCredit: (ResetCredit) -> Void
@@ -1975,6 +1982,7 @@ struct ResetScheduleDisclosure: View {
                             now: now,
                             language: language,
                             isUsingResetCredit: isUsingResetCredit,
+                            isAwaitingResetConfirmation: isAwaitingResetConfirmation,
                             onUseResetCredit: onUseResetCredit
                         )
 
@@ -1995,12 +2003,23 @@ struct ResetScheduleDisclosure: View {
     }
 }
 
-private struct ResetScheduleRow: View {
+struct ResetScheduleRow: View {
     let credit: ResetCredit
     let now: Date
     let language: AppLanguage
     let isUsingResetCredit: Bool
+    var isAwaitingResetConfirmation = false
     let onUseResetCredit: (ResetCredit) -> Void
+
+    private var actionTitle: String {
+        if isUsingResetCredit {
+            return language.localized(
+                chinese: isAwaitingResetConfirmation ? "待确认…" : "使用中…",
+                english: isAwaitingResetConfirmation ? "Confirm…" : "Using…"
+            )
+        }
+        return language.localized(chinese: "使用重置", english: "Use reset")
+    }
 
     var body: some View {
         HStack(spacing: 10) {
@@ -2029,11 +2048,9 @@ private struct ResetScheduleRow: View {
                 guard !isUsingResetCredit, credit.canRedeem(at: now) else { return }
                 onUseResetCredit(credit)
             } label: {
-                Text(language.localized(
-                    chinese: isUsingResetCredit ? "使用中…" : "使用重置",
-                    english: isUsingResetCredit ? "Using…" : "Use reset"
-                ))
+                Text(actionTitle)
                 .font(.system(size: 11.5, weight: .medium))
+                .foregroundStyle(NotchPalette.primaryText.opacity(0.9))
                 .padding(.horizontal, 8)
                 .frame(minHeight: 28)
                 .background(NotchPalette.row, in: RoundedRectangle(cornerRadius: 6))

@@ -44,6 +44,7 @@ final class NotchRuntimeCoordinator {
     private var usageTask: Task<Void, Never>?
     private var resetTask: Task<Void, Never>?
     private var resetController: ResetCreditRedemptionController?
+    private let resetDialogs = ResetCreditDialogPresenter()
     private var started = false
     private var isChatGPTFrontmost = false
     private var isHovered = false
@@ -179,6 +180,8 @@ final class NotchRuntimeCoordinator {
         usageRequestID = nil
         resetTask?.cancel()
         resetTask = nil
+        resetDialogs.dismiss()
+        viewModel.isAwaitingResetConfirmation = false
         viewModel.isUsingResetCredit = false
         hoverExpandWorkItem?.cancel()
         hoverExpandWorkItem = nil
@@ -359,36 +362,38 @@ final class NotchRuntimeCoordinator {
 
     @MainActor
     private func useResetCredit(_ credit: ResetCredit) {
-        guard started, !viewModel.isUsingResetCredit,
+        guard started, !viewModel.isUsingResetCredit, !resetDialogs.isPresenting,
               credit.canRedeem(at: nowProvider()),
               usage?.resetCredits.contains(credit) == true,
               let expectedCredentials = usageCredentials else { return }
 
-        // Block both duplicate actions and old reads before opening the modal.
+        // Confirmation is a nonblocking native window; hover and clock updates
+        // keep running, and no request is submitted before its explicit action.
         viewModel.isUsingResetCredit = true
+        viewModel.isAwaitingResetConfirmation = true
         usageTask?.cancel()
         usageRequestID = nil
+        resetHoverState()
+        render()
         let language = AppLanguage.fromStoredValue(userDefaults.string(forKey: AppLanguage.storageKey))
-        let confirmation = NSAlert()
-        confirmation.alertStyle = .warning
-        confirmation.messageText = language.localized(chinese: "使用这次额度重置？", english: "Use this saved reset?")
-        confirmation.informativeText = language.localized(
-            chinese: "成功重置符合条件的额度时会消耗 1 次已存重置机会；如果无需重置，则保留该机会。周重置时间可能改变，成功后无法撤销。",
-            english: "A successful reset of eligible usage limits consumes one saved reset. If no reset is needed, the credit is kept. Your weekly reset date may change. A successful reset cannot be undone."
-        )
-        confirmation.addButton(withTitle: language.localized(chinese: "取消", english: "Cancel"))
-        confirmation.addButton(withTitle: language.localized(chinese: "使用重置", english: "Use reset"))
-        NSApp.activate(ignoringOtherApps: true)
-        guard confirmation.runModal() == .alertSecondButtonReturn else {
-            viewModel.isUsingResetCredit = false
-            refreshUsage()
-            return
+        resetDialogs.confirm(language: language) { [weak self] confirmed in
+            guard let self else { return }
+            self.viewModel.isAwaitingResetConfirmation = false
+            guard self.started, confirmed else {
+                self.viewModel.isUsingResetCredit = false
+                if self.started { self.refreshUsage() }
+                return
+            }
+            self.submitResetCredit(credit, expectedCredentials: expectedCredentials, language: language)
         }
-        guard started else {
-            viewModel.isUsingResetCredit = false
-            return
-        }
+    }
 
+    @MainActor
+    private func submitResetCredit(
+        _ credit: ResetCredit,
+        expectedCredentials: CodexCredentials,
+        language: AppLanguage
+    ) {
         let reader = authReader
         let session = urlSession
         let endpoint = usageEndpoint
@@ -439,13 +444,10 @@ final class NotchRuntimeCoordinator {
             self.viewModel.isUsingResetCredit = false
             self.resetTask = nil
             self.render()
-            let alert = NSAlert()
-            alert.alertStyle = .informational
-            alert.messageText = language.localized(chinese: "额度重置", english: "Usage reset")
-            alert.informativeText = ResetCreditFeedback.message(result, refreshed: refreshed, language: language)
-            alert.addButton(withTitle: language.localized(chinese: "好", english: "OK"))
-            NSApp.activate(ignoringOtherApps: true)
-            alert.runModal()
+            self.resetDialogs.showResult(
+                message: ResetCreditFeedback.message(result, refreshed: refreshed, language: language),
+                language: language
+            )
         }
     }
 

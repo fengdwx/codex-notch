@@ -41,9 +41,61 @@ contracts:
     superseded_by: null
     last_verified_commit: null
 
+  - id: QUOTA-RESET-059
+    title: Reset dialogs stay visible without blocking the notch event loop
+    status: active
+    statement: >-
+      Preserve every redemption, explicit-consent, credential-consistency,
+      expiry, server-ID, idempotency, single-in-flight, refresh, result and
+      privacy guarantee in QUOTA-RESET-058 and all of its inherited quota,
+      activity, settings, fixed-canvas, camera-clearance and mouse-recovery
+      behavior. Confirmation and result dialogs use native callback-driven
+      windows and never enter an application-modal run loop. Their window
+      level is popUpMenu plus one, above the notch, with moveToActiveSpace
+      and fullScreenAuxiliary collection behavior. Collapse the expanded
+      card before showing confirmation while continuing hover timers, clocks
+      and main-queue processing. Until explicit confirmation, keep every
+      reset action disabled and label it Waiting for confirmation, localized
+      as Confirm… or 待确认…. Only after confirmation may the busy label become
+      Using… or 使用中…. Cancel, Escape, window close and dismissal submit no
+      mutation; Return is not a shortcut for confirmation. Complete each
+      decision callback at most once. Reset-action text uses an explicit
+      light foreground on the dark card, remaining readable in light and
+      dark system appearances, including pending, submitting and unavailable
+      states. Preserve button dimensions, action identity, expiry text,
+      countdowns and existing interaction guards. Do not change the remote
+      request, retry, permission, purchase or automatic-consumption boundary.
+    rationale: >-
+      A live failure left both buttons reading Using with dark text while
+      the expanded card did not collapse. Sampling located the main thread
+      inside NSAlert.runModal from useResetCredit; canceling that dialog
+      immediately restored the compact card without submitting a reset.
+      Nonmodal native windows preserve confirmation while allowing the notch
+      event loop to service hover and clock work.
+    source: user-reported-incident-and-live-process-sample
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [reset-confirmation-presentation, reset-result-presentation, pending-reset-labels, reset-button-contrast]
+      exclude: [redemption-api, retry-policy, authentication, automatic-redemption, credit-purchases, quota-values, task-state, notch-geometry, animation-design, releases]
+    examples:
+      positive: Clicking Use reset collapses the card and opens a visible native confirmation while hover timers continue; reopening details shows disabled Confirm text, cancel submits nothing, and confirmed submission changes the label to Using with readable light text.
+      negative: A hidden application-modal dialog stops card collapse, unconfirmed credit rows claim Using, Return consumes a credit, closing a confirmation submits a request, a callback fires twice, or light appearance makes action text black against the dark card.
+    guards:
+      - Tests/CodexNotchTests/ResetCreditDialogPresenterTests.swift
+      - Tests/CodexNotchTests/ResetCreditActionViewTests.swift
+      - Tests/CodexNotchTests/ResetCreditRedemptionTests.swift
+      - Tests/CodexNotchTests/CodexUsageClientTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - docs/decisions/059-nonblocking-reset-dialogs.md
+      - "manual: on the rebuilt installed app, verify card collapse, visible confirmation, continuing clocks, app/Space switching, pending label contrast, cancel/close recovery and result-window dismissal; do not confirm a real credit for UI verification"
+    supersedes: [QUOTA-RESET-058]
+    superseded_by: null
+    last_verified_commit: null
+
   - id: QUOTA-RESET-058
     title: Reset credits are redeemed only after an explicit per-credit confirmation
-    status: active
+    status: superseded
     statement: >-
       Replace only the historical read-only reset-action restriction from
       QUOTA-SEMANTICS-008 and its QUOTA-SEMANTICS-004 predecessor. Preserve
@@ -95,7 +147,7 @@ contracts:
       - "manual: inspect disclosure, per-credit buttons, confirmation cancellation and focus recovery on the rebuilt real-notch app; verify downward expansion, compact state and collapsed mouse recovery without confirming a real credit"
       - "manual: an actual confirmed redemption spends an existing credit and requires separate user-driven acceptance; report it as unverified until performed"
     supersedes: [QUOTA-SEMANTICS-008]
-    superseded_by: null
+    superseded_by: QUOTA-RESET-059
     last_verified_commit: null
 
   - id: NOTCH-HEIGHT-001
