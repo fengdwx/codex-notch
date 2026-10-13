@@ -103,3 +103,37 @@ replace physical-notch acceptance or establish real server redemption.
 Rollback the presenter and label changes to the preceding verified build if
 needed, or remove the reset action to restore read-only details. Restoring a
 build cannot recover a credit already consumed on the server.
+
+## Button placement and user redemption acceptance — 2026-10-14
+
+The user reported that a real reset succeeded, and requested Cancel on the
+left and Use reset on the right. This records user-reported redemption
+acceptance; the agent does not consume another credit to verify this change.
+
+This L2 change is limited to the confirmation button order and its role
+binding. Preserve QUOTA-RESET-059's explicit confirmation, Return safety,
+Escape/close cancellation, single callback and nonmodal lifecycle. API changes,
+credit consumption, notch geometry, the proposed style redesign and releases
+are out of scope. Apple documents that NSAlert places its first button on the
+right in left-to-right languages, so add Use reset first and Cancel second:
+[NSAlert buttons](https://developer.apple.com/documentation/appkit/nsalert/buttons).
+Bind confirmation to the actual button reference rather than its list index,
+so swapping visual order cannot turn Cancel or Escape into confirmation.
+
+The user's screenshot is the reproduction for the installed application.
+Extend the existing Chinese/English hosted tests with actual window-coordinate
+ordering checks while preserving click, Return, Escape and close checks. The
+baseline hosted suite did not reproduce the installed screenshot's ordering,
+so a passing hosted check alone is insufficient: rebuild, restart the exact
+running bundle, open its real confirmation, inspect the two positions and
+cancel without submitting. Run the full verification entry point as well.
+
+Verification: full `scripts/verify.sh` passed with 292 tests (2 skipped, zero
+failures), release build, resource and signature checks. Swift 6.4's new default
+SwiftBuild backend nested copied resources differently and caused unrelated
+image-resource checks to fail; the complete entry point was rerun with the
+project's existing native backend, without skipping or changing any checks.
+After restarting that exact rebuilt bundle, the user opened its confirmation.
+Computer-use screenshot and accessibility readback showed Cancel on the left
+and Use reset on the right. Clicking Cancel closed the dialog and returned to
+the compact notch. No reset was submitted during this verification.

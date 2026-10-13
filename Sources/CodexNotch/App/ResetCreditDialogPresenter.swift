@@ -18,9 +18,10 @@ final class ResetCreditDialogPresenter: NSObject, NSWindowDelegate {
             chinese: "成功重置符合条件的额度时会消耗 1 次已存重置机会；如果无需重置，则保留该机会。周重置时间可能改变，成功后无法撤销。",
             english: "A successful reset of eligible usage limits consumes one saved reset. If no reset is needed, the credit is kept. Your weekly reset date may change. A successful reset cannot be undone."
         )
+        // NSAlert lays out buttons from right to left in our supported languages.
+        let confirmButton = alert.addButton(withTitle: language.localized(chinese: "使用重置", english: "Use reset"))
         alert.addButton(withTitle: language.localized(chinese: "取消", english: "Cancel"))
-        alert.addButton(withTitle: language.localized(chinese: "使用重置", english: "Use reset"))
-        present(alert, completion: completion)
+        present(alert, confirmButton: confirmButton, completion: completion)
     }
 
     func showResult(message: String, language: AppLanguage) {
@@ -44,16 +45,17 @@ final class ResetCreditDialogPresenter: NSObject, NSWindowDelegate {
         window.orderFrontRegardless()
     }
 
-    private func present(_ alert: NSAlert, completion: ((Bool) -> Void)?) {
+    private func present(_ alert: NSAlert, confirmButton: NSButton? = nil, completion: ((Bool) -> Void)?) {
         self.alert = alert
         self.completion = completion
         alert.layout()
-        for (index, button) in alert.buttons.enumerated() {
+        for button in alert.buttons {
             button.target = self
             button.action = #selector(buttonPressed(_:))
-            button.tag = index
+            // Action identity is independent of visual order and localization.
+            button.tag = button === confirmButton ? 1 : 0
             // Confirmation requires its explicit button, not the default Return.
-            button.keyEquivalent = index == 0 ? "\u{1b}" : ""
+            button.keyEquivalent = button.tag == 0 ? "\u{1b}" : ""
         }
         let window = alert.window
         window.defaultButtonCell = nil

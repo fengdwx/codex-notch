@@ -59,7 +59,10 @@ contracts:
       as Confirm… or 待确认…. Only after confirmation may the busy label become
       Using… or 使用中…. Cancel, Escape, window close and dismissal submit no
       mutation; Return is not a shortcut for confirmation. Complete each
-      decision callback at most once. An action while an existing result
+      decision callback at most once. In both Chinese and English confirmation
+      dialogs, place Cancel on the left and Use reset on the right. Bind
+      confirmation and Escape to button roles, independent of insertion order.
+      An action while an existing result
       window is open brings that same window forward without starting a new
       confirmation or request. Treat an authoritative zero available count
       as no redeemable credits even when stale available rows remain, in
@@ -83,8 +86,8 @@ contracts:
       include: [reset-confirmation-presentation, reset-result-presentation, pending-reset-labels, reset-button-contrast]
       exclude: [redemption-api, retry-policy, authentication, automatic-redemption, credit-purchases, quota-values, task-state, notch-geometry, animation-design, releases]
     examples:
-      positive: Clicking Use reset collapses the card and opens a visible native confirmation while hover timers continue; reopening details shows disabled Confirm text, cancel submits nothing, and confirmed submission changes the label to Using with readable light text.
-      negative: A hidden application-modal dialog stops card collapse, unconfirmed credit rows claim Using, Return consumes a credit, closing a confirmation submits a request, a callback fires twice, or light appearance makes action text black against the dark card.
+      positive: Clicking Use reset collapses the card and opens a visible native confirmation with Cancel on the left and Use reset on the right while hover timers continue; reopening details shows disabled Confirm text, cancel submits nothing, and confirmed submission changes the label to Using with readable light text.
+      negative: Reordering buttons makes Cancel confirm, the confirmation action appears left of Cancel, a hidden application-modal dialog stops card collapse, unconfirmed credit rows claim Using, Return consumes a credit, closing a confirmation submits a request, a callback fires twice, or light appearance makes action text black against the dark card.
     guards:
       - Tests/CodexNotchTests/ResetCreditRuntimeTests.swift
       - Tests/CodexNotchTests/ResetCreditDialogPresenterTests.swift
