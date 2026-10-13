@@ -65,13 +65,7 @@ struct FloatingCenterContent: View {
                     }
                 }
             case .flow:
-                VStack(spacing: 3) {
-                    HStack(spacing: 5) {
-                        activityGlyph
-                        activityLabel
-                    }
-                    motionLayer.frame(width: 96, height: 2)
-                }
+                flowContent
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -79,6 +73,38 @@ struct FloatingCenterContent: View {
         .clipped()
         // The enclosing button retains the real task title and state.
         .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private var flowContent: some View {
+        switch activity {
+        case .running:
+            Capsule()
+                .fill(color.opacity(0.32))
+                .overlay {
+                    if shouldAnimate {
+                        motionLayer
+                    } else {
+                        Capsule()
+                            .fill(LinearGradient(
+                                colors: [.clear, color, Color.white.opacity(0.9), color, .clear],
+                                startPoint: .leading, endPoint: .trailing
+                            ))
+                            .frame(width: 32)
+                    }
+                }
+                .frame(width: 96, height: 4)
+                .clipShape(Capsule())
+        case .idle:
+            Capsule()
+                .fill(Color.white.opacity(0.4))
+                .frame(width: 64, height: 2)
+        case .completed:
+            Image(systemName: "checkmark")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: 18, height: 18)
+        }
     }
 
     private var activityGlyph: some View {

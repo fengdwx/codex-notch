@@ -1,7 +1,40 @@
 contracts:
+  - id: FLOATING-FLOW-061
+    title: Minimal flow is one centered light with no stacked status label
+    status: active
+    statement: >-
+      Preserve all ACTIVITY-FEEDBACK-060 behavior except the flow style's
+      text-and-line composition. Running is a centered 96x4pt blue capsule
+      with a moving native highlight; disabling motion keeps a static bright
+      segment. Idle is a centered 64x2pt neutral line and completion is a
+      centered green check. Do not add status text, ellipsis or a second row
+      to this style. Preserve static shape distinction, the existing sweep
+      period and lifecycle gates, shared preview/live rendering, fixture
+      quota, all other styles, preferences, state timing, quota, reset and
+      physical-notch/hover geometry. Clock updates must not restart the sweep.
+    rationale: The user rejected the stacked label and thin bottom line and asked for the actual running light to be the visual content.
+    source: user-screenshot-flow-design-correction
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [floating-flow-layout, floating-flow-contrast, static-flow-fallback]
+      exclude: [activity-state, quota, reset, physical-notch-geometry, other-center-styles, preferences, releases]
+    examples:
+      positive: A running flow sits at the vertical center and visibly sweeps; with motion off it remains a bright long capsule distinct from the shorter idle line and completion check.
+      negative: Running text or an ellipsis sits above the light, the line falls to the bottom edge, motion-off removes every running cue, or a clock update restarts the animation.
+    guards:
+      - Tests/CodexNotchTests/FloatingFlowTests.swift
+      - Tests/CodexNotchTests/FloatingActivityPresentationTests.swift
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - docs/decisions/061-single-row-running-flow.md
+      - "manual: inspect rebuilt live and preview flow across different running phases, idle, completion, motion off and left Off; confirm a single centered row without consuming a reset credit"
+    supersedes: [ACTIVITY-FEEDBACK-060]
+    superseded_by: null
+    last_verified_commit: null
+
   - id: ACTIVITY-FEEDBACK-060
     title: Running and idle are steady states with brief completion feedback
-    status: active
+    status: superseded
     statement: >-
       Preserve ACTIVITY-STATE-007 history retention, bounded discovery, child
       exclusion, explicit turn matching, stale fallback and privacy. Replace
@@ -53,7 +86,7 @@ contracts:
       - docs/decisions/060-transient-completion-and-distinct-states.md
       - "manual: inspect rebuilt running, idle and five-second completion transitions, preserved history, stopped-task labeling, all preview styles, motion off, left Off and physical notch/floating geometry without consuming a reset credit"
     supersedes: [ACTIVITY-STATE-007, SETTINGS-MOTION-021]
-    superseded_by: null
+    superseded_by: FLOATING-FLOW-061
     last_verified_commit: null
 
   - id: UI-READABILITY-058

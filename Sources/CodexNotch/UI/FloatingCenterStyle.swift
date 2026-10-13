@@ -34,7 +34,7 @@ enum FloatingCenterStyle: String, CaseIterable, Identifiable, Sendable {
         case .elapsed:
             return language.localized(chinese: "运行时显示已用时间，其余时间显示空闲或短暂完成提示。", english: "Elapsed time while running, otherwise Idle or a brief completion cue.")
         case .flow:
-            return language.localized(chinese: "用简短文字和细光带显示状态；运行时流动，空闲时静止。", english: "Short status text and a thin line. The light moves while running and rests while idle.")
+            return language.localized(chinese: "居中的单条光带：运行时流动，空闲时收短变淡，完成时短暂显示绿勾。", english: "One centered light: flowing while running, shorter and dimmer while idle, with a brief green check on completion.")
         }
     }
 }

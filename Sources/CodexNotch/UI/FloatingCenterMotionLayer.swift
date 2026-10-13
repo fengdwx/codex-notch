@@ -68,7 +68,9 @@ final class FloatingCenterLayerView: QuotaAnimatedLayerView {
         track.fillColor = style == .flow ? color.withAlphaComponent(0.22).cgColor : nil
         track.strokeColor = style == .orbit ? color.withAlphaComponent(0.28).cgColor : nil
         track.lineWidth = 1
-        track.isHidden = style != .orbit && style != .flow
+        // Flow's rail and nonanimated highlight are SwiftUI shapes. This
+        // layer contributes only the moving light, without a second track.
+        track.isHidden = style != .orbit
         bead.backgroundColor = color.cgColor
         if style == .signature {
             // Two matching periods keep a highlight inside the word and make

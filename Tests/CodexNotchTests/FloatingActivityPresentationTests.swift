@@ -72,7 +72,7 @@ final class FloatingActivityPresentationTests: XCTestCase {
         }
     }
 
-    func testElapsedAndFlowUseExplicitRestingTextAndCompletionPreviewExplainsItsPurpose() {
+    func testElapsedUsesExplicitRestingTextAndCompletionPreviewExplainsItsPurpose() {
         for language in [AppLanguage.english, .chinese] {
             let titles = [QuotaRingActivity.running, .idle, .completed].map {
                 FloatingActivityPresentation.title(for: $0, language: language)

@@ -8,6 +8,9 @@ created_at: 2026-10-14
 
 # Two steady activity states and brief completion feedback
 
+Decision 061 supersedes only the flow style's text-and-line presentation.
+The activity lifecycle, history semantics and other styles below are retained.
+
 The user approved two persistent states, running and idle, plus a roughly
 five-second green completion cue. A completed turn is an event, not a permanent
 activity state or a claim that the user's whole request passed acceptance.
