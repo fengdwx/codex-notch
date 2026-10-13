@@ -5,6 +5,7 @@ import AppKit
 final class ResetCreditDialogPresenter: NSObject, NSWindowDelegate {
     private var alert: NSAlert?
     private var completion: ((Bool) -> Void)?
+    private var confirmationHover: ResetConfirmationHoverFeedback?
 
     var window: NSWindow? { alert?.window }
     var isPresenting: Bool { alert != nil }
@@ -68,6 +69,9 @@ final class ResetCreditDialogPresenter: NSObject, NSWindowDelegate {
         window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         window.hidesOnDeactivate = false
         window.center()
+        if let confirmButton {
+            confirmationHover = ResetConfirmationHoverFeedback(button: confirmButton)
+        }
         bringToFront()
     }
 
@@ -82,11 +86,72 @@ final class ResetCreditDialogPresenter: NSObject, NSWindowDelegate {
     private func finish(confirmed: Bool) {
         guard let alert else { return }
         let callback = completion
+        confirmationHover?.invalidate()
+        confirmationHover = nil
         self.alert = nil
         completion = nil
         alert.window.delegate = nil
         alert.window.orderOut(nil)
         alert.window.close()
         callback?(confirmed)
+    }
+}
+
+/// Adds pointer feedback without replacing the native button or its action.
+final class ResetConfirmationHoverFeedback: NSResponder {
+    private weak var button: NSButton?
+    let highlight: NSView
+    private var trackingArea: NSTrackingArea?
+
+    init(button: NSButton) {
+        self.button = button
+        highlight = ResetConfirmationHighlight(frame: button.bounds)
+        super.init()
+        highlight.autoresizingMask = [.width, .height]
+        highlight.isHidden = true
+        highlight.setAccessibilityElement(false)
+        button.addSubview(highlight, positioned: .above, relativeTo: nil)
+        let area = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        trackingArea = area
+        button.addTrackingArea(area)
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    override func mouseEntered(with event: NSEvent) {
+        guard let button, button.isEnabled else { return }
+        highlight.isHidden = false
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        highlight.isHidden = true
+    }
+
+    func invalidate() {
+        highlight.isHidden = true
+        highlight.removeFromSuperview()
+        if let trackingArea { button?.removeTrackingArea(trackingArea) }
+        trackingArea = nil
+        button = nil
+    }
+}
+
+/// Paint only: pointer and keyboard events continue to reach the native button.
+private final class ResetConfirmationHighlight: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let rect = bounds.insetBy(dx: 1, dy: 1)
+        let path = NSBezierPath(roundedRect: rect, xRadius: rect.height / 2, yRadius: rect.height / 2)
+        NSColor.controlAccentColor.withAlphaComponent(0.08).setFill()
+        path.fill()
+        NSColor.controlAccentColor.setStroke()
+        path.lineWidth = 1.5
+        path.stroke()
     }
 }

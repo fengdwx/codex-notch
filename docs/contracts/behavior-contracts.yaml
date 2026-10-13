@@ -62,6 +62,10 @@ contracts:
       decision callback at most once. In both Chinese and English confirmation
       dialogs, place Cancel on the left and Use reset on the right. Bind
       confirmation and Escape to button roles, independent of insertion order.
+      Hovering the confirmation's Use reset button visibly highlights its
+      native button with a thin system-accent outline and faint fill; pointer exit restores its resting
+      appearance. Hover never submits or dismisses, changes keyboard bindings,
+      or replaces native pressed feedback. Remove hover tracking on dismissal.
       An action while an existing result
       window is open brings that same window forward without starting a new
       confirmation or request. Treat an authoritative zero available count
@@ -87,7 +91,7 @@ contracts:
       exclude: [redemption-api, retry-policy, authentication, automatic-redemption, credit-purchases, quota-values, task-state, notch-geometry, animation-design, releases]
     examples:
       positive: Clicking Use reset collapses the card and opens a visible native confirmation with Cancel on the left and Use reset on the right while hover timers continue; reopening details shows disabled Confirm text, cancel submits nothing, and confirmed submission changes the label to Using with readable light text.
-      negative: Reordering buttons makes Cancel confirm, the confirmation action appears left of Cancel, a hidden application-modal dialog stops card collapse, unconfirmed credit rows claim Using, Return consumes a credit, closing a confirmation submits a request, a callback fires twice, or light appearance makes action text black against the dark card.
+      negative: Hover submits a reset or leaves a stuck highlight after exit, reordering buttons makes Cancel confirm, the confirmation action appears left of Cancel, a hidden application-modal dialog stops card collapse, unconfirmed credit rows claim Using, Return consumes a credit, closing a confirmation submits a request, a callback fires twice, or light appearance makes action text black against the dark card.
     guards:
       - Tests/CodexNotchTests/ResetCreditRuntimeTests.swift
       - Tests/CodexNotchTests/ResetCreditDialogPresenterTests.swift

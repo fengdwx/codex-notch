@@ -137,3 +137,38 @@ After restarting that exact rebuilt bundle, the user opened its confirmation.
 Computer-use screenshot and accessibility readback showed Cancel on the left
 and Use reset on the right. Clicking Cancel closed the dialog and returned to
 the compact notch. No reset was submitted during this verification.
+
+## Confirmation hover feedback — 2026-10-14
+
+The user requested pointer feedback on Use reset after accepting the corrected
+button placement. This L2 change adds an accent highlight only while that
+confirmation button is hovered. Preserve its native layout, pressed feedback,
+keyboard focus, explicit click action, Return safety, Escape/close cancellation,
+and all QUOTA-RESET-059 guarantees. Expanded-card redesign, API calls, real credit
+consumption, geometry and releases are out of scope.
+
+Attach an NSTrackingArea to the existing native button with a retained responder
+that shows a paint-only overlay: 1.5pt system-accent outline and 8 percent accent
+fill, hidden again on exit/dismissal. The overlay returns nil from hitTest and
+has no accessibility element, so the native button retains event handling.
+Do not use timers, transforms, a new click target, or synthetic pressed state.
+The feedback uses a static color change, including under Reduce Motion. The
+native bezel continues to handle text contrast and pressing. The NSAlert button
+ignored bezelColor in a local integration test (the property still read nil
+after assignment), so do not rely on that appearance-dependent API. Inspect
+actual rendering and the rebuilt installed confirmation before accepting the
+visual outcome.
+
+Acceptance: hover/exit must not finish the decision callback; exit restores the
+resting appearance; cancellation still cancels and dismissal removes tracking.
+Run the full verification entry point, rebuild/restart, then inspect pointer
+entry and exit on the actual confirmation without consuming a credit.
+
+Automated verification passed: the six presenter tests include hover without
+submission, exit restoration, disabled-action behavior, hit-test pass-through,
+dismissal cleanup and stale-event safety alongside the existing cancellation,
+Return/Escape and explicit-confirmation guards. Full `scripts/verify.sh` with
+the native backend passed 293 tests (2 skipped, zero failures), release build,
+bundled resources and signature checks. The rebuilt app was then restarted
+from the verified bundle path. Pointer appearance remains a real-device check,
+not an inference from those tests.

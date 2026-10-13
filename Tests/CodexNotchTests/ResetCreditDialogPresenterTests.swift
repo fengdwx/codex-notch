@@ -4,6 +4,53 @@ import XCTest
 
 final class ResetCreditDialogPresenterTests: XCTestCase {
     @MainActor
+    func testHoverHighlightsOnlyConfirmationWithoutSubmittingAndRestoresOnExitAndDismiss() throws {
+        _ = NSApplication.shared
+        let presenter = ResetCreditDialogPresenter()
+        defer { presenter.dismiss() }
+        var decisions: [Bool] = []
+        presenter.confirm(language: .english) { decisions.append($0) }
+        let window = try XCTUnwrap(presenter.window)
+        let use = try XCTUnwrap(buttons(in: window.contentView).first { $0.title == "Use reset" })
+        let cancel = try XCTUnwrap(buttons(in: window.contentView).first { $0.title == "Cancel" })
+        let area = try XCTUnwrap(use.trackingAreas.first { $0.owner is ResetConfirmationHoverFeedback })
+        let feedback = try XCTUnwrap(area.owner as? ResetConfirmationHoverFeedback)
+        XCTAssertFalse(cancel.trackingAreas.contains { $0.owner is ResetConfirmationHoverFeedback })
+        XCTAssertTrue(feedback.highlight.isHidden)
+        XCTAssertNil(feedback.highlight.hitTest(.zero), "Feedback must not intercept the button")
+        let event = try XCTUnwrap(NSEvent.enterExitEvent(
+            with: .mouseEntered, location: .zero, modifierFlags: [], timestamp: 0,
+            windowNumber: window.windowNumber, context: nil, eventNumber: 0,
+            trackingNumber: 0, userData: nil
+        ))
+
+        feedback.mouseEntered(with: event)
+        XCTAssertFalse(feedback.highlight.isHidden)
+        XCTAssertTrue(decisions.isEmpty, "Hover must never submit a reset")
+        XCTAssertTrue(presenter.isPresenting)
+        XCTAssertNil(window.defaultButtonCell)
+        XCTAssertEqual(use.keyEquivalent, "")
+
+        feedback.mouseExited(with: event)
+        XCTAssertTrue(feedback.highlight.isHidden)
+        XCTAssertTrue(decisions.isEmpty)
+
+        use.isEnabled = false
+        feedback.mouseEntered(with: event)
+        XCTAssertTrue(feedback.highlight.isHidden, "Disabled actions must not invite a click")
+        use.isEnabled = true
+        feedback.mouseEntered(with: event)
+        cancel.performClick(nil)
+        XCTAssertEqual(decisions, [false])
+        XCTAssertTrue(feedback.highlight.isHidden)
+        XCTAssertNil(feedback.highlight.superview)
+        XCTAssertFalse(use.trackingAreas.contains { $0 === area })
+        feedback.mouseEntered(with: event)
+        XCTAssertTrue(feedback.highlight.isHidden, "A stale tracking event cannot revive feedback")
+        XCTAssertEqual(decisions, [false])
+    }
+
+    @MainActor
     func testConfirmationReturnsToMainQueueAndCancelDoesNotSubmit() async throws {
         _ = NSApplication.shared
         let presenter = ResetCreditDialogPresenter()
