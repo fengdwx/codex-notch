@@ -28,7 +28,7 @@ enum FloatingCenterStyle: String, CaseIterable, Identifiable, Sendable {
     func explanation(for language: AppLanguage) -> String {
         switch self {
         case .signature:
-            return language.localized(chinese: "运行时文字明亮、微光流动；空闲时文字变淡，光标变为短横。", english: "Bright text and a subtle shimmer while running; quiet text and a dash while idle.")
+            return language.localized(chinese: "运行时节奏条跳动、文字微光流动；空闲时显示短横。", english: "Animated bars and a subtle shimmer while running; a dash while idle.")
         case .orbit:
             return language.localized(chinese: "运行时圆点沿轨道转动；空闲时显示静态圆环与短横。", english: "A bead orbits while running; a quiet ring and dash indicate idle.")
         case .elapsed:

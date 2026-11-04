@@ -37,7 +37,7 @@ struct FloatingCenterContent: View {
             switch style {
             case .signature:
                 HStack(spacing: 6) {
-                    FloatingActivityMark(activity: activity)
+                    FloatingActivityMark(activity: activity, isAnimating: shouldAnimate)
                     signatureLabel
                 }
             case .orbit:
@@ -153,15 +153,37 @@ struct FloatingCenterContent: View {
     }
 }
 
+enum FloatingActivityBars {
+    static let count = 4
+
+    static func height(index: Int, time: TimeInterval) -> CGFloat {
+        let cycle = 3.0
+        let position = (time + Double(index) * 0.16).truncatingRemainder(dividingBy: cycle) / cycle
+        let progress = position <= 0.5 ? position * 2 : (1 - position) * 2
+        let points: [(Double, Double)] = [(0, 0.25), (0.35, 0.92), (0.65, 0.45), (1, 0.8)]
+        let pair = zip(points, points.dropFirst()).first { progress <= $0.1.0 } ?? (points[2], points[3])
+        let t = max(0, min(1, (progress - pair.0.0) / (pair.1.0 - pair.0.0)))
+        let eased = t * t * (3 - 2 * t)
+        return CGFloat(3 + (pair.0.1 + (pair.1.1 - pair.0.1) * eased) * 9)
+    }
+}
+
 /// A quiet, fixed-size state mark leaves the signature itself in focus.
 struct FloatingActivityMark: View {
     let activity: QuotaRingActivity
+    var isAnimating = false
 
     var body: some View {
         Group {
             switch activity {
             case .running:
-                Capsule().frame(width: 2, height: 8)
+                if isAnimating {
+                    TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { context in
+                        bars(time: context.date.timeIntervalSinceReferenceDate)
+                    }
+                } else {
+                    bars(time: 0)
+                }
             case .idle:
                 Capsule().frame(width: 6, height: 1.5)
             case .completed:
@@ -172,6 +194,14 @@ struct FloatingActivityMark: View {
         .foregroundStyle(FloatingActivityPresentation.tint(for: activity))
         .frame(width: 16, height: 16)
         .fixedSize()
+    }
+
+    private func bars(time: TimeInterval) -> some View {
+        HStack(spacing: 2) {
+            ForEach(0..<FloatingActivityBars.count, id: \.self) { index in
+                Capsule().frame(width: 2, height: FloatingActivityBars.height(index: index, time: time))
+            }
+        }
     }
 }
 

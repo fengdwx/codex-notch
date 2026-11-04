@@ -8,7 +8,7 @@ final class FloatingStyleRefinementTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_000)
 
     @MainActor
-    func testSignatureMarksUseOneSlotWithVerticalRunningAndHorizontalIdleCues() throws {
+    func testSignatureMarksUseOneSlotWithRunningBarsAndHorizontalIdleCue() throws {
         _ = NSApplication.shared
         let running = try render(FloatingActivityMark(activity: .running))
         let idle = try render(FloatingActivityMark(activity: .idle))
@@ -20,9 +20,9 @@ final class FloatingStyleRefinementTests: XCTestCase {
             XCTAssertEqual(bounds.midX, 8, accuracy: 0.75)
             XCTAssertEqual(bounds.midY, 8, accuracy: 0.75)
         }
-        let cursor = try visibleBounds(running)
-        XCTAssertEqual(cursor.width, 2, accuracy: 0.5)
-        XCTAssertEqual(cursor.height, 8, accuracy: 0.5)
+        let bars = try visibleBounds(running)
+        XCTAssertEqual(bars.width, 14, accuracy: 0.5)
+        XCTAssertGreaterThan(bars.height, 8)
         let dash = try visibleBounds(idle)
         XCTAssertEqual(dash.width, 6, accuracy: 0.5)
         XCTAssertEqual(dash.height, 1.5, accuracy: 0.5)
@@ -30,6 +30,22 @@ final class FloatingStyleRefinementTests: XCTestCase {
         XCTAssertGreaterThan(check.width, 6)
         XCTAssertGreaterThan(check.height, 6,
                              "The completion cue must remain a check, not another line")
+    }
+
+    func testRunningBarsHaveDifferentHeightsAndChangeWithTime() {
+        XCTAssertEqual(FloatingActivityBars.count, 4)
+        let first = (0..<FloatingActivityBars.count).map { FloatingActivityBars.height(index: $0, time: 0) }
+        let later = (0..<FloatingActivityBars.count).map { FloatingActivityBars.height(index: $0, time: 0.3) }
+        XCTAssertGreaterThan(Set(first).count, 1)
+        XCTAssertNotEqual(first, later)
+        for time in 0..<100 {
+            for index in 0..<FloatingActivityBars.count {
+                let height = FloatingActivityBars.height(index: index, time: Double(time) / 20)
+                XCTAssertGreaterThanOrEqual(height, 3.5)
+                XCTAssertLessThanOrEqual(height, 11.5)
+                XCTAssertEqual(height, FloatingActivityBars.height(index: index, time: Double(time) / 20 + 3.0), accuracy: 0.0001)
+            }
+        }
     }
 
     @MainActor

@@ -1,7 +1,36 @@
 contracts:
+  - id: FLOATING-SIGNATURE-BARS-063
+    title: Running signature uses animated activity bars
+    status: active
+    statement: >-
+      Preserve FLOATING-STYLES-062 and its inherited behavior except replace
+      the running signature cursor with four staggered bars in the same 16pt
+      slot. Their smoothly varied heights animate while running, motion is enabled and the
+      card is collapsed. With motion off or expanded, keep a static multi-bar
+      cue. Keep the signature text stationary, retain the running shimmer,
+      idle dash, completion check, other styles, quota and window geometry.
+      Settings preview and live bar use the same renderer.
+    rationale: The user clarified that the bars before the text should bounce, not the text.
+    source: user-clarification
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [signature-activity-mark, running-motion, settings-preview]
+      exclude: [quota, task-state, window-geometry, other-styles, releases]
+    examples:
+      positive: Four bars of different heights move before the stable signature when running; with motion off they remain visible and still.
+      negative: The text jumps, idle bars animate, the activity slot changes size, or completion loses its check.
+    guards:
+      - Tests/CodexNotchTests/FloatingStyleRefinementTests.swift
+      - Tests/CodexNotchTests/FloatingCenterTests.swift
+      - "manual: observe running, idle, completion, motion off and expansion in preview and on a real floating bar"
+    supersedes: [FLOATING-STYLES-062]
+    superseded_by: null
+    last_verified_commit: null
+
   - id: FLOATING-STYLES-062
     title: Signature orbit and elapsed use refined single-row activity cues
-    status: active
+    status: superseded
     statement: >-
       Preserve all FLOATING-FLOW-061 behavior and its accepted flow exactly.
       Refine only signature, orbit and elapsed styles into a 16pt indicator
@@ -38,7 +67,7 @@ contracts:
       - docs/decisions/062-refined-single-row-styles.md
       - "manual: inspect all three refined styles in the rebuilt app and preview, running versus idle, motion on/off and long text; preserve accepted flow and restore preferences"
     supersedes: [FLOATING-FLOW-061]
-    superseded_by: null
+    superseded_by: FLOATING-SIGNATURE-BARS-063
     last_verified_commit: null
 
   - id: FLOATING-FLOW-061
