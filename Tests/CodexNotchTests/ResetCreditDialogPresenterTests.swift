@@ -72,7 +72,7 @@ final class ResetCreditDialogPresenterTests: XCTestCase {
         let use = try XCTUnwrap(buttons(in: window.contentView).first { $0.title == "Use reset" })
         XCTAssertLessThan(cancel.convert(cancel.bounds, to: nil).maxX,
                           use.convert(use.bounds, to: nil).minX,
-                          "Cancel must be to the left of Use reset")
+                          "Cancel must be to the left of Use reset; cancel=\(cancel.convert(cancel.bounds, to: nil)), confirm=\(use.convert(use.bounds, to: nil))")
         cancel.performClick(nil)
         XCTAssertEqual(decisions, [false])
         XCTAssertFalse(window.isVisible)
@@ -91,7 +91,7 @@ final class ResetCreditDialogPresenterTests: XCTestCase {
         let cancel = try XCTUnwrap(buttons(in: window.contentView).first { $0.title == "取消" })
         XCTAssertLessThan(cancel.convert(cancel.bounds, to: nil).maxX,
                           use.convert(use.bounds, to: nil).minX,
-                          "取消 must be to the left of 使用重置")
+                          "取消 must be to the left of 使用重置; cancel=\(cancel.convert(cancel.bounds, to: nil)), confirm=\(use.convert(use.bounds, to: nil))")
         XCTAssertEqual(use.keyEquivalent, "", "Return must not accidentally consume a credit")
         use.performClick(nil)
         use.performClick(nil)
