@@ -4,6 +4,29 @@ import XCTest
 
 final class ResetCreditDialogPresenterTests: XCTestCase {
     @MainActor
+    func testConfirmationGeometryWithoutPressingButtons() throws {
+        _ = NSApplication.shared
+        for language in [AppLanguage.english, .chinese] {
+            let presenter = ResetCreditDialogPresenter()
+            var decisions: [Bool] = []
+            presenter.confirm(language: language) { decisions.append($0) }
+            let window = try XCTUnwrap(presenter.window)
+            let confirmTitle = language == .chinese ? "使用重置" : "Use reset"
+            let cancelTitle = language == .chinese ? "取消" : "Cancel"
+            let cancel = try XCTUnwrap(buttons(in: window.contentView).first { $0.title == cancelTitle })
+            let confirm = try XCTUnwrap(buttons(in: window.contentView).first { $0.title == confirmTitle })
+            let cancelRect = cancel.convert(cancel.bounds, to: nil)
+            let confirmRect = confirm.convert(confirm.bounds, to: nil)
+            print("Confirmation geometry \(language): cancel=\(cancelRect), confirm=\(confirmRect)")
+            print("Confirmation alignment \(language): cancel=\(cancel.convert(cancel.alignmentRect(forFrame: cancel.bounds), to: nil)), confirm=\(confirm.convert(confirm.alignmentRect(forFrame: confirm.bounds), to: nil)); insets=\(cancel.alignmentRectInsets), \(confirm.alignmentRectInsets)")
+            XCTAssertTrue(window.isVisible)
+            XCTAssertLessThan(cancelRect.maxX, confirmRect.minX)
+            XCTAssertTrue(decisions.isEmpty)
+            presenter.dismiss()
+            XCTAssertEqual(decisions, [false])
+        }
+    }
+    @MainActor
     func testHoverHighlightsOnlyConfirmationWithoutSubmittingAndRestoresOnExitAndDismiss() throws {
         _ = NSApplication.shared
         let presenter = ResetCreditDialogPresenter()
