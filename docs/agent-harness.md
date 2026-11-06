@@ -97,6 +97,6 @@ Do not use a static screenshot as proof that an animation is correct; describe t
 | Frequent hotspots | `NotchView`, `NotchRuntimeCoordinator`, `NotchWindowController`, `NotchPresentationReducer`, and quota parsing |
 | Current contracts | `docs/contracts/behavior-contracts.yaml` |
 | L3 | Authentication/token handling, privacy data, usage API permissions, and formal public release |
-| CI verification | GitHub CI runs full verification on macOS 14 with Xcode 16.2; release publication requires a successful run for the exact source. Branch-protection checks are not configured. |
+| CI verification | GitHub CI runs full verification on macOS 15 with Xcode 16.2; release publication requires a successful run for the exact source. Branch-protection checks are not configured. |
 | Deployment target | None; a release is a locally distributable archive, not automatic deployment |
 | Template sections not adopted | Branch-protection checks, online deployment evidence, canaries, and data migrations; this project has no corresponding runtime or data layer |

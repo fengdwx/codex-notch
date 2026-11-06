@@ -475,9 +475,40 @@ contracts:
     superseded_by: UI-READABILITY-058
     last_verified_commit: null
 
-  - id: CI-VERIFICATION-001
+  - id: CI-VERIFICATION-002
     title: Verify release source with a supported SDK before publication
     status: active
+    statement: >-
+      CI must explicitly select Xcode 16.2 on macOS 15, record the checked-out
+      source SHA and toolchain, and run the existing full verification entry
+      point without weakening or skipping its checks. Before a public release,
+      both local verification and CI for the exact release source must pass.
+      Failed, pending, cancelled or missing CI cannot be replaced by a local
+      pass. A manual ref permits an existing release commit to be checked with
+      a repaired workflow without changing its source, tag or signed archives.
+    rationale: GitHub retired all macOS 14 hosted images; use supported macOS 15 with the same explicit SDK and all existing verification gates.
+    source: runner-retirement
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [ci-toolchain, full-verification, release-publication]
+      exclude: [app-behavior, minimum-runtime-version, signing-key, published-archive-replacement, branch-protection]
+    examples:
+      positive: The logged checkout SHA matches the intended release and full CI verification passes with Xcode 16.2 on macOS 15.
+      negative: Depending on the runner's default SDK, skipping failing tests, checking a different commit, or publishing while CI is red.
+    guards:
+      - .github/workflows/ci.yml
+      - scripts/verify.sh
+      - docs/updating.md
+      - docs/decisions/064-supported-release-runner.md
+      - "manual: confirm successful CI and its checkout SHA before publication"
+    supersedes: [CI-VERIFICATION-001]
+    superseded_by: null
+    last_verified_commit: null
+
+  - id: CI-VERIFICATION-001
+    title: Verify release source with a supported SDK before publication
+    status: superseded
     statement: >-
       CI must explicitly select Xcode 16.2 on macOS 14, record the checked-out
       source SHA and toolchain, and run the existing full verification entry
@@ -503,7 +534,7 @@ contracts:
       - docs/decisions/053-explicit-ci-toolchain.md
       - "manual: confirm successful CI and its checkout SHA before publication"
     supersedes: []
-    superseded_by: null
+    superseded_by: CI-VERIFICATION-002
     last_verified_commit: null
 
   - id: SETTINGS-WINDOW-022

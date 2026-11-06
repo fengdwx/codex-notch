@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [CI-VERIFICATION-001, SETTINGS-WINDOW-022, APP-UPDATE-002]
 supersedes: []
-superseded_by: null
+superseded_by: 064-supported-release-runner
 owner: project-maintainer
 created_at: 2026-09-14
 last_verified_commit: null

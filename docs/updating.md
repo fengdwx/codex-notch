@@ -19,7 +19,7 @@ checks, and publishing checklists belong outside the public release notes.
    on its first use. No private key is exported. The release script independently
    verifies the generated signature against the app's public key.
 3. Push the exact release commit and wait for its GitHub `CI` run to finish
-   successfully before publishing. CI uses Xcode 16.2 on macOS 14 and runs the
+   successfully before publishing. CI uses Xcode 16.2 on macOS 15 and runs the
    same full verification. A local pass does not replace a failed, pending,
    cancelled, or missing CI result, even when the failure predates this release.
    After a workflow-only fix, use CI's manual `ref` input to verify the release

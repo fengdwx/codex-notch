@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: macos-14
+    runs-on: macos-15
     env:
       # openSettings is public in the Xcode 16 SDK, including for macOS 14.
       DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
