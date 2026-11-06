@@ -1,5 +1,7 @@
 name: Reset dialog geometry diagnostics
 on:
+  push:
+    branches: [codex/reset-dialog-diagnostics]
   workflow_dispatch:
 permissions:
   contents: read
