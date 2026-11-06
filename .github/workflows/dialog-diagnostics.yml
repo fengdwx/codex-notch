@@ -17,5 +17,5 @@ jobs:
           git rev-parse HEAD
           sw_vers
           xcodebuild -version
-      - name: Inspect simulated dialogs without pressing buttons
-        run: swift test --filter ResetCreditDialogPresenterTests/testConfirmationGeometryWithoutPressingButtons
+      - name: Verify full suite and app bundle
+        run: ./scripts/verify.sh
