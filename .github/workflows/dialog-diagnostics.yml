@@ -1,0 +1,19 @@
+name: Reset dialog geometry diagnostics
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  geometry:
+    runs-on: macos-15
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record environment
+        run: |
+          git rev-parse HEAD
+          sw_vers
+          xcodebuild -version
+      - name: Inspect simulated dialogs without pressing buttons
+        run: swift test --filter ResetCreditDialogPresenterTests/testConfirmationGeometryWithoutPressingButtons
