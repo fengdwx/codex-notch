@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Account list shown inside the expanded notch card. The list is visible as
-/// soon as the card expands; tapping a row switches immediately.
+/// Account list shown inside the expanded notch card. Rows expose the same
+/// 5-hour / weekly quota picture as the main card, and one click switches.
 struct AccountSwitchList: View {
     @ObservedObject var service: AccountsService
     let language: AppLanguage
@@ -25,6 +25,7 @@ struct AccountSwitchList: View {
                 }
             }
             .padding(.top, 12)
+            .task { await service.refreshStaleQuotas() }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(
                 language.localized(chinese: "Codex 账号列表", english: "Codex account list")
@@ -51,30 +52,47 @@ struct AccountSwitchList: View {
                 .frame(width: 20, height: 20)
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(account.shortLabel)
-                        .font(.system(size: 11.5, weight: isActive ? .semibold : .regular))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                    if let detail = detailLine(for: account) {
-                        Text(detail)
-                            .font(.system(size: 9.5, weight: .regular))
+                    HStack(spacing: 5) {
+                        Text(account.shortLabel)
+                            .font(.system(size: 11.5, weight: isActive ? .semibold : .regular))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                        if let plan = account.planType, !plan.isEmpty {
+                            Text(plan.uppercased())
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(Color.secondary)
+                        }
+                        if isActive {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 9))
+                                .foregroundStyle(Color.green)
+                        }
+                    }
+                    if let email = account.email, !email.isEmpty {
+                        Text(email)
+                            .font(.system(size: 9, weight: .regular))
                             .foregroundStyle(Color.secondary)
                             .lineLimit(1)
                     }
                 }
 
-                Spacer(minLength: 8)
+                Spacer(minLength: 6)
 
                 if isSwitching {
                     ProgressView().controlSize(.mini)
-                } else if isActive {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Color.green)
                 } else {
-                    Text(quotaLabel(for: account))
-                        .font(.system(size: 9.5, weight: .regular))
-                        .foregroundStyle(Color.secondary)
+                    HStack(spacing: 10) {
+                        windowCell(
+                            label: language.localized(chinese: "5h", english: "5h"),
+                            usedPercent: account.quota?.primaryUsedPercent,
+                            resetsAt: account.quota?.primaryResetsAt
+                        )
+                        windowCell(
+                            label: language.localized(chinese: "7d", english: "7d"),
+                            usedPercent: account.quota?.secondaryUsedPercent,
+                            resetsAt: account.quota?.secondaryResetsAt
+                        )
+                    }
                 }
             }
             .padding(.horizontal, 8)
@@ -89,32 +107,78 @@ struct AccountSwitchList: View {
         .disabled(switchingAccountID != nil)
         .help(account.email ?? account.shortLabel)
         .accessibilityLabel(account.shortLabel)
-        .accessibilityValue(
-            isActive
-                ? language.localized(chinese: "当前账号", english: "Active account")
-                : quotaLabel(for: account)
+        .accessibilityValue(accessibilityValue(for: account, isActive: isActive))
+    }
+
+    private func windowCell(
+        label: String,
+        usedPercent: Double?,
+        resetsAt: Date?
+    ) -> some View {
+        VStack(alignment: .trailing, spacing: 0) {
+            HStack(spacing: 3) {
+                Text(label)
+                    .font(.system(size: 8, weight: .regular))
+                    .foregroundStyle(Color.secondary)
+                Text(percentText(usedPercent))
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(usedPercent == nil ? Color.secondary : .primary)
+            }
+            Text(resetText(resetsAt))
+                .font(.system(size: 7.5, weight: .regular))
+                .foregroundStyle(Color.secondary)
+                .lineLimit(1)
+        }
+        .frame(width: 56, alignment: .trailing)
+    }
+
+    private func percentText(_ usedPercent: Double?) -> String {
+        guard let usedPercent else {
+            return language.localized(chinese: "—", english: "—")
+        }
+        return String(format: "%.0f%%", max(0, 100 - usedPercent))
+    }
+
+    private func resetText(_ resetsAt: Date?) -> String {
+        guard let resetsAt else {
+            return language.localized(chinese: "未检查", english: "not checked")
+        }
+        let remaining = resetsAt.timeIntervalSinceNow
+        guard remaining > 0 else {
+            return language.localized(chinese: "已重置", english: "reset")
+        }
+        return language.localized(
+            chinese: "\(compactDuration(remaining)) 后重置",
+            english: "resets in \(compactDuration(remaining))"
         )
     }
 
-    private func detailLine(for account: AccountProfile) -> String? {
+    private func compactDuration(_ interval: TimeInterval) -> String {
+        let seconds = Int(interval.rounded())
+        if seconds < 60 { return "\(seconds)s" }
+        let minutes = seconds / 60
+        if minutes < 60 { return "\(minutes)m" }
+        let hours = minutes / 60
+        if hours < 24 { return "\(hours)h\(minutes % 60)m" }
+        let days = hours / 24
+        return "\(days)d\(hours % 24)h"
+    }
+
+    private func accessibilityValue(for account: AccountProfile, isActive: Bool) -> String {
         var parts: [String] = []
-        if let email = account.email, !email.isEmpty {
-            parts.append(email)
+        if isActive {
+            parts.append(language.localized(chinese: "当前账号", english: "Active account"))
         }
         if let plan = account.planType, !plan.isEmpty {
             parts.append(plan.uppercased())
         }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
-    }
-
-    private func quotaLabel(for account: AccountProfile) -> String {
-        guard let used = account.quota?.secondaryUsedPercent else {
-            return language.localized(chinese: "未检查", english: "Not checked")
+        if let used = account.quota?.secondaryUsedPercent {
+            parts.append(language.localized(
+                chinese: String(format: "7 天剩 %.0f%%", max(0, 100 - used)),
+                english: String(format: "7d %.0f%% left", max(0, 100 - used))
+            ))
         }
-        return language.localized(
-            chinese: String(format: "7 天剩 %.0f%%", max(0, 100 - used)),
-            english: String(format: "7d %.0f%% left", max(0, 100 - used))
-        )
+        return parts.joined(separator: ", ")
     }
 
     private func switchTo(_ account: AccountProfile) {

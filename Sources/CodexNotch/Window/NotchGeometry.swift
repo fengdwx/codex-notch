@@ -158,7 +158,7 @@ enum NotchExpandedLayout {
     // the usage response also contains the five-hour rolling limit.
     static let fiveHourQuotaContentHeight: CGFloat = 58
     static let accountListHeaderHeight: CGFloat = 20
-    static let accountRowHeight: CGFloat = 26
+    static let accountRowHeight: CGFloat = 34
 
     /// The account switcher is a list, so the expanded card grows by one row
     /// per account. A single account needs no list.

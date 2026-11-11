@@ -237,6 +237,20 @@ final class AccountsService: ObservableObject {
         }
     }
 
+    /// Refreshes every account whose quota is older than `ttl`. The notch calls
+    /// this when it expands so the list is current without polling in the
+    /// background.
+    func refreshStaleQuotas(ttl: TimeInterval = 120) async {
+        let now = Date()
+        for account in accounts {
+            if let checked = account.lastCheckedAt,
+               now.timeIntervalSince(checked) < ttl {
+                continue
+            }
+            try? await refreshQuota(for: account.id)
+        }
+    }
+
     private func quotaAuthData(for id: UUID) throws -> Data {
         if let homeData = homeStore.authData(for: id) {
             try? vault.store(homeData, for: id)
