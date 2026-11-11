@@ -57,7 +57,7 @@ struct NotchSettingsView: View {
     @State private var layoutMode: NotchLayoutMode?
     @State private var previewState = FloatingPreviewState.running
 
-    private enum SettingsTab { case general, appearance, floating }
+    private enum SettingsTab { case general, appearance, floating, accounts }
     private var floatingStyle: FloatingCenterStyle { .fromStoredValue(floatingCenterStyleRaw) }
     private var floatingContext: FloatingSettingsContext {
         FloatingSettingsContext(layoutMode: layoutMode, displayEnabled: notchDisplayEnabled)
@@ -74,6 +74,9 @@ struct NotchSettingsView: View {
             floatingSettings
                 .tabItem { Label(appLanguage.localized(chinese: "浮动横条", english: "Floating Bar"), systemImage: "display") }
                 .tag(SettingsTab.floating)
+            accountsSettings
+                .tabItem { Label(appLanguage.localized(chinese: "账号", english: "Accounts"), systemImage: "person.2") }
+                .tag(SettingsTab.accounts)
         }
         .padding(16)
         .frame(width: 560, height: contentHeight)
@@ -201,6 +204,10 @@ struct NotchSettingsView: View {
         .formStyle(.grouped)
     }
 
+    private var accountsSettings: some View {
+        AccountsSettingsView(service: .shared, appLanguage: appLanguage)
+    }
+
     private var floatingSettings: some View {
         Form {
             Section {
@@ -289,6 +296,8 @@ struct NotchSettingsView: View {
             return 320
         case .floating:
             return 580
+        case .accounts:
+            return 560
         }
     }
 }
