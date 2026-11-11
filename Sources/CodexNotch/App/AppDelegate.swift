@@ -19,7 +19,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             exit(valid ? 0 : 1)
         }
         NSApp.setActivationPolicy(.accessory)
-        runtimeCoordinator = NotchRuntimeCoordinator()
+        let accounts = AccountsService.shared
+        try? accounts.load()
+        runtimeCoordinator = NotchRuntimeCoordinator(accountsService: accounts)
+        accounts.onActiveAccountChanged = { [weak self] in
+            self?.runtimeCoordinator?.reloadCodexHome()
+        }
         runtimeCoordinator?.start()
     }
 

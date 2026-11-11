@@ -3243,3 +3243,46 @@ contracts:
     supersedes: [ACTIVITY-STATE-006]
     superseded_by: ACTIVITY-FEEDBACK-060
     last_verified_commit: null
+
+  - id: ACCOUNTS-ISOLATION-064
+    title: Account switching uses isolated Codex homes
+    status: active
+    statement: >-
+      Switching accounts launches Codex with a private CODEX_HOME and
+      CODEX_ELECTRON_USER_DATA_PATH under CodexNotch/Accounts/Homes/<uuid>, and
+      must not rewrite ~/.codex/auth.json. Quota, sessions, thread titles and
+      usage come from the active account's home; until that home exists the
+      notch keeps reading the legacy CODEX_HOME/`~/.codex`. Each account stores
+      exactly one auth.json in a 0700 vault with 0600 files, existing accounts
+      are adopted from the standalone Codex Account Switcher on first launch,
+      and deleting an account removes its vault entry and home. Tokens never
+      leave local storage except as the existing Authorization header to the
+      ChatGPT usage endpoint, and must not be logged. Switching must relaunch
+      Codex, refresh notch state, and never show the previous account's
+      sessions after the new home is active.
+    rationale: >-
+      Codex 0.16x keeps projects, sessions and per-account state inside the
+      Codex home, so swapping only auth.json made every account share one
+      project list. Per-account homes restore isolation without patching Codex.
+    source: user-confirmed
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [account-switching, codex-home, settings, notch-account-entry, quota]
+      exclude: [cloud-sync, legacy-history-migration, release-publishing]
+    examples:
+      positive: >-
+        With accounts A and B imported, switching to B relaunches Codex with
+        B's home and user-data directory; the notch shows B's quota and recent
+        tasks, and ~/.codex/auth.json is byte-identical to before the switch.
+      negative: >-
+        Rewriting ~/.codex/auth.json, showing A's sessions after switching to
+        B, logging a token, or letting two accounts share one Electron
+        user-data directory.
+    guards:
+      - Tests/CodexNotchTests/AccountsTests.swift
+      - docs/decisions/011-per-account-codex-home.md
+      - "manual: switch between two accounts on physical-notch hardware and confirm quota, recent tasks and projects stay isolated"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null

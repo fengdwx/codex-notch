@@ -25,6 +25,10 @@ actor ActiveSessionStore {
         self.staleAfter = staleAfter
     }
 
+    func reset() {
+        rollouts.removeAll()
+    }
+
     func replace(
         rolloutID: String,
         reduction: ActiveSessionReduction,

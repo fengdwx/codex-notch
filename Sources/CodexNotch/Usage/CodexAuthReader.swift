@@ -16,27 +16,32 @@ protocol CredentialsReading: Sendable {
 }
 
 struct CodexAuthReader: CredentialsReading {
-    let environment: [String: String]
-    let homeDirectory: URL
+    let rootDirectory: URL
 
     init(environment: [String: String] = ProcessInfo.processInfo.environment,
          homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser) {
-        self.environment = environment
-        self.homeDirectory = homeDirectory
+        self.rootDirectory = environment["CODEX_HOME"].map { URL(fileURLWithPath: $0) }
+            ?? homeDirectory.appendingPathComponent(".codex", isDirectory: true)
+    }
+
+    /// Reads credentials from a specific account home instead of the process
+    /// environment, which stays pointed at the account CodexNotch itself sees.
+    init(codexHome: URL) {
+        self.rootDirectory = codexHome
     }
 
     func read() throws -> CodexCredentials {
-        let root = environment["CODEX_HOME"].map { URL(fileURLWithPath: $0) }
-            ?? homeDirectory.appendingPathComponent(".codex", isDirectory: true)
-        let authURL = root.appendingPathComponent("auth.json")
-
+        let authURL = rootDirectory.appendingPathComponent("auth.json")
         let data: Data
         do {
             data = try Data(contentsOf: authURL)
         } catch {
             throw CodexAuthError.authFileUnavailable
         }
+        return try Self.credentials(from: data)
+    }
 
+    static func credentials(from data: Data) throws -> CodexCredentials {
         do {
             let dto = try JSONDecoder().decode(AuthDTO.self, from: data)
             guard !dto.tokens.accessToken.isEmpty else {

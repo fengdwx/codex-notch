@@ -27,8 +27,9 @@ final class NotchRuntimeCoordinator {
     private let threadNavigator: CodexThreadNavigator
     private let authReader: CodexAuthReader
     private let sessionStore: ActiveSessionStore
-    private let threadTitleReader: ThreadTitleReading
-    private let rolloutMonitor: RolloutActivityMonitor
+    private var threadTitleReader: ThreadTitleReading
+    private var rolloutMonitor: RolloutActivityMonitor
+    private let accountsService: AccountsService?
     private let urlSession: URLSession
     private let usageEndpoint: URL
     private let nowProvider: () -> Date
@@ -83,7 +84,8 @@ final class NotchRuntimeCoordinator {
         nowProvider: @escaping () -> Date = { .now },
         userDefaults: UserDefaults = .standard,
         viewModel: NotchViewModel = NotchViewModel(),
-        resetDialogs: ResetCreditDialogPresenter = ResetCreditDialogPresenter()
+        resetDialogs: ResetCreditDialogPresenter = ResetCreditDialogPresenter(),
+        accountsService: AccountsService? = nil
     ) {
         self.windowController = windowController
         self.frontmostMonitor = frontmostMonitor
@@ -96,11 +98,9 @@ final class NotchRuntimeCoordinator {
         self.userDefaults = userDefaults
         self.viewModel = viewModel
         self.resetDialogs = resetDialogs
+        self.accountsService = accountsService
 
-        let codexHome = CodexHomeLocator.home(
-            environment: authReader.environment,
-            homeDirectory: authReader.homeDirectory
-        )
+        let codexHome = accountsService?.activeHomeURL ?? authReader.rootDirectory
         self.threadTitleReader = threadTitleReader ?? CodexThreadTitleReader(codexHomeURL: codexHome)
         self.rolloutMonitor = RolloutActivityMonitor(
             rootURL: codexHome.appendingPathComponent("sessions", isDirectory: true),
@@ -157,21 +157,7 @@ final class NotchRuntimeCoordinator {
             }
         }
         frontmostMonitor.start()
-        rolloutMonitor.onChange = { [weak self] in
-            guard let self, self.started else { return }
-            self.pollSessions()
-        }
-        rolloutMonitor.onInitialScanCompleted = { [weak self] snapshot in
-            guard let self, self.started,
-                  self.sessionObservationGeneration == observationGeneration else { return }
-            // A partial-discovery read may have obtained its snapshot before
-            // this marker but still be awaiting MainActor delivery. Retire all
-            // such requests before installing the exact initial baseline.
-            self.lastAppliedSnapshotSequence = self.snapshotRequestSequence
-            self.initialSessionScanComplete = true
-            self.completionFeedback.observe(snapshot, initialScanComplete: true, now: self.nowProvider())
-            self.pollSessions()
-        }
+        installRolloutCallbacks(generation: observationGeneration)
         rolloutMonitor.start()
 
         sessionTimer = Timer.scheduledTimer(
@@ -190,6 +176,46 @@ final class NotchRuntimeCoordinator {
         refreshUsage()
         pollSessions()
         render()
+    }
+
+    /// Re-points session monitoring at the active account's Codex home after a
+    /// successful account switch. The old monitor and its cached titles are
+    /// discarded so no conversation from the previous account can leak into
+    /// the notch.
+    func reloadCodexHome() {
+        guard started else { return }
+        let generation = UUID()
+        sessionObservationGeneration = generation
+        initialSessionScanComplete = false
+        threadTitles.removeAll()
+        lastTitleRefreshAt = nil
+        rolloutMonitor.stop()
+
+        let home = accountsService?.activeHomeURL ?? authReader.rootDirectory
+        threadTitleReader = CodexThreadTitleReader(codexHomeURL: home)
+        rolloutMonitor = RolloutActivityMonitor(
+            rootURL: home.appendingPathComponent("sessions", isDirectory: true),
+            store: sessionStore
+        )
+        Task { await sessionStore.reset() }
+        installRolloutCallbacks(generation: generation)
+        rolloutMonitor.start()
+        pollSessions()
+    }
+
+    private func installRolloutCallbacks(generation: UUID) {
+        rolloutMonitor.onChange = { [weak self] in
+            guard let self, self.started else { return }
+            self.pollSessions()
+        }
+        rolloutMonitor.onInitialScanCompleted = { [weak self] snapshot in
+            guard let self, self.started,
+                  self.sessionObservationGeneration == generation else { return }
+            self.lastAppliedSnapshotSequence = self.snapshotRequestSequence
+            self.initialSessionScanComplete = true
+            self.completionFeedback.observe(snapshot, initialScanComplete: true, now: self.nowProvider())
+            self.pollSessions()
+        }
     }
 
     func stop() {
