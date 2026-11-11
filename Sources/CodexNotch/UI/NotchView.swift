@@ -1567,7 +1567,7 @@ private struct ExpandedNotchView: View {
             Spacer(minLength: 6)
 
             HStack(spacing: 8) {
-                AccountQuickSwitchMenu(service: .shared, language: language)
+                AccountQuickSwitchBar(service: .shared, language: language)
 
                 Spacer(minLength: 0)
 
