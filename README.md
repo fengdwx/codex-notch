@@ -133,6 +133,15 @@ Displays without a notch, including mirrored displays, use a floating bar center
 
 </details>
 
+## Multiple Codex accounts
+
+CodexNotch can keep several Codex logins side by side and switch between them from **Settings → Accounts** or from the account chip in the expanded notch card.
+
+- Every account gets its own `CODEX_HOME` and Electron profile under `~/Library/Application Support/CodexNotch/Accounts/Homes/<uuid>`, so projects, sessions and quota stay isolated.
+- Switching quits and relaunches Codex with that home. The first switch to an account starts from an empty project list; the previously shared `~/.codex` is left untouched.
+- Saved `auth.json` copies live only on this Mac with `0700`/`0600` permissions and are never uploaded.
+- Existing accounts are adopted automatically from Codex Account Switcher on first launch; more can be added with **Import** using an exported `auth.json`.
+
 ## Data and privacy
 
 - The authentication token is read only from `CODEX_HOME/auth.json` and remains in process memory. CodexNotch never writes it to a cache or log.
@@ -171,7 +180,7 @@ SIGN_IDENTITY=none ./scripts/build_app.sh
 
 ## Current boundaries
 
-CodexNotch is currently in its 0.x release series. It does not terminate Codex tasks, estimate cost, sync to the cloud, send remote notifications, download or install updates without user action, animate a pet, or support Mac App Store distribution. ChatGPT Classic is not a monitored target.
+CodexNotch is currently in its 0.x release series. It does not terminate Codex tasks, estimate cost, sync to the cloud, send remote notifications, download or install updates without user action, animate a pet, or support Mac App Store distribution. ChatGPT Classic is not a monitored target. Adding a brand-new login requires importing an exported `auth.json`; CodexNotch does not open its own OAuth flow yet.
 
 ## License
 
