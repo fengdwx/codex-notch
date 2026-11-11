@@ -1539,6 +1539,8 @@ private struct ExpandedNotchView: View {
                 onUseResetCredit: onUseResetCredit
             )
 
+            AccountSwitchList(service: .shared, language: language)
+
             if !content.conversations.isEmpty {
                 Spacer(minLength: 16)
 
@@ -1567,8 +1569,6 @@ private struct ExpandedNotchView: View {
             Spacer(minLength: 6)
 
             HStack(spacing: 8) {
-                AccountQuickSwitchBar(service: .shared, language: language)
-
                 Spacer(minLength: 0)
 
                 Toggle(

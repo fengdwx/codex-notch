@@ -135,7 +135,7 @@ Displays without a notch, including mirrored displays, use a floating bar center
 
 ## Multiple Codex accounts
 
-CodexNotch can keep several Codex logins side by side and switch between them from **Settings → Accounts** or from the account chip in the expanded notch card.
+CodexNotch can keep several Codex logins side by side and switch between them from **Settings → Accounts** or from the account list in the expanded notch card.
 
 - Every account gets its own `CODEX_HOME` and Electron profile under `~/Library/Application Support/CodexNotch/Accounts/Homes/<uuid>`, so projects, sessions and quota stay isolated.
 - Switching quits and relaunches Codex with that home. The first switch to an account starts from an empty project list; the previously shared `~/.codex` is left untouched.

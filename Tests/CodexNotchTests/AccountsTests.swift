@@ -159,6 +159,27 @@ final class AccountsTests: XCTestCase {
         XCTAssertEqual(args.first, "-n")
     }
 
+    func testAccountListHeightOnlyAppliesWhenThereAreMultipleAccounts() {
+        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 1), 0)
+        XCTAssertEqual(
+            NotchExpandedLayout.accountListHeight(accountCount: 4),
+            12 + NotchExpandedLayout.accountListHeaderHeight
+                + 4 * NotchExpandedLayout.accountRowHeight
+        )
+    }
+
+    func testExpandedCardReservesRoomForTheAccountList() {
+        let withoutAccounts = NotchExpandedLayout.taskContentHeight(conversationCount: 2)
+        let withAccounts = NotchExpandedLayout.taskContentHeight(
+            conversationCount: 2,
+            accountCount: 4
+        )
+        XCTAssertEqual(
+            withAccounts - withoutAccounts,
+            NotchExpandedLayout.accountListHeight(accountCount: 4)
+        )
+    }
+
     // MARK: - Fixtures
 
     private func makeAuthData(

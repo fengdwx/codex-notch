@@ -157,16 +157,27 @@ enum NotchExpandedLayout {
     // The base quota height reserves the weekly row. Add one measured row when
     // the usage response also contains the five-hour rolling limit.
     static let fiveHourQuotaContentHeight: CGFloat = 58
+    static let accountListHeaderHeight: CGFloat = 20
+    static let accountRowHeight: CGFloat = 26
+
+    /// The account switcher is a list, so the expanded card grows by one row
+    /// per account. A single account needs no list.
+    static func accountListHeight(accountCount: Int) -> CGFloat {
+        guard accountCount > 1 else { return 0 }
+        return 12 + accountListHeaderHeight + CGFloat(accountCount) * accountRowHeight
+    }
 
     static func quotaContentSize(
         isResetScheduleExpanded: Bool = false,
         resetCreditCount: Int = 0,
-        hasFiveHourWindow: Bool = false
+        hasFiveHourWindow: Bool = false,
+        accountCount: Int = 0
     ) -> NSSize {
         NSSize(
             width: width,
             height: quotaContentHeight
                 + (hasFiveHourWindow ? fiveHourQuotaContentHeight : 0)
+                + accountListHeight(accountCount: accountCount)
                 + resetScheduleExpansionHeight(
                 isExpanded: isResetScheduleExpanded,
                 resetCreditCount: resetCreditCount
@@ -178,13 +189,15 @@ enum NotchExpandedLayout {
         conversationCount: Int,
         isResetScheduleExpanded: Bool = false,
         resetCreditCount: Int = 0,
-        hasFiveHourWindow: Bool = false
+        hasFiveHourWindow: Bool = false,
+        accountCount: Int = 0
     ) -> CGFloat {
         let count = max(1, conversationCount)
         return twoConversationContentHeight
             + CGFloat(count - 2)
             * (conversationRowHeight + conversationSeparatorHeight)
             + (hasFiveHourWindow ? fiveHourQuotaContentHeight : 0)
+            + accountListHeight(accountCount: accountCount)
             + resetScheduleExpansionHeight(
                 isExpanded: isResetScheduleExpanded,
                 resetCreditCount: resetCreditCount
@@ -195,7 +208,8 @@ enum NotchExpandedLayout {
         conversationCount: Int,
         isResetScheduleExpanded: Bool = false,
         resetCreditCount: Int = 0,
-        hasFiveHourWindow: Bool = false
+        hasFiveHourWindow: Bool = false,
+        accountCount: Int = 0
     ) -> NSSize {
         NSSize(
             width: width,
@@ -203,7 +217,8 @@ enum NotchExpandedLayout {
                 conversationCount: conversationCount,
                 isResetScheduleExpanded: isResetScheduleExpanded,
                 resetCreditCount: resetCreditCount,
-                hasFiveHourWindow: hasFiveHourWindow
+                hasFiveHourWindow: hasFiveHourWindow,
+                accountCount: accountCount
             )
         )
     }

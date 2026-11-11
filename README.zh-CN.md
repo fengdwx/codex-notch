@@ -135,7 +135,7 @@ CodexNotch 默认读取 `~/.codex`。如果你的 Codex 使用其他目录，可
 
 ## 多账号切换
 
-CodexNotch 可以同时保存多个 Codex 登录，并在 **设置 → 账号** 或展开卡里的账号胶囊中切换。
+CodexNotch 可以同时保存多个 Codex 登录，并在 **设置 → 账号** 或展开卡里的账号列表中切换。
 
 - 每个账号拥有独立的 `CODEX_HOME` 和 Electron 配置目录，位于 `~/Library/Application Support/CodexNotch/Accounts/Homes/<uuid>`，项目、会话和额度互不影响。
 - 切换会退出并用该账号的 home 重新启动 Codex。第一次切到某个账号时项目列表是空的；原来共用的 `~/.codex` 不会被改动。

@@ -667,14 +667,16 @@ final class NotchRuntimeCoordinator {
                 conversationCount: 2,
                 isResetScheduleExpanded: isResetScheduleExpanded,
                 resetCreditCount: resetCreditCount(in: state),
-                hasFiveHourWindow: hasFiveHourWindow(in: state)
+                hasFiveHourWindow: hasFiveHourWindow(in: state),
+                accountCount: accountListCount
             )
         }
         return NotchExpandedLayout.taskContentSize(
             conversationCount: content.conversations.count,
             isResetScheduleExpanded: isResetScheduleExpanded,
             resetCreditCount: content.usage?.resetCredits.count ?? 0,
-            hasFiveHourWindow: content.usage?.fiveHourWindow != nil
+            hasFiveHourWindow: content.usage?.fiveHourWindow != nil,
+            accountCount: accountListCount
         )
     }
 
@@ -685,8 +687,13 @@ final class NotchRuntimeCoordinator {
         NotchExpandedLayout.quotaContentSize(
             isResetScheduleExpanded: isResetScheduleExpanded,
             resetCreditCount: resetCreditCount(in: state),
-            hasFiveHourWindow: hasFiveHourWindow(in: state)
+            hasFiveHourWindow: hasFiveHourWindow(in: state),
+            accountCount: accountListCount
         )
+    }
+
+    private var accountListCount: Int {
+        accountsService?.accounts.count ?? 0
     }
 
     private func resetCreditCount(in state: NotchPresentationState) -> Int {
