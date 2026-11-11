@@ -6,10 +6,7 @@ enum SwordWandererAsset {
     static let rows = 11
 
     static let atlasImage: NSImage? = {
-        guard let url = AppResources.bundle()?.url(
-            forResource: "sword-wanderer",
-            withExtension: "webp"
-        ) else {
+        guard let url = resourceURL(named: "sword-wanderer", extension: "webp") else {
             return nil
         }
         return NSImage(contentsOf: url)
@@ -34,13 +31,23 @@ enum SwordWandererAsset {
     }()
 
     private static func image(named name: String, extension fileExtension: String) -> NSImage? {
-        guard let url = AppResources.bundle()?.url(
-            forResource: name,
-            withExtension: fileExtension
-        ) else {
+        guard let url = resourceURL(named: name, extension: fileExtension) else {
             return nil
         }
         return NSImage(contentsOf: url)
+    }
+
+    /// SwiftPM 6.4 keeps `.copy("Resources")` as a nested directory, while
+    /// older toolchains flattened it. Accept both layouts so the app and the
+    /// test bundle find the same assets.
+    private static func resourceURL(named name: String, extension fileExtension: String) -> URL? {
+        guard let bundle = AppResources.bundle() else { return nil }
+        return bundle.url(forResource: name, withExtension: fileExtension)
+            ?? bundle.url(
+                forResource: name,
+                withExtension: fileExtension,
+                subdirectory: "Resources"
+            )
     }
 }
 

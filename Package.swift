@@ -12,7 +12,7 @@ let package = Package(
         .executableTarget(
             name: "CodexNotch",
             dependencies: [.product(name: "Sparkle", package: "Sparkle")],
-            resources: [.copy("Resources")],
+            resources: [.process("Resources")],
             linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]
         ),
         .testTarget(name: "CodexNotchTests", dependencies: ["CodexNotch"])
