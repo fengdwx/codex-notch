@@ -1539,7 +1539,11 @@ private struct ExpandedNotchView: View {
                 onUseResetCredit: onUseResetCredit
             )
 
-            AccountSwitchList(service: .shared, language: language)
+            AccountSwitchList(
+                service: .shared,
+                language: language,
+                isTaskRunning: !content.sessions.isEmpty
+            )
 
             if !content.conversations.isEmpty {
                 Spacer(minLength: 16)
@@ -2168,7 +2172,7 @@ enum QuotaColorScale {
     }
 }
 
-private enum NotchPalette {
+enum NotchPalette {
     static let background = Color.black
     static let primaryText = Color.white
     static let secondaryText = Color.white.opacity(0.6)
@@ -2182,7 +2186,7 @@ private enum NotchPalette {
     static let danger = Color(red: 1.0, green: 0.35, blue: 0.35)
 }
 
-private struct NotchButtonStyle: ButtonStyle {
+struct NotchButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .opacity(configuration.isPressed ? 0.72 : 1)

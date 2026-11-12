@@ -379,8 +379,17 @@ contracts:
       per-account UI state (root of `.codex-global-state.json` plus per-account
       entries under `electron-account-renderer-state-v1`), switching must copy
       the current project pool into every account entry before relaunch, so no
-      account ever opens with an empty project list. The notch always reads the
-      shared home and must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      account ever opens with an empty project list. The expanded notch card
+      shows this list only with two or more accounts: 28pt single rows with the
+      active account pinned first, a 14pt status mark, 12pt name, 9.5pt plan
+      capsule and two 54pt quota columns colored by QuotaColorScale; more than
+      four accounts cap the height at four visible rows and scroll inside.
+      Hovering a row shows its reset countdowns in the section header. A first
+      click on an inactive row arms a 3.2s inline confirmation (amber warning
+      and "interrupt and switch" copy while a task is running); only the confirm
+      button switches. Failures surface as a non-sensitive danger-colored header
+      message. The notch always reads the shared home and must fall back to
+      CODEX_HOME/`~/.codex`. Per-account homes, user-data
       directories and empty first-switch accounts are explicitly not part of
       this behavior. Tokens stay local, files are 0700/0600, and switching
       must not delete or rewrite project, session or history data.
@@ -405,6 +414,7 @@ contracts:
         switch, deleting sessions, or exposing A's quota as B's.
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
       - docs/decisions/012-shared-codex-home-for-accounts.md
       - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
@@ -458,8 +468,17 @@ contracts:
       per-account UI state (root of `.codex-global-state.json` plus per-account
       entries under `electron-account-renderer-state-v1`), switching must copy
       the current project pool into every account entry before relaunch, so no
-      account ever opens with an empty project list. The notch always reads the
-      shared home and must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      account ever opens with an empty project list. The expanded notch card
+      shows this list only with two or more accounts: 28pt single rows with the
+      active account pinned first, a 14pt status mark, 12pt name, 9.5pt plan
+      capsule and two 54pt quota columns colored by QuotaColorScale; more than
+      four accounts cap the height at four visible rows and scroll inside.
+      Hovering a row shows its reset countdowns in the section header. A first
+      click on an inactive row arms a 3.2s inline confirmation (amber warning
+      and "interrupt and switch" copy while a task is running); only the confirm
+      button switches. Failures surface as a non-sensitive danger-colored header
+      message. The notch always reads the shared home and must fall back to
+      CODEX_HOME/`~/.codex`. Per-account homes, user-data
       directories and empty first-switch accounts are explicitly not part of
       this behavior. Tokens stay local, files are 0700/0600, and switching
       must not delete or rewrite project, session or history data.
@@ -484,6 +503,7 @@ contracts:
         switch, deleting sessions, or exposing A's quota as B's.
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
       - docs/decisions/012-shared-codex-home-for-accounts.md
       - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
@@ -537,8 +557,17 @@ contracts:
       per-account UI state (root of `.codex-global-state.json` plus per-account
       entries under `electron-account-renderer-state-v1`), switching must copy
       the current project pool into every account entry before relaunch, so no
-      account ever opens with an empty project list. The notch always reads the
-      shared home and must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      account ever opens with an empty project list. The expanded notch card
+      shows this list only with two or more accounts: 28pt single rows with the
+      active account pinned first, a 14pt status mark, 12pt name, 9.5pt plan
+      capsule and two 54pt quota columns colored by QuotaColorScale; more than
+      four accounts cap the height at four visible rows and scroll inside.
+      Hovering a row shows its reset countdowns in the section header. A first
+      click on an inactive row arms a 3.2s inline confirmation (amber warning
+      and "interrupt and switch" copy while a task is running); only the confirm
+      button switches. Failures surface as a non-sensitive danger-colored header
+      message. The notch always reads the shared home and must fall back to
+      CODEX_HOME/`~/.codex`. Per-account homes, user-data
       directories and empty first-switch accounts are explicitly not part of
       this behavior. Tokens stay local, files are 0700/0600, and switching
       must not delete or rewrite project, session or history data.
@@ -563,6 +592,7 @@ contracts:
         switch, deleting sessions, or exposing A's quota as B's.
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
       - docs/decisions/012-shared-codex-home-for-accounts.md
       - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
@@ -879,8 +909,17 @@ contracts:
       per-account UI state (root of `.codex-global-state.json` plus per-account
       entries under `electron-account-renderer-state-v1`), switching must copy
       the current project pool into every account entry before relaunch, so no
-      account ever opens with an empty project list. The notch always reads the
-      shared home and must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      account ever opens with an empty project list. The expanded notch card
+      shows this list only with two or more accounts: 28pt single rows with the
+      active account pinned first, a 14pt status mark, 12pt name, 9.5pt plan
+      capsule and two 54pt quota columns colored by QuotaColorScale; more than
+      four accounts cap the height at four visible rows and scroll inside.
+      Hovering a row shows its reset countdowns in the section header. A first
+      click on an inactive row arms a 3.2s inline confirmation (amber warning
+      and "interrupt and switch" copy while a task is running); only the confirm
+      button switches. Failures surface as a non-sensitive danger-colored header
+      message. The notch always reads the shared home and must fall back to
+      CODEX_HOME/`~/.codex`. Per-account homes, user-data
       directories and empty first-switch accounts are explicitly not part of
       this behavior. Tokens stay local, files are 0700/0600, and switching
       must not delete or rewrite project, session or history data.
@@ -905,6 +944,7 @@ contracts:
         switch, deleting sessions, or exposing A's quota as B's.
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
       - docs/decisions/012-shared-codex-home-for-accounts.md
       - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
@@ -1508,8 +1548,17 @@ contracts:
       per-account UI state (root of `.codex-global-state.json` plus per-account
       entries under `electron-account-renderer-state-v1`), switching must copy
       the current project pool into every account entry before relaunch, so no
-      account ever opens with an empty project list. The notch always reads the
-      shared home and must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      account ever opens with an empty project list. The expanded notch card
+      shows this list only with two or more accounts: 28pt single rows with the
+      active account pinned first, a 14pt status mark, 12pt name, 9.5pt plan
+      capsule and two 54pt quota columns colored by QuotaColorScale; more than
+      four accounts cap the height at four visible rows and scroll inside.
+      Hovering a row shows its reset countdowns in the section header. A first
+      click on an inactive row arms a 3.2s inline confirmation (amber warning
+      and "interrupt and switch" copy while a task is running); only the confirm
+      button switches. Failures surface as a non-sensitive danger-colored header
+      message. The notch always reads the shared home and must fall back to
+      CODEX_HOME/`~/.codex`. Per-account homes, user-data
       directories and empty first-switch accounts are explicitly not part of
       this behavior. Tokens stay local, files are 0700/0600, and switching
       must not delete or rewrite project, session or history data.
@@ -1534,6 +1583,7 @@ contracts:
         switch, deleting sessions, or exposing A's quota as B's.
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
       - docs/decisions/012-shared-codex-home-for-accounts.md
       - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
@@ -3353,8 +3403,17 @@ contracts:
       per-account UI state (root of `.codex-global-state.json` plus per-account
       entries under `electron-account-renderer-state-v1`), switching must copy
       the current project pool into every account entry before relaunch, so no
-      account ever opens with an empty project list. The notch always reads the
-      shared home and must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      account ever opens with an empty project list. The expanded notch card
+      shows this list only with two or more accounts: 28pt single rows with the
+      active account pinned first, a 14pt status mark, 12pt name, 9.5pt plan
+      capsule and two 54pt quota columns colored by QuotaColorScale; more than
+      four accounts cap the height at four visible rows and scroll inside.
+      Hovering a row shows its reset countdowns in the section header. A first
+      click on an inactive row arms a 3.2s inline confirmation (amber warning
+      and "interrupt and switch" copy while a task is running); only the confirm
+      button switches. Failures surface as a non-sensitive danger-colored header
+      message. The notch always reads the shared home and must fall back to
+      CODEX_HOME/`~/.codex`. Per-account homes, user-data
       directories and empty first-switch accounts are explicitly not part of
       this behavior. Tokens stay local, files are 0700/0600, and switching
       must not delete or rewrite project, session or history data.
@@ -3379,6 +3438,7 @@ contracts:
         switch, deleting sessions, or exposing A's quota as B's.
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
       - docs/decisions/012-shared-codex-home-for-accounts.md
       - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
@@ -3583,8 +3643,17 @@ contracts:
       per-account UI state (root of `.codex-global-state.json` plus per-account
       entries under `electron-account-renderer-state-v1`), switching must copy
       the current project pool into every account entry before relaunch, so no
-      account ever opens with an empty project list. The notch always reads the
-      shared home and must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      account ever opens with an empty project list. The expanded notch card
+      shows this list only with two or more accounts: 28pt single rows with the
+      active account pinned first, a 14pt status mark, 12pt name, 9.5pt plan
+      capsule and two 54pt quota columns colored by QuotaColorScale; more than
+      four accounts cap the height at four visible rows and scroll inside.
+      Hovering a row shows its reset countdowns in the section header. A first
+      click on an inactive row arms a 3.2s inline confirmation (amber warning
+      and "interrupt and switch" copy while a task is running); only the confirm
+      button switches. Failures surface as a non-sensitive danger-colored header
+      message. The notch always reads the shared home and must fall back to
+      CODEX_HOME/`~/.codex`. Per-account homes, user-data
       directories and empty first-switch accounts are explicitly not part of
       this behavior. Tokens stay local, files are 0700/0600, and switching
       must not delete or rewrite project, session or history data.
@@ -3609,6 +3678,7 @@ contracts:
         switch, deleting sessions, or exposing A's quota as B's.
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
       - docs/decisions/012-shared-codex-home-for-accounts.md
       - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"

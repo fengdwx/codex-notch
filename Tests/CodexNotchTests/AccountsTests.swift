@@ -153,12 +153,9 @@ final class AccountsTests: XCTestCase {
     }
 
     func testAccountListHeightOnlyAppliesWhenThereAreMultipleAccounts() {
+        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 0), 0)
         XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 1), 0)
-        XCTAssertEqual(
-            NotchExpandedLayout.accountListHeight(accountCount: 4),
-            12 + NotchExpandedLayout.accountListHeaderHeight
-                + 4 * NotchExpandedLayout.accountRowHeight
-        )
+        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 4), 140)
     }
 
     func testExpandedCardReservesRoomForTheAccountList() {
@@ -167,10 +164,7 @@ final class AccountsTests: XCTestCase {
             conversationCount: 2,
             accountCount: 4
         )
-        XCTAssertEqual(
-            withAccounts - withoutAccounts,
-            NotchExpandedLayout.accountListHeight(accountCount: 4)
-        )
+        XCTAssertEqual(withAccounts - withoutAccounts, 140)
     }
 
     func testSidebarProjectSynchronizerCopiesPoolToEveryAccount() throws {

@@ -378,4 +378,16 @@ final class NotchGeometryTests: XCTestCase {
             accuracy: 0.1
         )
     }
+
+    func testAccountListHeightIsCappedAtFourVisibleRows() {
+        XCTAssertEqual(NotchExpandedLayout.accountRowHeight, 28, accuracy: 0.1)
+        XCTAssertEqual(NotchExpandedLayout.maxVisibleAccountRows, 4)
+
+        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 0), 0)
+        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 1), 0)
+        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 2), 84)
+        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 4), 140)
+        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 6), 140)
+        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 12), 140)
+    }
 }

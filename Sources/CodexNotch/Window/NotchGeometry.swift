@@ -157,14 +157,22 @@ enum NotchExpandedLayout {
     // The base quota height reserves the weekly row. Add one measured row when
     // the usage response also contains the five-hour rolling limit.
     static let fiveHourQuotaContentHeight: CGFloat = 58
-    static let accountListHeaderHeight: CGFloat = 20
-    static let accountRowHeight: CGFloat = 34
+    static let accountListTopSpacing: CGFloat = 8
+    static let accountListHeaderHeight: CGFloat = 16
+    static let accountListHeaderBottomSpacing: CGFloat = 4
+    static let accountListContainerVerticalPadding: CGFloat = 2
+    static let accountRowHeight: CGFloat = 28
+    static let maxVisibleAccountRows: Int = 4
 
-    /// The account switcher is a list, so the expanded card grows by one row
-    /// per account. A single account needs no list.
+    /// The account switcher is a vertical list capped at four visible rows.
+    /// A single account needs no list; extra accounts scroll inside the cap.
     static func accountListHeight(accountCount: Int) -> CGFloat {
         guard accountCount > 1 else { return 0 }
-        return 12 + accountListHeaderHeight + CGFloat(accountCount) * accountRowHeight
+        let visibleRows = min(accountCount, maxVisibleAccountRows)
+        return accountListTopSpacing
+            + accountListHeaderHeight
+            + accountListHeaderBottomSpacing
+            + CGFloat(visibleRows) * accountRowHeight
     }
 
     static func quotaContentSize(

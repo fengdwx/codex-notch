@@ -1,31 +1,42 @@
 import SwiftUI
 
-/// Account list shown inside the expanded notch card. Rows expose the same
-/// 5-hour / weekly quota picture as the main card, and one click switches.
+/// Vertical account list shown in the expanded notch card.
+///
+/// Rows are 28pt tall and capped at four visible rows. The first click on an
+/// inactive row arms an inline confirmation (3.2s timeout); only the confirm
+/// button actually switches. Hovering a row reveals its reset countdowns in
+/// the section header.
 struct AccountSwitchList: View {
     @ObservedObject var service: AccountsService
     let language: AppLanguage
+    let isTaskRunning: Bool
 
+    @State private var hoveredAccountID: UUID?
+    @State private var confirmingAccountID: UUID?
     @State private var switchingAccountID: UUID?
+    @State private var switchErrorText: String?
+    @State private var confirmResetTask: Task<Void, Never>?
+
+    private var orderedAccounts: [AccountProfile] {
+        guard let activeID = service.activeAccountID else { return service.accounts }
+        let active = service.accounts.filter { $0.id == activeID }
+        let others = service.accounts.filter { $0.id != activeID }
+        return active + others
+    }
+
+    private var visibleRowCount: Int {
+        min(orderedAccounts.count, NotchExpandedLayout.maxVisibleAccountRows)
+    }
 
     var body: some View {
         if service.accounts.count > 1 {
             VStack(alignment: .leading, spacing: 0) {
-                Text(language.localized(chinese: "账号", english: "Accounts"))
-                    .font(.system(size: 11.5, weight: .regular))
-                    .foregroundStyle(Color.white.opacity(0.55))
-                    .frame(
-                        height: NotchExpandedLayout.accountListHeaderHeight,
-                        alignment: .bottomLeading
-                    )
-
-                ForEach(service.accounts) { account in
-                    row(for: account)
-                        .frame(height: NotchExpandedLayout.accountRowHeight)
-                }
+                header
+                accountContainer
             }
-            .padding(.top, 12)
+            .padding(.top, NotchExpandedLayout.accountListTopSpacing)
             .task { await service.refreshStaleQuotas() }
+            .onDisappear(perform: resetTransientState)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(
                 language.localized(chinese: "Codex 账号列表", english: "Codex account list")
@@ -33,124 +44,62 @@ struct AccountSwitchList: View {
         }
     }
 
-    private func row(for account: AccountProfile) -> some View {
-        let isActive = account.id == service.activeAccountID
-        let isSwitching = switchingAccountID == account.id
+    // MARK: - Header
 
-        return Button {
-            guard !isActive else { return }
-            switchTo(account)
-        } label: {
-            HStack(spacing: 8) {
-                ZStack {
-                    Circle()
-                        .fill(isActive ? Color.accentColor : Color.white.opacity(0.16))
-                    Text(String(account.shortLabel.prefix(1)).uppercased())
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(isActive ? Color.white : Color.white.opacity(0.72))
-                }
-                .frame(width: 20, height: 20)
+    private var header: some View {
+        HStack(spacing: 6) {
+            Text(language.localized(chinese: "账号", english: "Accounts"))
+                .font(.system(size: 11.5, weight: .regular))
+                .foregroundStyle(NotchPalette.secondaryText)
 
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack(spacing: 5) {
-                        Text(account.shortLabel)
-                            .font(.system(size: 11.5, weight: isActive ? .semibold : .regular))
-                            .foregroundStyle(Color.white.opacity(0.92))
-                            .lineLimit(1)
-                        if let plan = account.planType, !plan.isEmpty {
-                            Text(plan.uppercased())
-                                .font(.system(size: 8, weight: .bold))
-                                .foregroundStyle(Color.white.opacity(0.55))
-                        }
-                        if isActive {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 9))
-                                .foregroundStyle(Color.green)
-                        }
-                    }
-                    if let email = account.email, !email.isEmpty {
-                        Text(email)
-                            .font(.system(size: 9, weight: .regular))
-                            .foregroundStyle(Color.white.opacity(0.55))
-                            .lineLimit(1)
-                    }
-                }
+            Spacer(minLength: 8)
 
-                Spacer(minLength: 6)
-
-                if isSwitching {
-                    ProgressView().controlSize(.mini)
-                } else {
-                    HStack(spacing: 10) {
-                        windowCell(
-                            label: language.localized(chinese: "5h", english: "5h"),
-                            usedPercent: account.quota?.primaryUsedPercent,
-                            resetsAt: account.quota?.primaryResetsAt
-                        )
-                        windowCell(
-                            label: language.localized(chinese: "7d", english: "7d"),
-                            usedPercent: account.quota?.secondaryUsedPercent,
-                            resetsAt: account.quota?.secondaryResetsAt
-                        )
-                    }
-                }
-            }
-            .padding(.horizontal, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(isActive ? Color.white.opacity(0.08) : Color.clear)
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(switchingAccountID != nil)
-        .help(account.email ?? account.shortLabel)
-        .accessibilityLabel(account.shortLabel)
-        .accessibilityValue(accessibilityValue(for: account, isActive: isActive))
-    }
-
-    private func windowCell(
-        label: String,
-        usedPercent: Double?,
-        resetsAt: Date?
-    ) -> some View {
-        VStack(alignment: .trailing, spacing: 0) {
-            HStack(spacing: 3) {
-                Text(label)
-                    .font(.system(size: 8, weight: .regular))
-                    .foregroundStyle(Color.white.opacity(0.55))
-                Text(percentText(usedPercent))
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(usedPercent == nil ? Color.white.opacity(0.55) : .primary)
-            }
-            Text(resetText(resetsAt))
-                .font(.system(size: 7.5, weight: .regular))
-                .foregroundStyle(Color.white.opacity(0.55))
+            headerAccessory
+                .font(.system(size: 10.5, weight: .regular))
+                .monospacedDigit()
                 .lineLimit(1)
         }
-        .frame(width: 56, alignment: .trailing)
+        .frame(height: NotchExpandedLayout.accountListHeaderHeight, alignment: .bottom)
+        .padding(.bottom, NotchExpandedLayout.accountListHeaderBottomSpacing)
     }
 
-    private func percentText(_ usedPercent: Double?) -> String {
-        guard let usedPercent else {
-            return language.localized(chinese: "—", english: "—")
+    @ViewBuilder
+    private var headerAccessory: some View {
+        if switchingAccountID != nil {
+            Text(language.localized(chinese: "切换中…", english: "Switching…"))
+                .foregroundStyle(NotchPalette.secondaryText)
+        } else if let switchErrorText {
+            Text("⚠️ \(switchErrorText)")
+                .foregroundStyle(NotchPalette.danger)
+        } else if confirmingAccountID != nil, isTaskRunning {
+            Text(language.localized(
+                chinese: "⚠️ 切换将中断当前运行中任务",
+                english: "⚠️ Switching will interrupt the running task"
+            ))
+            .foregroundStyle(NotchPalette.warning)
+        } else if let hoveredAccountID,
+                  let account = service.accounts.first(where: { $0.id == hoveredAccountID }) {
+            Text(countdownSummary(for: account))
+                .foregroundStyle(NotchPalette.secondaryText)
+        } else {
+            EmptyView()
         }
-        return String(format: "%.0f%%", max(0, 100 - usedPercent))
     }
 
-    private func resetText(_ resetsAt: Date?) -> String {
-        guard let resetsAt else {
-            return language.localized(chinese: "未检查", english: "not checked")
-        }
-        let remaining = resetsAt.timeIntervalSinceNow
-        guard remaining > 0 else {
-            return language.localized(chinese: "已重置", english: "reset")
-        }
+    private func countdownSummary(for account: AccountProfile) -> String {
+        let primary = countdownText(account.quota?.primaryResetsAt)
+        let secondary = countdownText(account.quota?.secondaryResetsAt)
         return language.localized(
-            chinese: "\(compactDuration(remaining)) 后重置",
-            english: "resets in \(compactDuration(remaining))"
+            chinese: "\(account.shortLabel) · 5h 重置 \(primary) · 7d 重置 \(secondary)",
+            english: "\(account.shortLabel) · 5h resets \(primary) · 7d resets \(secondary)"
         )
+    }
+
+    private func countdownText(_ resetsAt: Date?) -> String {
+        guard let resetsAt else { return "—" }
+        let remaining = resetsAt.timeIntervalSinceNow
+        guard remaining > 0 else { return "—" }
+        return compactDuration(remaining)
     }
 
     private func compactDuration(_ interval: TimeInterval) -> String {
@@ -164,13 +113,309 @@ struct AccountSwitchList: View {
         return "\(days)d\(hours % 24)h"
     }
 
+    // MARK: - List
+
+    private var accountContainer: some View {
+        Group {
+            if orderedAccounts.count > NotchExpandedLayout.maxVisibleAccountRows {
+                ScrollView(.vertical, showsIndicators: true) {
+                    rows
+                }
+                .frame(height: CGFloat(visibleRowCount) * NotchExpandedLayout.accountRowHeight)
+            } else {
+                rows
+            }
+        }
+        .padding(.horizontal, 3)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(NotchPalette.row.opacity(0.28))
+        )
+    }
+
+    private var rows: some View {
+        VStack(spacing: 0) {
+            ForEach(orderedAccounts) { account in
+                row(for: account)
+            }
+        }
+    }
+
+    private func row(for account: AccountProfile) -> some View {
+        let isActive = account.id == service.activeAccountID
+        let isConfirming = confirmingAccountID == account.id
+        let isSwitching = switchingAccountID == account.id
+        let isHovered = hoveredAccountID == account.id
+
+        return HStack(spacing: 8) {
+            if isConfirming {
+                leadingContent(for: account, isActive: isActive, isConfirming: true)
+                    .contentShape(Rectangle())
+                    .onTapGesture { cancelConfirmation() }
+            } else {
+                leadingContent(for: account, isActive: isActive, isConfirming: false)
+            }
+
+            Spacer(minLength: 6)
+
+            if isSwitching {
+                switchingContent
+            } else if isConfirming {
+                confirmationControls(for: account)
+            } else {
+                quotaCells(for: account)
+            }
+        }
+        .padding(.horizontal, 9)
+        .frame(height: NotchExpandedLayout.accountRowHeight)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(rowBackground(isActive: isActive, isHovered: isHovered, isConfirming: isConfirming))
+        )
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            if hovering {
+                hoveredAccountID = account.id
+            } else if hoveredAccountID == account.id {
+                hoveredAccountID = nil
+            }
+        }
+        .onTapGesture {
+            guard !isConfirming else { return }
+            handleTap(account)
+        }
+        .accessibilityLabel(account.shortLabel)
+        .accessibilityValue(accessibilityValue(for: account, isActive: isActive))
+    }
+
+    private func leadingContent(
+        for account: AccountProfile,
+        isActive: Bool,
+        isConfirming: Bool
+    ) -> some View {
+        HStack(spacing: 8) {
+            statusIndicator(for: account, isActive: isActive)
+
+            Text(account.shortLabel)
+                .font(.system(size: 12, weight: isActive ? .medium : .regular))
+                .foregroundStyle(NotchPalette.primaryText.opacity(isActive ? 1 : 0.85))
+                .lineLimit(1)
+
+            if let plan = account.planType, !plan.isEmpty {
+                Text(plan.uppercased())
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .foregroundStyle(NotchPalette.secondaryText)
+                    .padding(.horizontal, 4.5)
+                    .padding(.vertical, 1)
+                    .background(
+                        NotchPalette.row,
+                        in: RoundedRectangle(cornerRadius: 3.5)
+                    )
+            }
+
+            if let note = account.note, !note.isEmpty, !isConfirming {
+                Text(note)
+                    .font(.system(size: 10.5, weight: .regular))
+                    .foregroundStyle(NotchPalette.secondaryText.opacity(0.7))
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    private func statusIndicator(
+        for account: AccountProfile,
+        isActive: Bool
+    ) -> some View {
+        Group {
+            if isActive {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(NotchPalette.success)
+            } else {
+                Circle()
+                    .fill(statusColor(for: account))
+                    .frame(width: 6, height: 6)
+            }
+        }
+        .frame(width: 14, alignment: .center)
+    }
+
+    private func statusColor(for account: AccountProfile) -> Color {
+        guard let used = account.quota?.secondaryUsedPercent else {
+            return NotchPalette.secondaryText
+        }
+        return QuotaColorScale.color(for: max(0, 100 - used))
+    }
+
+    private var switchingContent: some View {
+        HStack(spacing: 6) {
+            ProgressView()
+                .controlSize(.mini)
+            Text(language.localized(chinese: "切换中…", english: "Switching…"))
+                .font(.system(size: 10.5, weight: .regular))
+                .foregroundStyle(NotchPalette.secondaryText)
+        }
+    }
+
+    private func confirmationControls(for account: AccountProfile) -> some View {
+        HStack(spacing: 6) {
+            Button {
+                cancelConfirmation()
+            } label: {
+                Text(language.localized(chinese: "取消", english: "Cancel"))
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(NotchPalette.secondaryText)
+                    .padding(.horizontal, 8)
+                    .frame(height: 20)
+                    .background(
+                        NotchPalette.row,
+                        in: RoundedRectangle(cornerRadius: 4.5)
+                    )
+            }
+            .buttonStyle(NotchButtonStyle())
+
+            Button {
+                performSwitch(to: account)
+            } label: {
+                Text(
+                    isTaskRunning
+                        ? language.localized(chinese: "中断并切换", english: "Interrupt & switch")
+                        : language.localized(chinese: "确认切换 ↻", english: "Switch ↻")
+                )
+                .font(.system(size: 10.5, weight: .semibold))
+                .foregroundStyle(Color.black)
+                .padding(.horizontal, 8)
+                .frame(height: 20)
+                .background(
+                    isTaskRunning ? NotchPalette.warning : NotchPalette.accent,
+                    in: RoundedRectangle(cornerRadius: 4.5)
+                )
+            }
+            .buttonStyle(NotchButtonStyle())
+        }
+        .fixedSize()
+    }
+
+    private func quotaCells(for account: AccountProfile) -> some View {
+        HStack(spacing: 10) {
+            quotaCell(
+                label: language.localized(chinese: "5h", english: "5h"),
+                usedPercent: account.quota?.primaryUsedPercent
+            )
+            quotaCell(
+                label: language.localized(chinese: "7d", english: "7d"),
+                usedPercent: account.quota?.secondaryUsedPercent
+            )
+        }
+    }
+
+    private func quotaCell(label: String, usedPercent: Double?) -> some View {
+        HStack(spacing: 4) {
+            Text(label)
+                .font(.system(size: 10, weight: .regular))
+                .foregroundStyle(NotchPalette.secondaryText)
+
+            Spacer(minLength: 0)
+
+            Text(quotaText(usedPercent))
+                .font(.system(size: 11, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(quotaColor(usedPercent))
+        }
+        .frame(width: 54)
+    }
+
+    private func quotaText(_ usedPercent: Double?) -> String {
+        guard let usedPercent else { return "—" }
+        return String(format: "%.0f%%", max(0, 100 - usedPercent))
+    }
+
+    private func quotaColor(_ usedPercent: Double?) -> Color {
+        guard let usedPercent else { return NotchPalette.secondaryText }
+        return QuotaColorScale.color(for: max(0, 100 - usedPercent))
+    }
+
+    private func rowBackground(
+        isActive: Bool,
+        isHovered: Bool,
+        isConfirming: Bool
+    ) -> Color {
+        if isConfirming {
+            return (isTaskRunning ? NotchPalette.warning : NotchPalette.accent)
+                .opacity(0.15)
+        }
+        if isActive {
+            return NotchPalette.row.opacity(0.65)
+        }
+        if isHovered {
+            return NotchPalette.row.opacity(0.45)
+        }
+        return .clear
+    }
+
+    // MARK: - Interaction
+
+    private func handleTap(_ account: AccountProfile) {
+        guard switchingAccountID == nil else { return }
+        guard account.id != service.activeAccountID else { return }
+
+        if confirmingAccountID == account.id {
+            cancelConfirmation()
+            return
+        }
+
+        confirmResetTask?.cancel()
+        switchErrorText = nil
+        confirmingAccountID = account.id
+
+        let armedID = account.id
+        confirmResetTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 3_200_000_000)
+            guard !Task.isCancelled else { return }
+            if confirmingAccountID == armedID {
+                confirmingAccountID = nil
+            }
+        }
+    }
+
+    private func cancelConfirmation() {
+        confirmResetTask?.cancel()
+        confirmResetTask = nil
+        confirmingAccountID = nil
+    }
+
+    private func performSwitch(to account: AccountProfile) {
+        confirmResetTask?.cancel()
+        confirmResetTask = nil
+        confirmingAccountID = nil
+        switchingAccountID = account.id
+        switchErrorText = nil
+
+        Task { @MainActor in
+            do {
+                try await service.switchTo(account.id)
+            } catch {
+                switchErrorText = language.localized(
+                    chinese: "切换失败，请重试",
+                    english: "Switch failed, try again"
+                )
+            }
+            switchingAccountID = nil
+        }
+    }
+
+    private func resetTransientState() {
+        confirmResetTask?.cancel()
+        confirmResetTask = nil
+        hoveredAccountID = nil
+        confirmingAccountID = nil
+        switchErrorText = nil
+    }
+
     private func accessibilityValue(for account: AccountProfile, isActive: Bool) -> String {
         var parts: [String] = []
         if isActive {
             parts.append(language.localized(chinese: "当前账号", english: "Active account"))
-        }
-        if let plan = account.planType, !plan.isEmpty {
-            parts.append(plan.uppercased())
         }
         if let used = account.quota?.secondaryUsedPercent {
             parts.append(language.localized(
@@ -179,14 +424,5 @@ struct AccountSwitchList: View {
             ))
         }
         return parts.joined(separator: ", ")
-    }
-
-    private func switchTo(_ account: AccountProfile) {
-        guard switchingAccountID == nil else { return }
-        switchingAccountID = account.id
-        Task { @MainActor in
-            try? await service.switchTo(account.id)
-            switchingAccountID = nil
-        }
     }
 }
