@@ -375,8 +375,12 @@ contracts:
       overrides, so every account sees the same projects, sessions and thread
       history. The account vault, notes and per-account quota stay separate;
       quota for the active account prefers the shared auth.json because Codex
-      refreshes tokens in place. The notch always reads the shared home and
-      must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      refreshes tokens in place. Because Codex keeps the project pool as
+      per-account UI state (root of `.codex-global-state.json` plus per-account
+      entries under `electron-account-renderer-state-v1`), switching must copy
+      the current project pool into every account entry before relaunch, so no
+      account ever opens with an empty project list. The notch always reads the
+      shared home and must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
       directories and empty first-switch accounts are explicitly not part of
       this behavior. Tokens stay local, files are 0700/0600, and switching
       must not delete or rewrite project, session or history data.
@@ -402,6 +406,7 @@ contracts:
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
       - docs/decisions/012-shared-codex-home-for-accounts.md
+      - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
     supersedes: [ACCOUNTS-ISOLATION-064]
     superseded_by: null
@@ -449,8 +454,12 @@ contracts:
       overrides, so every account sees the same projects, sessions and thread
       history. The account vault, notes and per-account quota stay separate;
       quota for the active account prefers the shared auth.json because Codex
-      refreshes tokens in place. The notch always reads the shared home and
-      must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      refreshes tokens in place. Because Codex keeps the project pool as
+      per-account UI state (root of `.codex-global-state.json` plus per-account
+      entries under `electron-account-renderer-state-v1`), switching must copy
+      the current project pool into every account entry before relaunch, so no
+      account ever opens with an empty project list. The notch always reads the
+      shared home and must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
       directories and empty first-switch accounts are explicitly not part of
       this behavior. Tokens stay local, files are 0700/0600, and switching
       must not delete or rewrite project, session or history data.
@@ -476,6 +485,7 @@ contracts:
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
       - docs/decisions/012-shared-codex-home-for-accounts.md
+      - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
     supersedes: [ACCOUNTS-ISOLATION-064]
     superseded_by: null
@@ -523,8 +533,12 @@ contracts:
       overrides, so every account sees the same projects, sessions and thread
       history. The account vault, notes and per-account quota stay separate;
       quota for the active account prefers the shared auth.json because Codex
-      refreshes tokens in place. The notch always reads the shared home and
-      must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      refreshes tokens in place. Because Codex keeps the project pool as
+      per-account UI state (root of `.codex-global-state.json` plus per-account
+      entries under `electron-account-renderer-state-v1`), switching must copy
+      the current project pool into every account entry before relaunch, so no
+      account ever opens with an empty project list. The notch always reads the
+      shared home and must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
       directories and empty first-switch accounts are explicitly not part of
       this behavior. Tokens stay local, files are 0700/0600, and switching
       must not delete or rewrite project, session or history data.
@@ -550,6 +564,7 @@ contracts:
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
       - docs/decisions/012-shared-codex-home-for-accounts.md
+      - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
     supersedes: [ACCOUNTS-ISOLATION-064]
     superseded_by: null
@@ -860,8 +875,12 @@ contracts:
       overrides, so every account sees the same projects, sessions and thread
       history. The account vault, notes and per-account quota stay separate;
       quota for the active account prefers the shared auth.json because Codex
-      refreshes tokens in place. The notch always reads the shared home and
-      must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      refreshes tokens in place. Because Codex keeps the project pool as
+      per-account UI state (root of `.codex-global-state.json` plus per-account
+      entries under `electron-account-renderer-state-v1`), switching must copy
+      the current project pool into every account entry before relaunch, so no
+      account ever opens with an empty project list. The notch always reads the
+      shared home and must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
       directories and empty first-switch accounts are explicitly not part of
       this behavior. Tokens stay local, files are 0700/0600, and switching
       must not delete or rewrite project, session or history data.
@@ -887,6 +906,7 @@ contracts:
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
       - docs/decisions/012-shared-codex-home-for-accounts.md
+      - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
     supersedes: [ACCOUNTS-ISOLATION-064]
     superseded_by: null
@@ -1484,8 +1504,12 @@ contracts:
       overrides, so every account sees the same projects, sessions and thread
       history. The account vault, notes and per-account quota stay separate;
       quota for the active account prefers the shared auth.json because Codex
-      refreshes tokens in place. The notch always reads the shared home and
-      must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      refreshes tokens in place. Because Codex keeps the project pool as
+      per-account UI state (root of `.codex-global-state.json` plus per-account
+      entries under `electron-account-renderer-state-v1`), switching must copy
+      the current project pool into every account entry before relaunch, so no
+      account ever opens with an empty project list. The notch always reads the
+      shared home and must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
       directories and empty first-switch accounts are explicitly not part of
       this behavior. Tokens stay local, files are 0700/0600, and switching
       must not delete or rewrite project, session or history data.
@@ -1511,6 +1535,7 @@ contracts:
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
       - docs/decisions/012-shared-codex-home-for-accounts.md
+      - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
     supersedes: [ACCOUNTS-ISOLATION-064]
     superseded_by: null
@@ -3324,8 +3349,12 @@ contracts:
       overrides, so every account sees the same projects, sessions and thread
       history. The account vault, notes and per-account quota stay separate;
       quota for the active account prefers the shared auth.json because Codex
-      refreshes tokens in place. The notch always reads the shared home and
-      must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      refreshes tokens in place. Because Codex keeps the project pool as
+      per-account UI state (root of `.codex-global-state.json` plus per-account
+      entries under `electron-account-renderer-state-v1`), switching must copy
+      the current project pool into every account entry before relaunch, so no
+      account ever opens with an empty project list. The notch always reads the
+      shared home and must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
       directories and empty first-switch accounts are explicitly not part of
       this behavior. Tokens stay local, files are 0700/0600, and switching
       must not delete or rewrite project, session or history data.
@@ -3351,6 +3380,7 @@ contracts:
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
       - docs/decisions/012-shared-codex-home-for-accounts.md
+      - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
     supersedes: [ACCOUNTS-ISOLATION-064]
     superseded_by: null
@@ -3549,8 +3579,12 @@ contracts:
       overrides, so every account sees the same projects, sessions and thread
       history. The account vault, notes and per-account quota stay separate;
       quota for the active account prefers the shared auth.json because Codex
-      refreshes tokens in place. The notch always reads the shared home and
-      must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      refreshes tokens in place. Because Codex keeps the project pool as
+      per-account UI state (root of `.codex-global-state.json` plus per-account
+      entries under `electron-account-renderer-state-v1`), switching must copy
+      the current project pool into every account entry before relaunch, so no
+      account ever opens with an empty project list. The notch always reads the
+      shared home and must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
       directories and empty first-switch accounts are explicitly not part of
       this behavior. Tokens stay local, files are 0700/0600, and switching
       must not delete or rewrite project, session or history data.
@@ -3576,6 +3610,7 @@ contracts:
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
       - docs/decisions/012-shared-codex-home-for-accounts.md
+      - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
     supersedes: [ACCOUNTS-ISOLATION-064]
     superseded_by: null

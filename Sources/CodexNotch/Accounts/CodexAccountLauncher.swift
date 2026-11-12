@@ -2,16 +2,24 @@ import AppKit
 import Foundation
 
 protocol CodexLaunching {
-    /// Quits Codex and relaunches it against the shared `~/.codex` home, so
-    /// every account sees the same project and session pool.
-    func restartShared() async throws
+    /// Quits every running Codex instance and waits for it to exit.
+    func quit() async
+    /// Launches Codex against the shared `~/.codex` home.
+    func launchShared() async throws
+}
+
+extension CodexLaunching {
+    func restartShared() async throws {
+        await quit()
+        try await launchShared()
+    }
 }
 
 struct LiveCodexLauncher: CodexLaunching {
     static let bundleIdentifier = "com.openai.codex"
     static let openExecutable = URL(fileURLWithPath: "/usr/bin/open")
 
-    func restartShared() async throws {
+    func quit() async {
         await MainActor.run { terminateRunningInstances() }
 
         for _ in 0..<24 {
@@ -24,8 +32,8 @@ struct LiveCodexLauncher: CodexLaunching {
             await MainActor.run { forceTerminateRunningInstances() }
             try? await Task.sleep(nanoseconds: 500_000_000)
         }
-
-        try await launchShared()
+        // Give the renderer a moment to flush `.codex-global-state.json`.
+        try? await Task.sleep(nanoseconds: 300_000_000)
     }
 
     static func openArguments(appURL: URL) -> [String] {

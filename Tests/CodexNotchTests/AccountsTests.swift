@@ -58,7 +58,8 @@ final class AccountsTests: XCTestCase {
             .appendingPathComponent("DefaultCodex", isDirectory: true)
             .appendingPathComponent("auth.json")
         XCTAssertEqual(try Data(contentsOf: sharedAuth), data)
-        XCTAssertEqual(launcher.restartSharedCalls, 1)
+        XCTAssertEqual(launcher.quitCalls, 1)
+        XCTAssertEqual(launcher.launchCalls, 1)
         XCTAssertEqual(service.activeAccountID, profile.id)
         XCTAssertFalse(FileManager.default.fileExists(
             atPath: root.appendingPathComponent("Accounts/Homes").path
@@ -172,6 +173,40 @@ final class AccountsTests: XCTestCase {
         )
     }
 
+    func testSidebarProjectSynchronizerCopiesPoolToEveryAccount() throws {
+        let stateURL = root.appendingPathComponent("global-state.json")
+        let document: [String: Any] = [
+            "local-projects": ["p1": ["name": "skillops"]],
+            "project-order": ["p1"],
+            "thread-project-assignments": ["t1": ["projectId": "p1"]],
+            "electron-account-renderer-state-v1": [
+                "owner": "owner-hash",
+                "atoms": ["local-document-identity": ["accountId": "a"]],
+                "inactive": [
+                    "hash-b": ["atoms": ["local-document-identity": ["accountId": "b"]]]
+                ]
+            ]
+        ]
+        try JSONSerialization.data(withJSONObject: document).write(to: stateURL)
+
+        let original = try Data(contentsOf: stateURL)
+        let updated = try SidebarProjectSynchronizer.synchronize(globalStateURL: stateURL)
+
+        XCTAssertEqual(updated, 2)
+        let backupURL = stateURL.appendingPathExtension("pre-sync")
+        XCTAssertEqual(try Data(contentsOf: backupURL), original)
+        let result = try JSONSerialization.jsonObject(
+            with: Data(contentsOf: stateURL)
+        ) as? [String: Any]
+        let state = result?["electron-account-renderer-state-v1"] as? [String: Any]
+        let ownerGlobals = state?["globals"] as? [String: Any]
+        XCTAssertEqual((ownerGlobals?["local-projects"] as? [String: Any])?.count, 1)
+        let inactive = state?["inactive"] as? [String: [String: Any]]
+        let otherGlobals = inactive?["hash-b"]?["globals"] as? [String: Any]
+        XCTAssertNotNil(otherGlobals?["thread-project-assignments"])
+        XCTAssertEqual((result?["project-order"] as? [String])?.first, "p1")
+    }
+
     // MARK: - Fixtures
 
     private func makeAuthData(
@@ -207,9 +242,14 @@ final class AccountsTests: XCTestCase {
 }
 
 final class FakeCodexLauncher: CodexLaunching {
-    private(set) var restartSharedCalls = 0
+    private(set) var quitCalls = 0
+    private(set) var launchCalls = 0
 
-    func restartShared() async throws {
-        restartSharedCalls += 1
+    func quit() async {
+        quitCalls += 1
+    }
+
+    func launchShared() async throws {
+        launchCalls += 1
     }
 }

@@ -121,7 +121,12 @@ final class AccountsService: ObservableObject {
         _ = try AccountIdentityParser.parse(authData)
         try PrivateFileWriter.write(authData, to: sharedAuthURL, fileManager: fileManager)
 
-        try await launcher.restartShared()
+        await launcher.quit()
+        try? SidebarProjectSynchronizer.synchronize(
+            globalStateURL: defaultCodexHome.appendingPathComponent(".codex-global-state.json"),
+            fileManager: fileManager
+        )
+        try await launcher.launchShared()
 
         activeAccountID = id
         accounts[index].lastUsedAt = .now
