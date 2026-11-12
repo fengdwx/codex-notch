@@ -38,14 +38,12 @@ final class AccountsService: ObservableObject {
 
     static let shared = AccountsService()
 
-    /// Only report a home once it exists. Before the first switch the running
-    /// Codex still uses the legacy `~/.codex`, and the notch must keep reading
-    /// that instead of an empty directory.
-    var activeHomeURL: URL? {
-        guard let activeAccountID, homeStore.hasHome(for: activeAccountID) else {
-            return nil
-        }
-        return homeStore.paths(for: activeAccountID).codexHome
+    /// All accounts share the original `~/.codex`, so there is no separate
+    /// per-account home to report. The notch always reads the default home.
+    var activeHomeURL: URL? { nil }
+
+    var sharedAuthURL: URL {
+        defaultCodexHome.appendingPathComponent("auth.json")
     }
 
     /// Called after a successful switch so long-lived observers (the notch
@@ -120,13 +118,10 @@ final class AccountsService: ObservableObject {
 
         try captureActiveAuth()
         let authData = try authDataForLaunch(id)
-        let home = try homeStore.ensureHome(
-            for: id,
-            authData: authData,
-            seedFrom: defaultCodexHome
-        )
+        _ = try AccountIdentityParser.parse(authData)
+        try PrivateFileWriter.write(authData, to: sharedAuthURL, fileManager: fileManager)
 
-        try await launcher.restart(home: home.codexHome, userData: home.userData)
+        try await launcher.restartShared()
 
         activeAccountID = id
         accounts[index].lastUsedAt = .now
@@ -134,19 +129,10 @@ final class AccountsService: ObservableObject {
         onActiveAccountChanged?()
     }
 
-    /// Persists tokens refreshed inside the currently running account's home
-    /// before that process is terminated.
+    /// Persists the tokens the running Codex refreshed inside `~/.codex`
+    /// before that process is replaced.
     private func captureActiveAuth() throws {
-        if let activeAccountID,
-           let data = homeStore.authData(for: activeAccountID) {
-            try? vault.store(data, for: activeAccountID)
-            return
-        }
-
-        // Before the first switch the running Codex still owns ~/.codex, and
-        // its auth.json may hold tokens refreshed after the import.
-        let legacyAuth = defaultCodexHome.appendingPathComponent("auth.json")
-        guard let data = try? Data(contentsOf: legacyAuth),
+        guard let data = try? Data(contentsOf: sharedAuthURL),
               let identity = try? AccountIdentityParser.parse(data),
               let profile = match(identity) else {
             return
@@ -155,9 +141,6 @@ final class AccountsService: ObservableObject {
     }
 
     private func authDataForLaunch(_ id: UUID) throws -> Data {
-        if let data = homeStore.authData(for: id) {
-            return data
-        }
         do {
             return try vault.retrieve(id)
         } catch {
@@ -199,11 +182,12 @@ final class AccountsService: ObservableObject {
         guard let profile = account(withID: id) else {
             throw AccountError.accountNotFound
         }
-        if let homeData = homeStore.authData(for: id),
-           let identity = try? AccountIdentityParser.parse(homeData),
+        let sharedData = try? Data(contentsOf: sharedAuthURL)
+        if let sharedData,
+           let identity = try? AccountIdentityParser.parse(sharedData),
            matches(identity, profile) {
-            try vault.store(homeData, for: id)
-            return homeData
+            try vault.store(sharedData, for: id)
+            return sharedData
         }
         return try vault.retrieve(id)
     }
@@ -252,9 +236,12 @@ final class AccountsService: ObservableObject {
     }
 
     private func quotaAuthData(for id: UUID) throws -> Data {
-        if let homeData = homeStore.authData(for: id) {
-            try? vault.store(homeData, for: id)
-            return homeData
+        // The active account's token in the shared home may be newer than the
+        // vault copy because Codex refreshes it in place.
+        if activeAccountID == id,
+           let sharedData = try? Data(contentsOf: sharedAuthURL) {
+            try? vault.store(sharedData, for: id)
+            return sharedData
         }
         return try vault.retrieve(id)
     }
@@ -298,7 +285,7 @@ final class AccountsService: ObservableObject {
     // MARK: - Lookup helpers
 
     func homeURL(for id: UUID) -> URL {
-        homeStore.paths(for: id).codexHome
+        defaultCodexHome
     }
 
     private func match(_ identity: AccountIdentity) -> AccountProfile? {

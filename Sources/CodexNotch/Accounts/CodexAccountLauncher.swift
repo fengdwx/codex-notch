@@ -2,17 +2,16 @@ import AppKit
 import Foundation
 
 protocol CodexLaunching {
-    func restart(home: URL, userData: URL) async throws
+    /// Quits Codex and relaunches it against the shared `~/.codex` home, so
+    /// every account sees the same project and session pool.
+    func restartShared() async throws
 }
 
-/// Quits every running Codex instance and relaunches it with an isolated
-/// `CODEX_HOME` and Electron user-data directory. The desktop app resolves
-/// both variables itself, so no binary patching is involved.
 struct LiveCodexLauncher: CodexLaunching {
     static let bundleIdentifier = "com.openai.codex"
     static let openExecutable = URL(fileURLWithPath: "/usr/bin/open")
 
-    func restart(home: URL, userData: URL) async throws {
+    func restartShared() async throws {
         await MainActor.run { terminateRunningInstances() }
 
         for _ in 0..<24 {
@@ -26,20 +25,14 @@ struct LiveCodexLauncher: CodexLaunching {
             try? await Task.sleep(nanoseconds: 500_000_000)
         }
 
-        try await launch(home: home, userData: userData)
+        try await launchShared()
     }
 
-    static func openArguments(appURL: URL, home: URL, userData: URL) -> [String] {
-        [
-            "-n",
-            "--env", "CODEX_HOME=\(home.path)",
-            "--env", "CODEX_ELECTRON_USER_DATA_PATH=\(userData.path)",
-            appURL.path,
-            "--args", "--user-data-dir=\(userData.path)"
-        ]
+    static func openArguments(appURL: URL) -> [String] {
+        ["-n", appURL.path]
     }
 
-    func launch(home: URL, userData: URL) async throws {
+    func launchShared() async throws {
         guard let appURL = await MainActor.run(body: {
             NSWorkspace.shared.urlForApplication(withBundleIdentifier: Self.bundleIdentifier)
         }) else {
@@ -48,7 +41,7 @@ struct LiveCodexLauncher: CodexLaunching {
 
         let process = Process()
         process.executableURL = Self.openExecutable
-        process.arguments = Self.openArguments(appURL: appURL, home: home, userData: userData)
+        process.arguments = Self.openArguments(appURL: appURL)
 
         let errorPipe = Pipe()
         process.standardError = errorPipe

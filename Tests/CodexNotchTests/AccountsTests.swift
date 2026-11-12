@@ -48,41 +48,40 @@ final class AccountsTests: XCTestCase {
         XCTAssertEqual(try service.vault.retrieve(updated.id), second)
     }
 
-    func testSwitchSeedsHomeAndLaunchesWithIsolation() async throws {
+    func testSwitchWritesSharedAuthAndRelaunches() async throws {
         let data = makeAuthData(email: "a@example.com", accountID: "acct-a")
         let profile = try service.importSession(data)
 
         try await service.switchTo(profile.id)
 
-        let home = service.homeStore.paths(for: profile.id)
-        XCTAssertTrue(FileManager.default.fileExists(
-            atPath: home.codexHome.appendingPathComponent("auth.json").path
-        ))
-        XCTAssertEqual(launcher.calls.count, 1)
-        XCTAssertEqual(launcher.calls[0].home, home.codexHome)
-        XCTAssertEqual(launcher.calls[0].userData, home.userData)
+        let sharedAuth = root
+            .appendingPathComponent("DefaultCodex", isDirectory: true)
+            .appendingPathComponent("auth.json")
+        XCTAssertEqual(try Data(contentsOf: sharedAuth), data)
+        XCTAssertEqual(launcher.restartSharedCalls, 1)
         XCTAssertEqual(service.activeAccountID, profile.id)
+        XCTAssertFalse(FileManager.default.fileExists(
+            atPath: root.appendingPathComponent("Accounts/Homes").path
+        ))
     }
 
-    func testSwitchPrefersRefreshedHomeTokenOverVault() async throws {
+    func testSwitchCapturesRefreshedSharedAuthIntoTheVault() async throws {
         let original = makeAuthData(email: "a@example.com", accountID: "acct-a", accessToken: "original")
         let profile = try service.importSession(original)
         let refreshed = makeAuthData(email: "a@example.com", accountID: "acct-a", accessToken: "refreshed")
 
-        // Simulate Codex refreshing the token inside its own home.
-        let home = try service.homeStore.ensureHome(
-            for: profile.id,
-            authData: original,
-            seedFrom: nil
+        // Simulate Codex refreshing the token inside the shared home.
+        let defaultHome = root.appendingPathComponent("DefaultCodex", isDirectory: true)
+        try FileManager.default.createDirectory(at: defaultHome, withIntermediateDirectories: true)
+        try refreshed.write(to: defaultHome.appendingPathComponent("auth.json"))
+
+        let other = try service.importSession(
+            makeAuthData(email: "b@example.com", accountID: "acct-b")
         )
-        try service.homeStore.storeAuthData(refreshed, for: profile.id)
+        try await service.switchTo(other.id)
 
-        try await service.switchTo(profile.id)
-
-        let launchedArgs = FakeCodexLauncher.lastArguments
-        XCTAssertTrue(launchedArgs.contains("CODEX_HOME=\(home.codexHome.path)"))
-        XCTAssertTrue(launchedArgs.contains("CODEX_ELECTRON_USER_DATA_PATH=\(home.userData.path)"))
-        XCTAssertEqual(try service.exportSession(profile.id), refreshed)
+        XCTAssertEqual(try service.vault.retrieve(profile.id), refreshed)
+        XCTAssertEqual(try service.vault.retrieve(other.id), try service.exportSession(other.id))
     }
 
     func testLoadImportsLegacySwitcherData() throws {
@@ -132,31 +131,24 @@ final class AccountsTests: XCTestCase {
         XCTAssertEqual(service.activeAccountID, profile.id)
     }
 
-    func testDeleteRemovesVaultAndHome() async throws {
+    func testDeleteRemovesVaultAndAccount() async throws {
         let profile = try service.importSession(
             makeAuthData(email: "a@example.com", accountID: "acct-a")
         )
         try await service.switchTo(profile.id)
-        let home = service.homeStore.paths(for: profile.id)
 
         try service.delete(profile.id)
 
         XCTAssertTrue(service.accounts.isEmpty)
         XCTAssertFalse(service.vault.contains(profile.id))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: home.root.path))
     }
 
-    func testOpenArgumentsCarryBothIsolationVariables() {
+    func testSharedRelaunchDoesNotSetCodexHome() {
         let appURL = URL(fileURLWithPath: "/Applications/Codex.app")
-        let home = URL(fileURLWithPath: "/tmp/home")
-        let userData = URL(fileURLWithPath: "/tmp/userdata")
+        let args = LiveCodexLauncher.openArguments(appURL: appURL)
 
-        let args = LiveCodexLauncher.openArguments(appURL: appURL, home: home, userData: userData)
-
-        XCTAssertTrue(args.contains("CODEX_HOME=/tmp/home"))
-        XCTAssertTrue(args.contains("CODEX_ELECTRON_USER_DATA_PATH=/tmp/userdata"))
-        XCTAssertTrue(args.contains("--user-data-dir=/tmp/userdata"))
-        XCTAssertEqual(args.first, "-n")
+        XCTAssertEqual(args, ["-n", appURL.path])
+        XCTAssertFalse(args.contains { $0.hasPrefix("CODEX_HOME=") })
     }
 
     func testAccountListHeightOnlyAppliesWhenThereAreMultipleAccounts() {
@@ -215,20 +207,9 @@ final class AccountsTests: XCTestCase {
 }
 
 final class FakeCodexLauncher: CodexLaunching {
-    struct Call: Equatable {
-        let home: URL
-        let userData: URL
-    }
+    private(set) var restartSharedCalls = 0
 
-    private(set) var calls: [Call] = []
-    static var lastArguments: [String] = []
-
-    func restart(home: URL, userData: URL) async throws {
-        calls.append(Call(home: home, userData: userData))
-        Self.lastArguments = LiveCodexLauncher.openArguments(
-            appURL: URL(fileURLWithPath: "/Applications/Codex.app"),
-            home: home,
-            userData: userData
-        )
+    func restartShared() async throws {
+        restartSharedCalls += 1
     }
 }

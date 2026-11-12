@@ -13,7 +13,7 @@ struct AccountSwitchList: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(language.localized(chinese: "账号", english: "Accounts"))
                     .font(.system(size: 11.5, weight: .regular))
-                    .foregroundStyle(Color.secondary)
+                    .foregroundStyle(Color.white.opacity(0.55))
                     .frame(
                         height: NotchExpandedLayout.accountListHeaderHeight,
                         alignment: .bottomLeading
@@ -44,10 +44,10 @@ struct AccountSwitchList: View {
             HStack(spacing: 8) {
                 ZStack {
                     Circle()
-                        .fill(isActive ? Color.accentColor : Color.secondary.opacity(0.16))
+                        .fill(isActive ? Color.accentColor : Color.white.opacity(0.16))
                     Text(String(account.shortLabel.prefix(1)).uppercased())
                         .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(isActive ? Color.white : Color.secondary)
+                        .foregroundStyle(isActive ? Color.white : Color.white.opacity(0.72))
                 }
                 .frame(width: 20, height: 20)
 
@@ -55,12 +55,12 @@ struct AccountSwitchList: View {
                     HStack(spacing: 5) {
                         Text(account.shortLabel)
                             .font(.system(size: 11.5, weight: isActive ? .semibold : .regular))
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(Color.white.opacity(0.92))
                             .lineLimit(1)
                         if let plan = account.planType, !plan.isEmpty {
                             Text(plan.uppercased())
                                 .font(.system(size: 8, weight: .bold))
-                                .foregroundStyle(Color.secondary)
+                                .foregroundStyle(Color.white.opacity(0.55))
                         }
                         if isActive {
                             Image(systemName: "checkmark.circle.fill")
@@ -71,7 +71,7 @@ struct AccountSwitchList: View {
                     if let email = account.email, !email.isEmpty {
                         Text(email)
                             .font(.system(size: 9, weight: .regular))
-                            .foregroundStyle(Color.secondary)
+                            .foregroundStyle(Color.white.opacity(0.55))
                             .lineLimit(1)
                     }
                 }
@@ -99,7 +99,7 @@ struct AccountSwitchList: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(isActive ? Color.accentColor.opacity(0.08) : Color.clear)
+                    .fill(isActive ? Color.white.opacity(0.08) : Color.clear)
             )
             .contentShape(Rectangle())
         }
@@ -119,14 +119,14 @@ struct AccountSwitchList: View {
             HStack(spacing: 3) {
                 Text(label)
                     .font(.system(size: 8, weight: .regular))
-                    .foregroundStyle(Color.secondary)
+                    .foregroundStyle(Color.white.opacity(0.55))
                 Text(percentText(usedPercent))
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(usedPercent == nil ? Color.secondary : .primary)
+                    .foregroundStyle(usedPercent == nil ? Color.white.opacity(0.55) : .primary)
             }
             Text(resetText(resetsAt))
                 .font(.system(size: 7.5, weight: .regular))
-                .foregroundStyle(Color.secondary)
+                .foregroundStyle(Color.white.opacity(0.55))
                 .lineLimit(1)
         }
         .frame(width: 56, alignment: .trailing)

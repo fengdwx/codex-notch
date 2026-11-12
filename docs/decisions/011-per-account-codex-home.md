@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [ACCOUNTS-ISOLATION-064]
 supersedes: []
-superseded_by: null
+superseded_by: 012-shared-codex-home-for-accounts.md
 owner: project-maintainer
 created_at: 2026-11-11
 last_verified_commit: null

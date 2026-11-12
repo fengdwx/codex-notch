@@ -362,6 +362,48 @@ contracts:
       - docs/decisions/056-measured-physical-notch-height.md
       - "manual: compare camera and wing bottom edges at different display scales; inspect both indicators, hover expansion/collapse and hidden recovery, then connect/disconnect an external display in extended and mirrored modes"
     supersedes: []
+    superseded_by: ACCOUNTS-SHARED-HOME-065
+    last_verified_commit: null
+
+  - id: ACCOUNTS-SHARED-HOME-065
+    title: Every account shares one project and session pool
+    status: active
+    statement: >-
+      All Codex accounts use the original shared CODEX_HOME (`~/.codex`).
+      Switching writes only `~/.codex/auth.json` from the account vault and
+      relaunches Codex without CODEX_HOME or CODEX_ELECTRON_USER_DATA_PATH
+      overrides, so every account sees the same projects, sessions and thread
+      history. The account vault, notes and per-account quota stay separate;
+      quota for the active account prefers the shared auth.json because Codex
+      refreshes tokens in place. The notch always reads the shared home and
+      must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      directories and empty first-switch accounts are explicitly not part of
+      this behavior. Tokens stay local, files are 0700/0600, and switching
+      must not delete or rewrite project, session or history data.
+    rationale: >-
+      The user prefers one shared project pool across accounts and only wants
+      the logged-in account and its quota to change; isolated homes made a
+      first switch look like a fresh install.
+    source: user-confirmed
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [account-switching, shared-codex-home, settings, notch-account-entry, quota]
+      exclude: [per-account-homes, cloud-sync, history-migration, release-publishing]
+    examples:
+      positive: >-
+        Switching from A to B replaces only ~/.codex/auth.json and relaunches
+        Codex; the project list and session history stay identical, while the
+        notch shows B's quota and the account list marks B active.
+      negative: >-
+        Creating a CODEX_HOME per account, starting Codex with
+        CODEX_ELECTRON_USER_DATA_PATH, showing an empty project list after a
+        switch, deleting sessions, or exposing A's quota as B's.
+    guards:
+      - Tests/CodexNotchTests/AccountsTests.swift
+      - docs/decisions/012-shared-codex-home-for-accounts.md
+      - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
+    supersedes: [ACCOUNTS-ISOLATION-064]
     superseded_by: null
     last_verified_commit: null
 
@@ -394,6 +436,48 @@ contracts:
       - Tests/CodexNotchTests/UpdateArchiveVerificationTests.swift
       - docs/decisions/057-actions-release-signing.md
     supersedes: []
+    superseded_by: ACCOUNTS-SHARED-HOME-065
+    last_verified_commit: null
+
+  - id: ACCOUNTS-SHARED-HOME-065
+    title: Every account shares one project and session pool
+    status: active
+    statement: >-
+      All Codex accounts use the original shared CODEX_HOME (`~/.codex`).
+      Switching writes only `~/.codex/auth.json` from the account vault and
+      relaunches Codex without CODEX_HOME or CODEX_ELECTRON_USER_DATA_PATH
+      overrides, so every account sees the same projects, sessions and thread
+      history. The account vault, notes and per-account quota stay separate;
+      quota for the active account prefers the shared auth.json because Codex
+      refreshes tokens in place. The notch always reads the shared home and
+      must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      directories and empty first-switch accounts are explicitly not part of
+      this behavior. Tokens stay local, files are 0700/0600, and switching
+      must not delete or rewrite project, session or history data.
+    rationale: >-
+      The user prefers one shared project pool across accounts and only wants
+      the logged-in account and its quota to change; isolated homes made a
+      first switch look like a fresh install.
+    source: user-confirmed
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [account-switching, shared-codex-home, settings, notch-account-entry, quota]
+      exclude: [per-account-homes, cloud-sync, history-migration, release-publishing]
+    examples:
+      positive: >-
+        Switching from A to B replaces only ~/.codex/auth.json and relaunches
+        Codex; the project list and session history stay identical, while the
+        notch shows B's quota and the account list marks B active.
+      negative: >-
+        Creating a CODEX_HOME per account, starting Codex with
+        CODEX_ELECTRON_USER_DATA_PATH, showing an empty project list after a
+        switch, deleting sessions, or exposing A's quota as B's.
+    guards:
+      - Tests/CodexNotchTests/AccountsTests.swift
+      - docs/decisions/012-shared-codex-home-for-accounts.md
+      - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
+    supersedes: [ACCOUNTS-ISOLATION-064]
     superseded_by: null
     last_verified_commit: null
 
@@ -426,6 +510,48 @@ contracts:
       - docs/decisions/055-signature-text-editing.md
       - "manual: type spaces one at a time in the rebuilt Settings, then delete and insert text in the middle; check Chinese input, composed emoji, the twelve-character boundary and persistence; restore original preferences"
     supersedes: []
+    superseded_by: ACCOUNTS-SHARED-HOME-065
+    last_verified_commit: null
+
+  - id: ACCOUNTS-SHARED-HOME-065
+    title: Every account shares one project and session pool
+    status: active
+    statement: >-
+      All Codex accounts use the original shared CODEX_HOME (`~/.codex`).
+      Switching writes only `~/.codex/auth.json` from the account vault and
+      relaunches Codex without CODEX_HOME or CODEX_ELECTRON_USER_DATA_PATH
+      overrides, so every account sees the same projects, sessions and thread
+      history. The account vault, notes and per-account quota stay separate;
+      quota for the active account prefers the shared auth.json because Codex
+      refreshes tokens in place. The notch always reads the shared home and
+      must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      directories and empty first-switch accounts are explicitly not part of
+      this behavior. Tokens stay local, files are 0700/0600, and switching
+      must not delete or rewrite project, session or history data.
+    rationale: >-
+      The user prefers one shared project pool across accounts and only wants
+      the logged-in account and its quota to change; isolated homes made a
+      first switch look like a fresh install.
+    source: user-confirmed
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [account-switching, shared-codex-home, settings, notch-account-entry, quota]
+      exclude: [per-account-homes, cloud-sync, history-migration, release-publishing]
+    examples:
+      positive: >-
+        Switching from A to B replaces only ~/.codex/auth.json and relaunches
+        Codex; the project list and session history stay identical, while the
+        notch shows B's quota and the account list marks B active.
+      negative: >-
+        Creating a CODEX_HOME per account, starting Codex with
+        CODEX_ELECTRON_USER_DATA_PATH, showing an empty project list after a
+        switch, deleting sessions, or exposing A's quota as B's.
+    guards:
+      - Tests/CodexNotchTests/AccountsTests.swift
+      - docs/decisions/012-shared-codex-home-for-accounts.md
+      - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
+    supersedes: [ACCOUNTS-ISOLATION-064]
     superseded_by: null
     last_verified_commit: null
 
@@ -721,6 +847,48 @@ contracts:
       - docs/decisions/048-launch-at-login.md
       - "manual: toggle in the bundled app, check Login Items and external changes, then log out/in with the option enabled and verify automatic launch"
     supersedes: []
+    superseded_by: ACCOUNTS-SHARED-HOME-065
+    last_verified_commit: null
+
+  - id: ACCOUNTS-SHARED-HOME-065
+    title: Every account shares one project and session pool
+    status: active
+    statement: >-
+      All Codex accounts use the original shared CODEX_HOME (`~/.codex`).
+      Switching writes only `~/.codex/auth.json` from the account vault and
+      relaunches Codex without CODEX_HOME or CODEX_ELECTRON_USER_DATA_PATH
+      overrides, so every account sees the same projects, sessions and thread
+      history. The account vault, notes and per-account quota stay separate;
+      quota for the active account prefers the shared auth.json because Codex
+      refreshes tokens in place. The notch always reads the shared home and
+      must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      directories and empty first-switch accounts are explicitly not part of
+      this behavior. Tokens stay local, files are 0700/0600, and switching
+      must not delete or rewrite project, session or history data.
+    rationale: >-
+      The user prefers one shared project pool across accounts and only wants
+      the logged-in account and its quota to change; isolated homes made a
+      first switch look like a fresh install.
+    source: user-confirmed
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [account-switching, shared-codex-home, settings, notch-account-entry, quota]
+      exclude: [per-account-homes, cloud-sync, history-migration, release-publishing]
+    examples:
+      positive: >-
+        Switching from A to B replaces only ~/.codex/auth.json and relaunches
+        Codex; the project list and session history stay identical, while the
+        notch shows B's quota and the account list marks B active.
+      negative: >-
+        Creating a CODEX_HOME per account, starting Codex with
+        CODEX_ELECTRON_USER_DATA_PATH, showing an empty project list after a
+        switch, deleting sessions, or exposing A's quota as B's.
+    guards:
+      - Tests/CodexNotchTests/AccountsTests.swift
+      - docs/decisions/012-shared-codex-home-for-accounts.md
+      - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
+    supersedes: [ACCOUNTS-ISOLATION-064]
     superseded_by: null
     last_verified_commit: null
 
@@ -1303,6 +1471,48 @@ contracts:
       - Tests/CodexNotchTests/QuotaWaveBoundaryTests.swift
       - "manual: inspect full, empty and partial wave balls with motion enabled and Reduce Motion on real hardware"
     supersedes: []
+    superseded_by: ACCOUNTS-SHARED-HOME-065
+    last_verified_commit: null
+
+  - id: ACCOUNTS-SHARED-HOME-065
+    title: Every account shares one project and session pool
+    status: active
+    statement: >-
+      All Codex accounts use the original shared CODEX_HOME (`~/.codex`).
+      Switching writes only `~/.codex/auth.json` from the account vault and
+      relaunches Codex without CODEX_HOME or CODEX_ELECTRON_USER_DATA_PATH
+      overrides, so every account sees the same projects, sessions and thread
+      history. The account vault, notes and per-account quota stay separate;
+      quota for the active account prefers the shared auth.json because Codex
+      refreshes tokens in place. The notch always reads the shared home and
+      must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      directories and empty first-switch accounts are explicitly not part of
+      this behavior. Tokens stay local, files are 0700/0600, and switching
+      must not delete or rewrite project, session or history data.
+    rationale: >-
+      The user prefers one shared project pool across accounts and only wants
+      the logged-in account and its quota to change; isolated homes made a
+      first switch look like a fresh install.
+    source: user-confirmed
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [account-switching, shared-codex-home, settings, notch-account-entry, quota]
+      exclude: [per-account-homes, cloud-sync, history-migration, release-publishing]
+    examples:
+      positive: >-
+        Switching from A to B replaces only ~/.codex/auth.json and relaunches
+        Codex; the project list and session history stay identical, while the
+        notch shows B's quota and the account list marks B active.
+      negative: >-
+        Creating a CODEX_HOME per account, starting Codex with
+        CODEX_ELECTRON_USER_DATA_PATH, showing an empty project list after a
+        switch, deleting sessions, or exposing A's quota as B's.
+    guards:
+      - Tests/CodexNotchTests/AccountsTests.swift
+      - docs/decisions/012-shared-codex-home-for-accounts.md
+      - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
+    supersedes: [ACCOUNTS-ISOLATION-064]
     superseded_by: null
     last_verified_commit: null
 
@@ -3101,6 +3311,48 @@ contracts:
       - scripts/verify_app.sh
       - "manual: hdiutil verify and read-only mount occur during ./scripts/release.sh"
     supersedes: []
+    superseded_by: ACCOUNTS-SHARED-HOME-065
+    last_verified_commit: null
+
+  - id: ACCOUNTS-SHARED-HOME-065
+    title: Every account shares one project and session pool
+    status: active
+    statement: >-
+      All Codex accounts use the original shared CODEX_HOME (`~/.codex`).
+      Switching writes only `~/.codex/auth.json` from the account vault and
+      relaunches Codex without CODEX_HOME or CODEX_ELECTRON_USER_DATA_PATH
+      overrides, so every account sees the same projects, sessions and thread
+      history. The account vault, notes and per-account quota stay separate;
+      quota for the active account prefers the shared auth.json because Codex
+      refreshes tokens in place. The notch always reads the shared home and
+      must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      directories and empty first-switch accounts are explicitly not part of
+      this behavior. Tokens stay local, files are 0700/0600, and switching
+      must not delete or rewrite project, session or history data.
+    rationale: >-
+      The user prefers one shared project pool across accounts and only wants
+      the logged-in account and its quota to change; isolated homes made a
+      first switch look like a fresh install.
+    source: user-confirmed
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [account-switching, shared-codex-home, settings, notch-account-entry, quota]
+      exclude: [per-account-homes, cloud-sync, history-migration, release-publishing]
+    examples:
+      positive: >-
+        Switching from A to B replaces only ~/.codex/auth.json and relaunches
+        Codex; the project list and session history stay identical, while the
+        notch shows B's quota and the account list marks B active.
+      negative: >-
+        Creating a CODEX_HOME per account, starting Codex with
+        CODEX_ELECTRON_USER_DATA_PATH, showing an empty project list after a
+        switch, deleting sessions, or exposing A's quota as B's.
+    guards:
+      - Tests/CodexNotchTests/AccountsTests.swift
+      - docs/decisions/012-shared-codex-home-for-accounts.md
+      - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
+    supersedes: [ACCOUNTS-ISOLATION-064]
     superseded_by: null
     last_verified_commit: null
 
@@ -3246,7 +3498,7 @@ contracts:
 
   - id: ACCOUNTS-ISOLATION-064
     title: Account switching uses isolated Codex homes
-    status: active
+    status: superseded
     statement: >-
       Switching accounts launches Codex with a private CODEX_HOME and
       CODEX_ELECTRON_USER_DATA_PATH under CodexNotch/Accounts/Homes/<uuid>, and
@@ -3284,5 +3536,47 @@ contracts:
       - docs/decisions/011-per-account-codex-home.md
       - "manual: switch between two accounts on physical-notch hardware and confirm quota, recent tasks and projects stay isolated"
     supersedes: []
+    superseded_by: ACCOUNTS-SHARED-HOME-065
+    last_verified_commit: null
+
+  - id: ACCOUNTS-SHARED-HOME-065
+    title: Every account shares one project and session pool
+    status: active
+    statement: >-
+      All Codex accounts use the original shared CODEX_HOME (`~/.codex`).
+      Switching writes only `~/.codex/auth.json` from the account vault and
+      relaunches Codex without CODEX_HOME or CODEX_ELECTRON_USER_DATA_PATH
+      overrides, so every account sees the same projects, sessions and thread
+      history. The account vault, notes and per-account quota stay separate;
+      quota for the active account prefers the shared auth.json because Codex
+      refreshes tokens in place. The notch always reads the shared home and
+      must fall back to CODEX_HOME/`~/.codex`. Per-account homes, user-data
+      directories and empty first-switch accounts are explicitly not part of
+      this behavior. Tokens stay local, files are 0700/0600, and switching
+      must not delete or rewrite project, session or history data.
+    rationale: >-
+      The user prefers one shared project pool across accounts and only wants
+      the logged-in account and its quota to change; isolated homes made a
+      first switch look like a fresh install.
+    source: user-confirmed
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [account-switching, shared-codex-home, settings, notch-account-entry, quota]
+      exclude: [per-account-homes, cloud-sync, history-migration, release-publishing]
+    examples:
+      positive: >-
+        Switching from A to B replaces only ~/.codex/auth.json and relaunches
+        Codex; the project list and session history stay identical, while the
+        notch shows B's quota and the account list marks B active.
+      negative: >-
+        Creating a CODEX_HOME per account, starting Codex with
+        CODEX_ELECTRON_USER_DATA_PATH, showing an empty project list after a
+        switch, deleting sessions, or exposing A's quota as B's.
+    guards:
+      - Tests/CodexNotchTests/AccountsTests.swift
+      - docs/decisions/012-shared-codex-home-for-accounts.md
+      - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
+    supersedes: [ACCOUNTS-ISOLATION-064]
     superseded_by: null
     last_verified_commit: null
