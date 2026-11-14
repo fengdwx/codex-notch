@@ -238,14 +238,19 @@ final class AccountsService: ObservableObject {
             throw AccountError.accountNotFound
         }
 
+        let sourceIdentity = (try? Data(contentsOf: sharedAuthURL))
+            .flatMap { try? AccountIdentityParser.parse($0) }
+
         try captureActiveAuth()
         let authData = try authDataForLaunch(id)
-        _ = try AccountIdentityParser.parse(authData)
+        let targetIdentity = try AccountIdentityParser.parse(authData)
         try PrivateFileWriter.write(authData, to: sharedAuthURL, fileManager: fileManager)
 
         await launcher.quit()
-        _ = try? SidebarProjectSynchronizer.synchronize(
-            globalStateURL: defaultCodexHome.appendingPathComponent(".codex-global-state.json"),
+        _ = try? SidebarProjectSynchronizer.synchronizeCodexHome(
+            defaultCodexHome,
+            sourceIdentity: sourceIdentity,
+            targetIdentity: targetIdentity,
             fileManager: fileManager
         )
         try await launcher.launchShared()

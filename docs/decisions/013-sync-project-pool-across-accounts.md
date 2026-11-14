@@ -1,8 +1,8 @@
 ---
-status: active
+status: superseded
 contract_ids: [ACCOUNTS-SHARED-HOME-065]
 supersedes: []
-superseded_by: null
+superseded_by: docs/decisions/015-shared-project-continuation-across-accounts.md
 owner: project-maintainer
 created_at: 2026-11-12
 last_verified_commit: null

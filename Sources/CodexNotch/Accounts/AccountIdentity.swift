@@ -3,9 +3,52 @@ import Foundation
 
 struct AccountIdentity: Equatable, Sendable {
     let accountIdentifier: String?
+    let userIdentifier: String?
     let email: String?
     let planType: String?
     let fingerprint: String
+
+    init(
+        accountIdentifier: String?,
+        userIdentifier: String? = nil,
+        email: String?,
+        planType: String?,
+        fingerprint: String
+    ) {
+        self.accountIdentifier = accountIdentifier
+        self.userIdentifier = userIdentifier
+        self.email = email
+        self.planType = planType
+        self.fingerprint = fingerprint
+    }
+
+    /// Matches Codex Desktop's `electron-renderer-content-owner` hash:
+    /// lowercase hex SHA-256 of `JSON.stringify([userId, accountId])`.
+    var ownerHash: String? {
+        guard
+            let userIdentifier,
+            let accountIdentifier,
+            let serialized = Self.jsonTupleKey([userIdentifier, accountIdentifier])
+        else {
+            return nil
+        }
+        let digest = SHA256.hash(data: Data(serialized.utf8))
+        return digest.map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Serializes a string tuple in the exact compact UTF-8 JSON format
+    /// produced by JavaScript's `JSON.stringify(parts)`.
+    static func jsonTupleKey(_ parts: [String]) -> String? {
+        guard JSONSerialization.isValidJSONObject(parts),
+              let data = try? JSONSerialization.data(
+                  withJSONObject: parts,
+                  options: [.withoutEscapingSlashes]
+              )
+        else {
+            return nil
+        }
+        return String(data: data, encoding: .utf8)
+    }
 }
 
 enum AccountIdentityParser {
@@ -24,17 +67,29 @@ enum AccountIdentityParser {
 
         let claims = decodeJWTPayload(idToken) ?? [:]
         let auth = claims["https://api.openai.com/auth"] as? [String: Any] ?? [:]
-        let accountIdentifier = (auth["chatgpt_account_id"] as? String)
-            ?? (tokens["account_id"] as? String)
-        let email = claims["email"] as? String
-        let planType = auth["chatgpt_plan_type"] as? String
+        let accountIdentifier = nonEmpty(auth["chatgpt_account_id"] as? String)
+            ?? nonEmpty(tokens["account_id"] as? String)
+        let userIdentifier = nonEmpty(auth["chatgpt_user_id"] as? String)
+            ?? nonEmpty(auth["user_id"] as? String)
+        let email = nonEmpty(claims["email"] as? String)
+        let planType = nonEmpty(auth["chatgpt_plan_type"] as? String)
 
         return AccountIdentity(
             accountIdentifier: accountIdentifier,
+            userIdentifier: userIdentifier,
             email: email,
             planType: planType,
             fingerprint: fingerprint(idToken)
         )
+    }
+
+    private static func nonEmpty(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty
+        else {
+            return nil
+        }
+        return trimmed
     }
 
     static func fingerprint(_ idToken: String) -> String {

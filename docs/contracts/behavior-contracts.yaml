@@ -3756,3 +3756,59 @@ contracts:
     supersedes: [ACCOUNTS-SHARED-HOME-065]
     superseded_by: null
     last_verified_commit: null
+
+  - id: ACCOUNTS-PROJECT-CONTINUATION-067
+    title: Cross-account active project and New Chat workspace continuation
+    status: active
+    statement: >-
+      Switching accounts inside shared CODEX_HOME (`~/.codex`) preserves the
+      active project, workspace roots, sidebar/composer continuation state, and
+      per-computer New Chat composer project mapping across accounts instead of
+      isolating active project selection per account. Before relaunching Codex
+      Desktop, `AccountsService.switchTo(_:)` parses the outgoing and incoming
+      account identities (`userId`, `accountId` -> lowercase SHA-256
+      `ownerHash`) without mutating `~/.codex` auth secrets, and invokes
+      `SidebarProjectSynchronizer.synchronizeCodexHome(_:sourceIdentity:targetIdentity:)`
+      to synchronize legacy `electron-account-renderer-state-v1` globals, modern
+      owner-scoped `.codex-global-state.json` keys
+      (`electron-owner-value:*:<ownerHash>`,
+      `electron-account-remote-preference:*:<ownerHash>`, and whitelisted
+      workspace/composer atoms + `new-task-project-by-computer` entries inside
+      `electron-owner-atoms:<ownerHash>`), and `.codex-global-state.sqlite`
+      when activated (`PRAGMA user_version != 0`), creating destination owner
+      entries even for first-time logins while keeping `.pre-sync` backups,
+      leaving `electron-renderer-content-owner` untouched for Codex startup
+      confirmation, clearing stale `active-remote-project-id` when switching
+      from a local selection, and preserving private per-account atoms.
+    rationale: >-
+      Current Codex Desktop builds migrated projects to global scope while still
+      partitioning `selected-project`, workspace roots, and
+      `new-task-project-by-computer` by `[userId, accountId]` owner hash.
+      Synchronizing continuation state alongside the project pool lets a user
+      switch accounts seamlessly within the exact same project and composer
+      context.
+    source: user-confirmed
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [account-switching, codex-global-state, project-continuation, new-chat-composer]
+      exclude: [auth-tokens, account-private-atoms, electron-renderer-content-owner, codex-app-modification]
+    examples:
+      positive: >-
+        Working in `open-science` on Account A and switching to Account B (even
+        if B previously selected `skillops` or has never opened current Codex
+        Desktop) reopens Codex with `selected-project = open-science`, preserved
+        workspace roots, and New Chat defaulting to `open-science`.
+      negative: >-
+        Overwriting `electron-renderer-content-owner`, copying private
+        per-account atoms (`cloud-aeon-profiles-v1:*`,
+        `space-page-pin-projection-owners-v1`, `query-seed:*`), wiping saved
+        workspace roots when one account lacks them, or retaining stale
+        `active-remote-project-id` over a local project selection.
+    guards:
+      - Tests/CodexNotchTests/AccountsTests.swift
+      - docs/decisions/015-shared-project-continuation-across-accounts.md
+      - "manual: switch accounts in CodexNotch while working inside a Codex Desktop project and confirm both sidebar selection and New Chat project picker remain on that project on physical hardware"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: null

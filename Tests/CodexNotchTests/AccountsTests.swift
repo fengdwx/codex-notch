@@ -1,4 +1,6 @@
+import CryptoKit
 import Foundation
+import SQLite3
 import XCTest
 @testable import CodexNotch
 
@@ -506,20 +508,349 @@ final class AccountsTests: XCTestCase {
         XCTAssertEqual((result?["project-order"] as? [String])?.first, "p1")
     }
 
+    func testAccountIdentityComputesCodexCompatibleOwnerHash() throws {
+        let authData = makeAuthData(
+            email: "alice@example.com",
+            accountID: "acct/1",
+            userID: "user-1"
+        )
+        let identity = try AccountIdentityParser.parse(authData)
+
+        let expectedInput = "[\"user-1\",\"acct/1\"]"
+        let expectedHash = SHA256.hash(data: Data(expectedInput.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
+
+        XCTAssertEqual(identity.userIdentifier, "user-1")
+        XCTAssertEqual(identity.ownerHash, expectedHash)
+    }
+
+    func testSidebarProjectSynchronizerPropagatesModernOwnerContinuationAndNewTaskProject() throws {
+        let codexHome = root.appendingPathComponent("ModernCodex", isDirectory: true)
+        try FileManager.default.createDirectory(at: codexHome, withIntermediateDirectories: true)
+        let stateURL = codexHome.appendingPathComponent(".codex-global-state.json")
+
+        let sourceID = try AccountIdentityParser.parse(
+            makeAuthData(email: "a@example.com", accountID: "acct-a", userID: "user-a")
+        )
+        let existingOtherID = try AccountIdentityParser.parse(
+            makeAuthData(email: "b@example.com", accountID: "acct-b", userID: "user-b")
+        )
+        let brandNewTargetID = try AccountIdentityParser.parse(
+            makeAuthData(email: "c@example.com", accountID: "acct-c", userID: "user-c")
+        )
+
+        let ownerA = try XCTUnwrap(sourceID.ownerHash)
+        let ownerB = try XCTUnwrap(existingOtherID.ownerHash)
+        let ownerC = try XCTUnwrap(brandNewTargetID.ownerHash)
+
+        let sourceTupleKey = try XCTUnwrap(AccountIdentity.jsonTupleKey(["acct-a", "user-a", "local"]))
+        let otherTupleKey = try XCTUnwrap(AccountIdentity.jsonTupleKey(["acct-b", "user-b", "local"]))
+        let targetTupleKey = try XCTUnwrap(AccountIdentity.jsonTupleKey(["acct-c", "user-c", "local"]))
+
+        let document: [String: Any] = [
+            "electron-renderer-content-owner": ownerA,
+            "local-projects": ["open-science": ["path": "/work/open-science"]],
+            "electron-owner-value:selected-project:\(ownerA)": [
+                "projectId": "open-science",
+                "type": "local"
+            ],
+            "electron-owner-value:active-workspace-roots:\(ownerA)": ["/work/open-science"],
+            "electron-owner-value:electron-saved-workspace-roots:\(ownerA)": ["/work/open-science"],
+            "electron-owner-value:app-server-pending-project-deletions-by-host:\(ownerA)": ["secret-delete"],
+            "electron-owner-atoms:\(ownerA)": [
+                "new-task-project-by-computer": [
+                    sourceTupleKey: "open-science"
+                ],
+                "sidebar-width": 280,
+                "sidebar-project-expanded-v1-codex:open-science": true,
+                "cloud-aeon-profiles-v1:a": ["private-a"]
+            ],
+            "electron-owner-value:selected-project:\(ownerB)": [
+                "projectId": "skillops",
+                "type": "local"
+            ],
+            "electron-account-remote-preference:active-remote-project-id:\(ownerB)": "stale-remote-project",
+            "electron-owner-atoms:\(ownerB)": [
+                "new-task-project-by-computer": [
+                    otherTupleKey: "skillops"
+                ],
+                "space-page-pin-projection-owners-v1": ["keep-b-pin"],
+                "cloud-aeon-profiles-v1:b": ["private-b"]
+            ]
+        ]
+        try JSONSerialization.data(withJSONObject: document).write(to: stateURL)
+        let original = try Data(contentsOf: stateURL)
+
+        let updated = try SidebarProjectSynchronizer.synchronizeCodexHome(
+            codexHome,
+            sourceIdentity: sourceID,
+            targetIdentity: brandNewTargetID
+        )
+
+        XCTAssertEqual(updated, 2)
+        XCTAssertEqual(try Data(contentsOf: stateURL.appendingPathExtension("pre-sync")), original)
+
+        let result = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: Data(contentsOf: stateURL)) as? [String: Any]
+        )
+        // Must leave active owner intact for Codex's confirmContentOwner transition.
+        XCTAssertEqual(result["electron-renderer-content-owner"] as? String, ownerA)
+
+        for destOwner in [ownerB, ownerC] {
+            let selected = result["electron-owner-value:selected-project:\(destOwner)"] as? [String: Any]
+            XCTAssertEqual(selected?["projectId"] as? String, "open-science")
+            XCTAssertEqual(selected?["type"] as? String, "local")
+            XCTAssertEqual(
+                result["electron-owner-value:active-workspace-roots:\(destOwner)"] as? [String],
+                ["/work/open-science"]
+            )
+            XCTAssertEqual(
+                result["electron-owner-value:electron-saved-workspace-roots:\(destOwner)"] as? [String],
+                ["/work/open-science"]
+            )
+            XCTAssertNil(result["electron-owner-value:app-server-pending-project-deletions-by-host:\(destOwner)"])
+        }
+
+        XCTAssertNil(result["electron-account-remote-preference:active-remote-project-id:\(ownerB)"])
+
+        let atomsB = result["electron-owner-atoms:\(ownerB)"] as? [String: Any]
+        let newTaskB = atomsB?["new-task-project-by-computer"] as? [String: Any]
+        XCTAssertEqual(newTaskB?[otherTupleKey] as? String, "open-science")
+        XCTAssertEqual(atomsB?["sidebar-width"] as? Int, 280)
+        XCTAssertEqual(atomsB?["sidebar-project-expanded-v1-codex:open-science"] as? Bool, true)
+        XCTAssertEqual(atomsB?["space-page-pin-projection-owners-v1"] as? [String], ["keep-b-pin"])
+        XCTAssertEqual(atomsB?["cloud-aeon-profiles-v1:b"] as? [String], ["private-b"])
+        XCTAssertNil(atomsB?["cloud-aeon-profiles-v1:a"])
+
+        let atomsC = result["electron-owner-atoms:\(ownerC)"] as? [String: Any]
+        let newTaskC = atomsC?["new-task-project-by-computer"] as? [String: Any]
+        XCTAssertEqual(newTaskC?[targetTupleKey] as? String, "open-science")
+        XCTAssertEqual(atomsC?["sidebar-width"] as? Int, 280)
+        XCTAssertNil(atomsC?["cloud-aeon-profiles-v1:a"])
+    }
+
+    func testSidebarProjectSynchronizerBackfillsMissingWorkspaceRoots() throws {
+        let codexHome = root.appendingPathComponent("BackfillCodex", isDirectory: true)
+        try FileManager.default.createDirectory(at: codexHome, withIntermediateDirectories: true)
+        let stateURL = codexHome.appendingPathComponent(".codex-global-state.json")
+
+        let sourceID = try AccountIdentityParser.parse(
+            makeAuthData(email: "a@example.com", accountID: "acct-a", userID: "user-a")
+        )
+        let targetID = try AccountIdentityParser.parse(
+            makeAuthData(email: "b@example.com", accountID: "acct-b", userID: "user-b")
+        )
+        let ownerA = try XCTUnwrap(sourceID.ownerHash)
+        let ownerB = try XCTUnwrap(targetID.ownerHash)
+
+        let document: [String: Any] = [
+            "electron-renderer-content-owner": ownerA,
+            "electron-owner-value:selected-project:\(ownerA)": [
+                "projectId": "open-science",
+                "type": "local"
+            ],
+            "electron-owner-value:selected-project:\(ownerB)": [
+                "projectId": "skillops",
+                "type": "local"
+            ],
+            "electron-owner-value:active-workspace-roots:\(ownerB)": ["/work/open-science"],
+            "electron-owner-value:electron-saved-workspace-roots:\(ownerB)": ["/work/open-science"]
+        ]
+        try JSONSerialization.data(withJSONObject: document).write(to: stateURL)
+
+        let updated = try SidebarProjectSynchronizer.synchronizeCodexHome(
+            codexHome,
+            sourceIdentity: sourceID,
+            targetIdentity: targetID
+        )
+
+        XCTAssertEqual(updated, 1)
+        let result = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: Data(contentsOf: stateURL)) as? [String: Any]
+        )
+        XCTAssertEqual(
+            result["electron-owner-value:electron-saved-workspace-roots:\(ownerA)"] as? [String],
+            ["/work/open-science"]
+        )
+        XCTAssertEqual(
+            result["electron-owner-value:electron-saved-workspace-roots:\(ownerB)"] as? [String],
+            ["/work/open-science"]
+        )
+        XCTAssertEqual(
+            (result["electron-owner-value:selected-project:\(ownerB)"] as? [String: Any])?["projectId"] as? String,
+            "open-science"
+        )
+    }
+
+    func testSwitchAccountSynchronizesProjectContinuationBetweenAccounts() async throws {
+        let authA = makeAuthData(email: "a@example.com", accountID: "acct-a", userID: "user-a", accessToken: "tok-a")
+        let authB = makeAuthData(email: "b@example.com", accountID: "acct-b", userID: "user-b", accessToken: "tok-b")
+        let idA = try AccountIdentityParser.parse(authA)
+        let idB = try AccountIdentityParser.parse(authB)
+        let ownerA = try XCTUnwrap(idA.ownerHash)
+        let ownerB = try XCTUnwrap(idB.ownerHash)
+
+        _ = try service.importSession(authA)
+        let acctB = try service.importSession(authB)
+
+        let codexHome = root.appendingPathComponent("DefaultCodex", isDirectory: true)
+        try FileManager.default.createDirectory(at: codexHome, withIntermediateDirectories: true)
+        try authA.write(to: codexHome.appendingPathComponent("auth.json"))
+
+        let sourceTupleKey = try XCTUnwrap(AccountIdentity.jsonTupleKey(["acct-a", "user-a", "local"]))
+        let targetTupleKey = try XCTUnwrap(AccountIdentity.jsonTupleKey(["acct-b", "user-b", "local"]))
+        let initialState: [String: Any] = [
+            "electron-renderer-content-owner": ownerA,
+            "electron-owner-value:selected-project:\(ownerA)": [
+                "projectId": "codex-notch",
+                "type": "local"
+            ],
+            "electron-owner-value:electron-saved-workspace-roots:\(ownerA)": ["/work/codex-notch"],
+            "electron-owner-atoms:\(ownerA)": [
+                "new-task-project-by-computer": [
+                    sourceTupleKey: "codex-notch"
+                ]
+            ]
+        ]
+        let stateURL = codexHome.appendingPathComponent(".codex-global-state.json")
+        try JSONSerialization.data(withJSONObject: initialState).write(to: stateURL)
+
+        try await service.switchTo(acctB.id)
+
+        let updatedState = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: Data(contentsOf: stateURL)) as? [String: Any]
+        )
+        let selectedB = updatedState["electron-owner-value:selected-project:\(ownerB)"] as? [String: Any]
+        XCTAssertEqual(selectedB?["projectId"] as? String, "codex-notch")
+        let atomsB = updatedState["electron-owner-atoms:\(ownerB)"] as? [String: Any]
+        let mapB = atomsB?["new-task-project-by-computer"] as? [String: Any]
+        XCTAssertEqual(mapB?[targetTupleKey] as? String, "codex-notch")
+    }
+
+    func testSidebarProjectSynchronizerUpdatesActiveSQLiteStore() throws {
+        let codexHome = root.appendingPathComponent("SQLiteCodex", isDirectory: true)
+        try FileManager.default.createDirectory(at: codexHome, withIntermediateDirectories: true)
+        let dbURL = codexHome.appendingPathComponent(".codex-global-state.sqlite")
+
+        let sourceID = try AccountIdentityParser.parse(
+            makeAuthData(email: "a@example.com", accountID: "acct-a", userID: "user-a")
+        )
+        let targetID = try AccountIdentityParser.parse(
+            makeAuthData(email: "b@example.com", accountID: "acct-b", userID: "user-b")
+        )
+        let ownerA = try XCTUnwrap(sourceID.ownerHash)
+        let ownerB = try XCTUnwrap(targetID.ownerHash)
+
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(dbURL.path, &db), SQLITE_OK)
+        defer { sqlite3_close(db) }
+        XCTAssertEqual(
+            sqlite3_exec(
+                db,
+                """
+                PRAGMA user_version = 1;
+                CREATE TABLE settings (scope TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY (scope, key));
+                """,
+                nil,
+                nil,
+                nil
+            ),
+            SQLITE_OK
+        )
+
+        let sourceTupleKey = try XCTUnwrap(AccountIdentity.jsonTupleKey(["acct-a", "user-a", "local"]))
+        let escapedSeedRows: [(String, String, String)] = [
+            ("global", "electron-renderer-content-owner", "\"\(ownerA)\""),
+            ("global", "electron-owner-value:selected-project:\(ownerA)", "{\"projectId\":\"open-science\",\"type\":\"local\"}"),
+            ("global", "electron-account-remote-preference:active-remote-project-id:\(ownerB)", "\"stale-remote\""),
+            (
+                "electron-owner-atoms:\(ownerA)",
+                "new-task-project-by-computer",
+                String(
+                    data: try JSONSerialization.data(
+                        withJSONObject: [sourceTupleKey: "open-science"],
+                        options: [.withoutEscapingSlashes]
+                    ),
+                    encoding: .utf8
+                )!
+            )
+        ]
+
+        let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        var insertStmt: OpaquePointer?
+        XCTAssertEqual(
+            sqlite3_prepare_v2(db, "INSERT INTO settings(scope, key, value) VALUES (?, ?, ?)", -1, &insertStmt, nil),
+            SQLITE_OK
+        )
+        for (scope, key, value) in escapedSeedRows {
+            sqlite3_reset(insertStmt)
+            sqlite3_bind_text(insertStmt, 1, scope, -1, transient)
+            sqlite3_bind_text(insertStmt, 2, key, -1, transient)
+            sqlite3_bind_text(insertStmt, 3, value, -1, transient)
+            XCTAssertEqual(sqlite3_step(insertStmt), SQLITE_DONE)
+        }
+        sqlite3_finalize(insertStmt)
+        sqlite3_close(db)
+        db = nil
+
+        let updated = try SidebarProjectSynchronizer.synchronizeCodexHome(
+            codexHome,
+            sourceIdentity: sourceID,
+            targetIdentity: targetID
+        )
+        XCTAssertEqual(updated, 1)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: dbURL.appendingPathExtension("pre-sync").path))
+
+        var readDB: OpaquePointer?
+        XCTAssertEqual(sqlite3_open_v2(dbURL.path, &readDB, SQLITE_OPEN_READONLY, nil), SQLITE_OK)
+        defer { sqlite3_close(readDB) }
+
+        var queryStmt: OpaquePointer?
+        XCTAssertEqual(
+            sqlite3_prepare_v2(readDB, "SELECT scope, key, value FROM settings", -1, &queryStmt, nil),
+            SQLITE_OK
+        )
+        defer { sqlite3_finalize(queryStmt) }
+
+        var rows: [String: String] = [:]
+        while sqlite3_step(queryStmt) == SQLITE_ROW {
+            let scope = String(cString: sqlite3_column_text(queryStmt, 0))
+            let key = String(cString: sqlite3_column_text(queryStmt, 1))
+            let value = String(cString: sqlite3_column_text(queryStmt, 2))
+            rows["\(scope)|\(key)"] = value
+        }
+
+        XCTAssertNil(rows["global|electron-account-remote-preference:active-remote-project-id:\(ownerB)"])
+        let selectedBRaw = try XCTUnwrap(rows["global|electron-owner-value:selected-project:\(ownerB)"])
+        let selectedB = try JSONSerialization.jsonObject(with: Data(selectedBRaw.utf8)) as? [String: Any]
+        XCTAssertEqual(selectedB?["projectId"] as? String, "open-science")
+
+        let targetTupleKey = try XCTUnwrap(AccountIdentity.jsonTupleKey(["acct-b", "user-b", "local"]))
+        let atomsBRaw = try XCTUnwrap(rows["electron-owner-atoms:\(ownerB)|new-task-project-by-computer"])
+        let mapB = try JSONSerialization.jsonObject(with: Data(atomsBRaw.utf8)) as? [String: Any]
+        XCTAssertEqual(mapB?[targetTupleKey] as? String, "open-science")
+    }
+
     // MARK: - Fixtures
 
     private func makeAuthData(
         email: String,
         accountID: String,
+        userID: String? = nil,
         plan: String = "plus",
         accessToken: String = "access-token"
     ) -> Data {
+        var auth: [String: Any] = [
+            "chatgpt_account_id": accountID,
+            "chatgpt_plan_type": plan
+        ]
+        if let userID {
+            auth["chatgpt_user_id"] = userID
+        }
         let payload: [String: Any] = [
             "email": email,
-            "https://api.openai.com/auth": [
-                "chatgpt_account_id": accountID,
-                "chatgpt_plan_type": plan
-            ]
+            "https://api.openai.com/auth": auth
         ]
         let payloadData = try! JSONSerialization.data(withJSONObject: payload)
         let payloadSegment = payloadData.base64EncodedString()
