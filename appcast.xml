@@ -3,24 +3,26 @@
     <channel>
         <title>CodexNotch</title>
         <item>
-            <title>0.2.6</title>
-            <pubDate>Fri, 06 Nov 2026 13:53:29 +0800</pubDate>
-            <sparkle:version>24</sparkle:version>
-            <sparkle:shortVersionString>0.2.6</sparkle:shortVersionString>
+            <title>1.0.0</title>
+            <pubDate>Sun, 15 Nov 2026 00:32:52 +0800</pubDate>
+            <sparkle:version>25</sparkle:version>
+            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# CodexNotch 0.2.6
+            <description sparkle:format="markdown"><![CDATA[# CodexNotch 1.0.0
 
-- **Saved quota resets:** View available resets and their expiry from the expanded card. Use an eligible reset only after confirming the action.
-- **Clearer activity feedback:** The floating bar distinguishes running, idle, and recent completion; the completion cue fades after about five seconds while conversation history remains available.
-- **Refined floating styles:** Personal signatures feature a gentle four-bar activity indicator, while orbit, timer, and minimal light styles have clearer state cues.
-- **Polished settings and quota display:** Improved layout, confirmation feedback, and readability.
+CodexNotch 1.0.0 introduces built-in multi-account management and live standby quota comparison directly inside the notch and Settings.
+
+- **Multi-account switching with shared workspace state:** Save multiple Codex logins locally (`0700`/`0600` vault) and switch from the notch or **Settings → Accounts**. All accounts keep sharing `~/.codex` projects and conversation history, while `.codex-global-state.json` workspace entries are synchronized across switches.
+- **On-demand vertical account drawer:** With multiple accounts configured, the expanded notch collapses multi-account controls to a compact anchor bar showing available capacity and expands into a scrollable vertical account drawer (`Available`, `Recent`, and `All` filters for 5+ accounts) with inline confirmation.
+- **Hover-live quota preview:** Hovering a standby account card previews its quota directly in the top bars and header ring without shifting card height, making it fast to compare remaining limits before switching.
+- **Accurate window mapping & availability status:** Single-window 7-day plans map accurately to weekly quota instead of 5h, consumed 5h windows surface compact reset times side by side (`5h HH:mm · 7d MM-dd`), and signed-out or unavailable accounts are clearly flagged and excluded from healthy standby availability.
 
 Update from Settings → Check for Updates, or download the DMG or ZIP. Existing preferences are preserved.
 
-Downloads are available for Apple Silicon on macOS 14 or later. The app has not been notarized by Apple. See the [installation guide](https://github.com/fengdwx/codex-notch/blob/v0.2.6/README.md#install).
+Downloads are available for Apple Silicon on macOS 14 or later. The app has not been notarized by Apple. See the [installation guide](https://github.com/fengdwx/codex-notch/blob/v1.0.0/README.md#install).
 ]]></description>
-            <enclosure url="https://github.com/fengdwx/codex-notch/releases/download/v0.2.6/CodexNotch-0.2.6-macOS-arm64.zip" length="4016495" type="application/octet-stream" sparkle:edSignature="lnpR6O1RKCFVLKuxupZihsa2mZLVPhb3lz9/WRhAgYBXSuvvj2tYAA+jXh7gzuUmjy5V04+tqBtYfarJjjrNAw=="/>
+            <enclosure url="https://github.com/fengdwx/codex-notch/releases/download/v1.0.0/CodexNotch-1.0.0-macOS-arm64.zip" length="4373613" type="application/octet-stream" sparkle:edSignature="O3BEwG1UMAjYan3McMAf9Uzd0Mt3zrQHPF5vJ97CG4Ce//9S8mLDhZ1Cl8ztEGP5r0tVIduXc30Vr72b2r5oBw=="/>
         </item>
     </channel>
 </rss>
