@@ -157,35 +157,86 @@ enum NotchExpandedLayout {
     // The base quota height reserves the weekly row. Add one measured row when
     // the usage response also contains the five-hour rolling limit.
     static let fiveHourQuotaContentHeight: CGFloat = 58
-    static let accountListTopSpacing: CGFloat = 8
-    static let accountListHeaderHeight: CGFloat = 16
-    static let accountListHeaderBottomSpacing: CGFloat = 4
-    static let accountListContainerVerticalPadding: CGFloat = 2
-    static let accountRowHeight: CGFloat = 28
-    static let maxVisibleAccountRows: Int = 4
+    static let accountSectionTopSpacing: CGFloat = 8
+    static let accountAnchorBarHeight: CGFloat = 36
+    static let accountStatusBannerTopSpacing: CGFloat = 6
+    static let accountStatusBannerHeight: CGFloat = 30
+    static let accountDrawerTopSpacing: CGFloat = 6
+    static let accountDrawerVerticalPadding: CGFloat = 12
+    static let accountDrawerToolbarHeight: CGFloat = 26
+    static let accountDrawerToolbarBottomSpacing: CGFloat = 6
+    static let accountCardHeight: CGFloat = 40
+    static let accountCardSpacing: CGFloat = 3
+    static let maxVisibleAccountCards: Int = 5
+    static let accountConfirmFooterHeight: CGFloat = 36
+    static let accountEmptyGuardHeight: CGFloat = 72
 
-    /// The account switcher is a vertical list capped at four visible rows.
-    /// A single account needs no list; extra accounts scroll inside the cap.
+    /// Default collapsed height is the 36pt anchor bar (44pt with top spacing)
+    /// when there are multiple accounts, expanding downward on demand up to
+    /// five visible 40pt cards plus optional confirmation footer or status banner.
+    static func accountSwitcherHeight(
+        accountCount: Int,
+        isDrawerExpanded: Bool = false,
+        displayedAccountCount: Int? = nil,
+        isConfirmingAccount: Bool = false,
+        showsStatusBanner: Bool = false
+    ) -> CGFloat {
+        guard accountCount > 1 else {
+            return showsStatusBanner
+                ? accountSectionTopSpacing + accountStatusBannerHeight
+                : 0
+        }
+
+        var height = accountSectionTopSpacing + accountAnchorBarHeight
+        if showsStatusBanner {
+            height += accountStatusBannerTopSpacing + accountStatusBannerHeight
+        }
+        guard isDrawerExpanded else { return height }
+
+        let resolvedDisplayed = max(0, displayedAccountCount ?? accountCount)
+        let listHeight: CGFloat
+        if resolvedDisplayed == 0 {
+            listHeight = accountEmptyGuardHeight
+        } else {
+            let visibleCards = min(resolvedDisplayed, maxVisibleAccountCards)
+            listHeight = CGFloat(visibleCards) * accountCardHeight
+                + CGFloat(max(0, visibleCards - 1)) * accountCardSpacing
+                + (isConfirmingAccount ? accountConfirmFooterHeight : 0)
+        }
+
+        height += accountDrawerTopSpacing
+            + accountDrawerVerticalPadding
+            + accountDrawerToolbarHeight
+            + accountDrawerToolbarBottomSpacing
+            + listHeight
+        return height
+    }
+
     static func accountListHeight(accountCount: Int) -> CGFloat {
-        guard accountCount > 1 else { return 0 }
-        let visibleRows = min(accountCount, maxVisibleAccountRows)
-        return accountListTopSpacing
-            + accountListHeaderHeight
-            + accountListHeaderBottomSpacing
-            + CGFloat(visibleRows) * accountRowHeight
+        accountSwitcherHeight(accountCount: accountCount)
     }
 
     static func quotaContentSize(
         isResetScheduleExpanded: Bool = false,
         resetCreditCount: Int = 0,
         hasFiveHourWindow: Bool = false,
-        accountCount: Int = 0
+        accountCount: Int = 0,
+        isAccountDrawerExpanded: Bool = false,
+        displayedAccountCount: Int? = nil,
+        isConfirmingAccount: Bool = false,
+        showsAccountStatusBanner: Bool = false
     ) -> NSSize {
         NSSize(
             width: width,
             height: quotaContentHeight
                 + (hasFiveHourWindow ? fiveHourQuotaContentHeight : 0)
-                + accountListHeight(accountCount: accountCount)
+                + accountSwitcherHeight(
+                    accountCount: accountCount,
+                    isDrawerExpanded: isAccountDrawerExpanded,
+                    displayedAccountCount: displayedAccountCount,
+                    isConfirmingAccount: isConfirmingAccount,
+                    showsStatusBanner: showsAccountStatusBanner
+                )
                 + resetScheduleExpansionHeight(
                 isExpanded: isResetScheduleExpanded,
                 resetCreditCount: resetCreditCount
@@ -198,14 +249,24 @@ enum NotchExpandedLayout {
         isResetScheduleExpanded: Bool = false,
         resetCreditCount: Int = 0,
         hasFiveHourWindow: Bool = false,
-        accountCount: Int = 0
+        accountCount: Int = 0,
+        isAccountDrawerExpanded: Bool = false,
+        displayedAccountCount: Int? = nil,
+        isConfirmingAccount: Bool = false,
+        showsAccountStatusBanner: Bool = false
     ) -> CGFloat {
         let count = max(1, conversationCount)
         return twoConversationContentHeight
             + CGFloat(count - 2)
             * (conversationRowHeight + conversationSeparatorHeight)
             + (hasFiveHourWindow ? fiveHourQuotaContentHeight : 0)
-            + accountListHeight(accountCount: accountCount)
+            + accountSwitcherHeight(
+                accountCount: accountCount,
+                isDrawerExpanded: isAccountDrawerExpanded,
+                displayedAccountCount: displayedAccountCount,
+                isConfirmingAccount: isConfirmingAccount,
+                showsStatusBanner: showsAccountStatusBanner
+            )
             + resetScheduleExpansionHeight(
                 isExpanded: isResetScheduleExpanded,
                 resetCreditCount: resetCreditCount
@@ -217,7 +278,11 @@ enum NotchExpandedLayout {
         isResetScheduleExpanded: Bool = false,
         resetCreditCount: Int = 0,
         hasFiveHourWindow: Bool = false,
-        accountCount: Int = 0
+        accountCount: Int = 0,
+        isAccountDrawerExpanded: Bool = false,
+        displayedAccountCount: Int? = nil,
+        isConfirmingAccount: Bool = false,
+        showsAccountStatusBanner: Bool = false
     ) -> NSSize {
         NSSize(
             width: width,
@@ -226,7 +291,11 @@ enum NotchExpandedLayout {
                 isResetScheduleExpanded: isResetScheduleExpanded,
                 resetCreditCount: resetCreditCount,
                 hasFiveHourWindow: hasFiveHourWindow,
-                accountCount: accountCount
+                accountCount: accountCount,
+                isAccountDrawerExpanded: isAccountDrawerExpanded,
+                displayedAccountCount: displayedAccountCount,
+                isConfirmingAccount: isConfirmingAccount,
+                showsAccountStatusBanner: showsAccountStatusBanner
             )
         )
     }

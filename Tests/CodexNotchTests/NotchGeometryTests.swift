@@ -379,15 +379,105 @@ final class NotchGeometryTests: XCTestCase {
         )
     }
 
-    func testAccountListHeightIsCappedAtFourVisibleRows() {
-        XCTAssertEqual(NotchExpandedLayout.accountRowHeight, 28, accuracy: 0.1)
-        XCTAssertEqual(NotchExpandedLayout.maxVisibleAccountRows, 4)
+    func testAccountSwitcherHeightExpandsOnDemandAndCapsAtFiveVisibleCards() {
+        XCTAssertEqual(NotchExpandedLayout.accountAnchorBarHeight, 36, accuracy: 0.1)
+        XCTAssertEqual(NotchExpandedLayout.accountCardHeight, 40, accuracy: 0.1)
+        XCTAssertEqual(NotchExpandedLayout.maxVisibleAccountCards, 5)
 
+        // Single or zero accounts need no switcher section.
         XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 0), 0)
         XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 1), 0)
-        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 2), 84)
-        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 4), 140)
-        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 6), 140)
-        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 12), 140)
+
+        // Collapsed default for 2..20 accounts stays at the 36pt anchor bar (44pt total).
+        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 2), 44)
+        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 4), 44)
+        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 15), 44)
+
+        // Expanded drawer grows cleanly and caps visible rows at 5 cards (212pt list + 94pt chrome = 306pt).
+        XCTAssertEqual(
+            NotchExpandedLayout.accountSwitcherHeight(
+                accountCount: 2,
+                isDrawerExpanded: true,
+                displayedAccountCount: 2
+            ),
+            177
+        )
+        XCTAssertEqual(
+            NotchExpandedLayout.accountSwitcherHeight(
+                accountCount: 5,
+                isDrawerExpanded: true,
+                displayedAccountCount: 5
+            ),
+            306
+        )
+        XCTAssertEqual(
+            NotchExpandedLayout.accountSwitcherHeight(
+                accountCount: 15,
+                isDrawerExpanded: true,
+                displayedAccountCount: 15
+            ),
+            306
+        )
+
+        // Empty filter rescue state reserves fixed empty-guard height.
+        XCTAssertEqual(
+            NotchExpandedLayout.accountSwitcherHeight(
+                accountCount: 15,
+                isDrawerExpanded: true,
+                displayedAccountCount: 0
+            ),
+            166
+        )
+
+        // In-card confirmation adds +36pt, and persistent status banner adds +36pt.
+        XCTAssertEqual(
+            NotchExpandedLayout.accountSwitcherHeight(
+                accountCount: 15,
+                isDrawerExpanded: true,
+                displayedAccountCount: 8,
+                isConfirmingAccount: true
+            ),
+            342
+        )
+        XCTAssertEqual(
+            NotchExpandedLayout.accountSwitcherHeight(
+                accountCount: 4,
+                isDrawerExpanded: false,
+                showsStatusBanner: true
+            ),
+            80
+        )
+    }
+
+    func testAccountHoverPreviewDoesNotMutateExpandedGeometry() {
+        let baseQuotaSize = NotchExpandedLayout.quotaContentSize(
+            isResetScheduleExpanded: false,
+            resetCreditCount: 1,
+            hasFiveHourWindow: true,
+            accountCount: 12,
+            isAccountDrawerExpanded: true,
+            displayedAccountCount: 8,
+            isConfirmingAccount: false,
+            showsAccountStatusBanner: false
+        )
+        let lockedTaskSize = NotchExpandedLayout.taskContentSize(
+            conversationCount: 3,
+            isResetScheduleExpanded: false,
+            resetCreditCount: 0,
+            hasFiveHourWindow: false,
+            accountCount: 12,
+            isAccountDrawerExpanded: true,
+            displayedAccountCount: 8,
+            isConfirmingAccount: true,
+            showsAccountStatusBanner: false
+        )
+        // Hovering different standby cards only swaps previewed values; window geometry invariants hold.
+        XCTAssertEqual(
+            baseQuotaSize.height,
+            NotchExpandedLayout.quotaContentHeight
+                + NotchExpandedLayout.fiveHourQuotaContentHeight
+                + 306
+        )
+        XCTAssertGreaterThan(lockedTaskSize.height, baseQuotaSize.height)
     }
 }

@@ -135,11 +135,11 @@ CodexNotch 默认读取 `~/.codex`。如果你的 Codex 使用其他目录，可
 
 ## 多账号切换
 
-CodexNotch 可以同时保存多个 Codex 登录，并在 **设置 → 账号** 或展开卡里的账号列表中切换。
+CodexNotch 可以同时保存多个 Codex 登录，并在 **设置 → 账号** 或展开卡内的按需账号抽屉中切换。
 
-- 每个账号拥有独立的 `CODEX_HOME` 和 Electron 配置目录，位于 `~/Library/Application Support/CodexNotch/Accounts/Homes/<uuid>`，项目、会话和额度互不影响。
-- 切换会退出并用该账号的 home 重新启动 Codex。第一次切到某个账号时项目列表是空的；原来共用的 `~/.codex` 不会被改动。
+- 所有账号共用 `~/.codex` 中的项目、会话和配置；切号时会同步 `.codex-global-state.json` 中的项目池，保留左侧项目列表。
 - 保存的 `auth.json` 只存在本机，目录 `0700`、文件 `0600`，不会上传。
+- 展开卡片默认收纳为紧凑锚点栏并保留额度优先视图；展开抽屉支持按余量/最近使用筛选、悬停卡片时顶部实时预览对应额度，同时标注已退出或不可用账号及各号 `5h` / `7d` 配额与重置时间。
 - 首次启动会自动接管 Codex Account Switcher 里的账号；也可以在「账号」页用 **导入** 选择一个导出的 `auth.json` 添加。
 
 ## 数据与隐私
@@ -180,7 +180,7 @@ SIGN_IDENTITY=none ./scripts/build_app.sh
 
 ## 当前边界
 
-CodexNotch 目前处于 0.x 版本阶段，不提供终止 Codex 任务、成本统计、云同步、远程通知、未经用户操作自动下载安装、宠物动画或 Mac App Store 分发。ChatGPT Classic 不属于监听目标。新增全新登录目前需要导入已导出的 `auth.json`，CodexNotch 还没有内置的 OAuth 登录窗口。
+CodexNotch 专注于轻量级的本地状态监听与多账号快速切换，不提供后台静默终止 Codex 任务、成本统计、云同步、远程通知、未经用户操作自动下载安装、宠物动画或 Mac App Store 分发。ChatGPT Classic 不属于监听目标。新增全新登录目前需要导入已导出的 `auth.json`，CodexNotch 还没有内置的 OAuth 登录窗口。
 
 ## 开源许可
 

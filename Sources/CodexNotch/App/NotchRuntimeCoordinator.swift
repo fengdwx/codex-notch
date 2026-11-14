@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import Foundation
 
 struct CodexHomeLocator {
@@ -71,6 +72,11 @@ final class NotchRuntimeCoordinator {
     private var preferencesObserver: NSObjectProtocol?
     private var lastObservedPreferences: NotchRuntimePreferences?
     private var visibilityShortcut: NotchVisibilityShortcut?
+    private var accountsCancellables: Set<AnyCancellable> = []
+    private var accountRenderScheduled = false
+    private var isAccountDrawerExpanded = false
+    private var selectedAccountIDForSwitch: UUID?
+    private lazy var accountPickerFilter: AccountPickerFilter = AccountPickerFilter.read(from: userDefaults)
 
     init(
         windowController: NotchWindowController = NotchWindowController(),
@@ -133,12 +139,32 @@ final class NotchRuntimeCoordinator {
         viewModel.onHoverChanged = { [weak self] hovered in
             self?.setHovered(hovered)
         }
+        viewModel.accountsService = accountsService
         viewModel.onResetScheduleExpandedChanged = { [weak self] isExpanded in
             self?.setResetScheduleExpanded(isExpanded)
         }
         viewModel.onUseResetCredit = { [weak self] credit in
             Task { @MainActor [weak self] in self?.useResetCredit(credit) }
         }
+        viewModel.onAccountDrawerExpandedChanged = { [weak self] isExpanded in
+            self?.setAccountDrawerExpanded(isExpanded)
+        }
+        viewModel.onAccountPickerFilterChanged = { [weak self] filter in
+            self?.setAccountPickerFilter(filter)
+        }
+        viewModel.onSelectedAccountForSwitchChanged = { [weak self] id in
+            self?.setSelectedAccountForSwitch(id)
+        }
+        viewModel.onConfirmAccountSwitch = { [weak self] id in
+            self?.confirmAccountSwitch(id)
+        }
+        viewModel.onRefreshAllAccountQuotas = { [weak self] in
+            self?.refreshAllAccountQuotas()
+        }
+        viewModel.onDismissAccountSwitchError = { [weak self] in
+            self?.dismissAccountSwitchError()
+        }
+        observeAccountsService()
 
         windowController.onScreenParametersChanged = { [weak self] in
             self?.render()
@@ -197,10 +223,16 @@ final class NotchRuntimeCoordinator {
             rootURL: home.appendingPathComponent("sessions", isDirectory: true),
             store: sessionStore
         )
+        usageTask?.cancel()
+        usageRequestID = nil
+        usageCredentials = nil
+        usage = accountsService?.activeAccount?.quota?.previewUsageSnapshot(preservingResetCreditsFrom: nil)
         Task { await sessionStore.reset() }
         installRolloutCallbacks(generation: generation)
         rolloutMonitor.start()
         pollSessions()
+        refreshUsage()
+        render()
     }
 
     private func installRolloutCallbacks(generation: UUID) {
@@ -242,9 +274,13 @@ final class NotchRuntimeCoordinator {
         hoverCollapseWorkItem = nil
         visibilityShortcut = nil
         stopObservingPreferenceChanges()
+        accountsCancellables.removeAll()
         isPointerInside = false
         isHovered = false
         isResetScheduleExpanded = false
+        isAccountDrawerExpanded = false
+        selectedAccountIDForSwitch = nil
+        viewModel.hoveredAccountID = nil
 
         frontmostMonitor.stop()
         rolloutMonitor.stop()
@@ -264,6 +300,7 @@ final class NotchRuntimeCoordinator {
         hoverExpandWorkItem?.cancel()
         hoverCollapseWorkItem?.cancel()
         visibilityShortcut = nil
+        accountsCancellables.removeAll()
         stopObservingPreferenceChanges()
         frontmostMonitor.stop()
         rolloutMonitor.stop()
@@ -395,8 +432,10 @@ final class NotchRuntimeCoordinator {
         let urlSession = self.urlSession
         let endpoint = usageEndpoint
         usageTask = Task { [weak self] in
+            var readCredentials: CodexCredentials?
             do {
                 let credentials = try reader.read()
+                readCredentials = credentials
                 let snapshot = try await CodexUsageClient(
                     credentials: credentials,
                     session: urlSession,
@@ -407,12 +446,21 @@ final class NotchRuntimeCoordinator {
                     guard let self, self.usageRequestID == requestID else { return }
                     self.usage = snapshot
                     self.usageCredentials = credentials
+                    self.accountsService?.recordSharedAuthUsageSuccess(
+                        credentials: credentials,
+                        snapshot: snapshot
+                    )
                     self.render()
                 }
             } catch {
                 guard !Task.isCancelled else { return }
+                let resolvedCredentials = readCredentials
                 await MainActor.run { [weak self] in
                     guard let self, self.usageRequestID == requestID else { return }
+                    self.accountsService?.recordSharedAuthUsageFailure(
+                        credentials: resolvedCredentials,
+                        error: error
+                    )
                     // Keep the last successful snapshot. A transient usage failure
                     // must not hide an otherwise valid session indicator.
                     self.render()
@@ -583,6 +631,7 @@ final class NotchRuntimeCoordinator {
             guard self.isHovered, !self.isPointerInside else { return }
             self.isHovered = false
             self.isResetScheduleExpanded = false
+            self.clearAccountDrawerInteractionState()
             self.render()
         }
         hoverCollapseWorkItem = workItem
@@ -600,6 +649,13 @@ final class NotchRuntimeCoordinator {
         isPointerInside = false
         isHovered = false
         isResetScheduleExpanded = false
+        clearAccountDrawerInteractionState()
+    }
+
+    private func clearAccountDrawerInteractionState() {
+        isAccountDrawerExpanded = false
+        selectedAccountIDForSwitch = nil
+        viewModel.hoveredAccountID = nil
     }
 
     private func setResetScheduleExpanded(_ isExpanded: Bool) {
@@ -609,6 +665,103 @@ final class NotchRuntimeCoordinator {
         }
         isResetScheduleExpanded = isExpanded
         render()
+    }
+
+    private func setAccountDrawerExpanded(_ isExpanded: Bool) {
+        guard started, isHovered, isPointerInside,
+              isAccountDrawerExpanded != isExpanded else {
+            return
+        }
+        isAccountDrawerExpanded = isExpanded
+        if !isExpanded {
+            selectedAccountIDForSwitch = nil
+            viewModel.hoveredAccountID = nil
+        } else if let accountsService {
+            Task { @MainActor [weak accountsService] in
+                await accountsService?.refreshStaleQuotas(ttl: 120)
+            }
+        }
+        render()
+    }
+
+    private func setAccountPickerFilter(_ filter: AccountPickerFilter) {
+        guard accountPickerFilter != filter else { return }
+        accountPickerFilter = filter
+        filter.save(to: userDefaults)
+        if let selectedAccountIDForSwitch, let accountsService {
+            let pickerSnapshot = AccountPickerLogic.snapshot(
+                accounts: accountsService.accounts,
+                activeAccountID: accountsService.activeAccountID,
+                filter: filter
+            )
+            if !pickerSnapshot.displayedAccounts.contains(where: { $0.id == selectedAccountIDForSwitch }) {
+                self.selectedAccountIDForSwitch = nil
+            }
+        }
+        render()
+    }
+
+    private func setSelectedAccountForSwitch(_ id: UUID?) {
+        guard started, isHovered else { return }
+        guard selectedAccountIDForSwitch != id else { return }
+        selectedAccountIDForSwitch = id
+        render()
+    }
+
+    private func confirmAccountSwitch(_ id: UUID) {
+        guard started, let accountsService else { return }
+        let language = AppLanguage.fromStoredValue(
+            userDefaults.string(forKey: AppLanguage.storageKey)
+        )
+        clearAccountDrawerInteractionState()
+        Task { @MainActor [weak self, weak accountsService] in
+            accountsService?.beginSwitch(to: id, language: language)
+            self?.render()
+        }
+    }
+
+    private func refreshAllAccountQuotas() {
+        guard started, let accountsService else { return }
+        Task { @MainActor [weak accountsService] in
+            await accountsService?.refreshAllQuotas()
+        }
+    }
+
+    private func dismissAccountSwitchError() {
+        guard let accountsService else { return }
+        Task { @MainActor [weak self, weak accountsService] in
+            accountsService?.dismissSwitchError()
+            self?.render()
+        }
+    }
+
+    private func observeAccountsService() {
+        accountsCancellables.removeAll()
+        guard let accountsService else { return }
+
+        Publishers.MergeMany([
+            accountsService.$accounts.map { _ in () }.eraseToAnyPublisher(),
+            accountsService.$activeAccountID.map { _ in () }.eraseToAnyPublisher(),
+            accountsService.$switchPhase.map { _ in () }.eraseToAnyPublisher(),
+            accountsService.$failedQuotaAccountIDs.map { _ in () }.eraseToAnyPublisher()
+        ])
+        .receive(on: DispatchQueue.main)
+        .sink { [weak self] _ in
+            self?.viewModel.bumpAccountsRevision()
+            self?.scheduleRenderForAccountChange()
+        }
+        .store(in: &accountsCancellables)
+    }
+
+    private func scheduleRenderForAccountChange() {
+        guard started, !accountRenderScheduled else { return }
+        accountRenderScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.accountRenderScheduled = false
+            guard self.started else { return }
+            self.render()
+        }
     }
 
     private func openThread(_ threadID: String) {
@@ -659,7 +812,8 @@ final class NotchRuntimeCoordinator {
 
     private func expandedContentSize(
         for state: NotchPresentationState,
-        isResetScheduleExpanded: Bool
+        isResetScheduleExpanded: Bool,
+        accountLayout: AccountSectionLayoutInputs
     ) -> NSSize {
         guard case let .expanded(content) = state,
               !content.conversations.isEmpty else {
@@ -668,7 +822,11 @@ final class NotchRuntimeCoordinator {
                 isResetScheduleExpanded: isResetScheduleExpanded,
                 resetCreditCount: resetCreditCount(in: state),
                 hasFiveHourWindow: hasFiveHourWindow(in: state),
-                accountCount: accountListCount
+                accountCount: accountLayout.accountCount,
+                isAccountDrawerExpanded: accountLayout.isDrawerExpanded,
+                displayedAccountCount: accountLayout.displayedAccountCount,
+                isConfirmingAccount: accountLayout.isConfirmingAccount,
+                showsAccountStatusBanner: accountLayout.showsStatusBanner
             )
         }
         return NotchExpandedLayout.taskContentSize(
@@ -676,24 +834,76 @@ final class NotchRuntimeCoordinator {
             isResetScheduleExpanded: isResetScheduleExpanded,
             resetCreditCount: content.usage?.resetCredits.count ?? 0,
             hasFiveHourWindow: content.usage?.fiveHourWindow != nil,
-            accountCount: accountListCount
+            accountCount: accountLayout.accountCount,
+            isAccountDrawerExpanded: accountLayout.isDrawerExpanded,
+            displayedAccountCount: accountLayout.displayedAccountCount,
+            isConfirmingAccount: accountLayout.isConfirmingAccount,
+            showsAccountStatusBanner: accountLayout.showsStatusBanner
         )
     }
 
     private func quotaExpandedContentSize(
         for state: NotchPresentationState,
-        isResetScheduleExpanded: Bool
+        isResetScheduleExpanded: Bool,
+        accountLayout: AccountSectionLayoutInputs
     ) -> NSSize {
         NotchExpandedLayout.quotaContentSize(
             isResetScheduleExpanded: isResetScheduleExpanded,
             resetCreditCount: resetCreditCount(in: state),
             hasFiveHourWindow: hasFiveHourWindow(in: state),
-            accountCount: accountListCount
+            accountCount: accountLayout.accountCount,
+            isAccountDrawerExpanded: accountLayout.isDrawerExpanded,
+            displayedAccountCount: accountLayout.displayedAccountCount,
+            isConfirmingAccount: accountLayout.isConfirmingAccount,
+            showsAccountStatusBanner: accountLayout.showsStatusBanner
         )
     }
 
-    private var accountListCount: Int {
-        accountsService?.accounts.count ?? 0
+    private struct AccountSectionLayoutInputs {
+        let accountCount: Int
+        let isDrawerExpanded: Bool
+        let displayedAccountCount: Int
+        let isConfirmingAccount: Bool
+        let showsStatusBanner: Bool
+    }
+
+    private var currentAccountSectionLayout: AccountSectionLayoutInputs {
+        guard let accountsService else {
+            return AccountSectionLayoutInputs(
+                accountCount: 0,
+                isDrawerExpanded: false,
+                displayedAccountCount: 0,
+                isConfirmingAccount: false,
+                showsStatusBanner: false
+            )
+        }
+        let accounts = accountsService.accounts
+        let accountCount = accounts.count
+        let drawerExpanded = accountCount > 1 && isAccountDrawerExpanded
+        let snapshot = AccountPickerLogic.snapshot(
+            accounts: accounts,
+            activeAccountID: accountsService.activeAccountID,
+            filter: accountPickerFilter
+        )
+        let isConfirming = drawerExpanded
+            && selectedAccountIDForSwitch != nil
+            && snapshot.displayedAccounts.contains(where: {
+                $0.id == selectedAccountIDForSwitch && $0.id != accountsService.activeAccountID
+            })
+        let showsBanner: Bool
+        switch accountsService.switchPhase {
+        case .idle:
+            showsBanner = false
+        case .switching, .failed:
+            showsBanner = accountCount > 1
+        }
+        return AccountSectionLayoutInputs(
+            accountCount: accountCount,
+            isDrawerExpanded: drawerExpanded,
+            displayedAccountCount: snapshot.displayedAccounts.count,
+            isConfirmingAccount: isConfirming,
+            showsStatusBanner: showsBanner
+        )
     }
 
     private func resetCreditCount(in state: NotchPresentationState) -> Int {
@@ -777,21 +987,28 @@ final class NotchRuntimeCoordinator {
         )
         guard case .expanded = displayState else {
             isResetScheduleExpanded = false
+            clearAccountDrawerInteractionState()
             return renderCompactState(displayState, now: renderDate, screen: screen, metrics: metrics)
         }
         if resetCreditCount(in: displayState) == 0 {
             isResetScheduleExpanded = false
+        }
+        let accountLayout = currentAccountSectionLayout
+        if !accountLayout.isConfirmingAccount {
+            selectedAccountIDForSwitch = nil
         }
         let layout = NotchGeometry.layout(
             metrics: metrics,
             leftIndicatorEnabled: preferences.leftIndicatorEnabled,
             quotaExpandedSize: quotaExpandedContentSize(
                 for: displayState,
-                isResetScheduleExpanded: isResetScheduleExpanded
+                isResetScheduleExpanded: isResetScheduleExpanded,
+                accountLayout: accountLayout
             ),
             expandedSize: expandedContentSize(
                 for: displayState,
-                isResetScheduleExpanded: isResetScheduleExpanded
+                isResetScheduleExpanded: isResetScheduleExpanded,
+                accountLayout: accountLayout
             )
         )
         let targetFrame = layout.frame(for: displayState)
@@ -816,6 +1033,9 @@ final class NotchRuntimeCoordinator {
             compactLeadingInset: layout.compactLeadingInset,
             surfaceSize: targetFrame.size,
             isResetScheduleExpanded: isResetScheduleExpanded,
+            isAccountDrawerExpanded: accountLayout.isDrawerExpanded,
+            accountPickerFilter: accountPickerFilter,
+            selectedAccountIDForSwitch: selectedAccountIDForSwitch,
             isPointerInside: isPointerInside,
             animationsEnabled: animationsEnabled,
             onSurfaceAnimationCompleted: { [weak windowController] in

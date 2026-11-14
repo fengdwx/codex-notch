@@ -55,8 +55,8 @@ struct AccountsSettingsView: View {
             }
         } message: {
             Text(appLanguage.localized(
-                chinese: "会同时删除该账号的独立 CODEX_HOME（会话、项目、缓存），已登录的 Codex 不会被退出。",
-                english: "This also removes the account's isolated CODEX_HOME (sessions, projects, caches). A running Codex session is left as is."
+                chinese: "会从本机账号库中移除该账号及保存的 auth.json，不会删除 ~/.codex 中的共享项目和对话记录，也不会退出当前已运行的 Codex。",
+                english: "This removes the account and its saved auth.json from the local vault. Shared projects and sessions in ~/.codex stay untouched, and a running Codex session is left as is."
             ))
         }
         .alert(
@@ -78,8 +78,8 @@ struct AccountsSettingsView: View {
                 Text(appLanguage.localized(chinese: "Codex 账号", english: "Codex accounts"))
                     .font(.headline)
                 Text(appLanguage.localized(
-                    chinese: "每个账号使用独立的 CODEX_HOME，切换时重启 Codex。",
-                    english: "Each account gets its own CODEX_HOME; switching relaunches Codex."
+                    chinese: "所有账号共享 ~/.codex 中的项目与对话记录，切换时更新 auth.json 并重启 Codex。",
+                    english: "Accounts share projects and sessions in ~/.codex; switching updates auth.json and relaunches Codex."
                 ))
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -157,6 +157,18 @@ struct AccountsSettingsView: View {
                             .font(.system(size: 9, weight: .bold))
                             .foregroundStyle(.secondary)
                     }
+                    if account.resolvedAvailabilityStatus != .available {
+                        Text(
+                            account.resolvedAvailabilityStatus == .reauthRequired
+                                ? appLanguage.localized(chinese: "已退出", english: "Signed out")
+                                : appLanguage.localized(chinese: "不可用", english: "Unavailable")
+                        )
+                        .font(.system(size: 9, weight: .bold))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(Capsule().fill(Color.red.opacity(0.16)))
+                        .foregroundStyle(.red)
+                    }
                 }
                 if let email = account.email {
                     Text(email)
@@ -224,8 +236,8 @@ struct AccountsSettingsView: View {
         HStack(spacing: 6) {
             Image(systemName: "lock.shield")
             Text(appLanguage.localized(
-                chinese: "auth.json 仅保存在本机（0700/0600），切换不会写入 ~/.codex。",
-                english: "auth.json stays on this Mac (0700/0600); switching never writes to ~/.codex."
+                chinese: "账号凭据仅保存在本机隔离保险库（0700/0600），仅在切换时原子写入 ~/.codex/auth.json。",
+                english: "Account credentials stay in your local vault (0700/0600) and are written atomically to ~/.codex/auth.json only when switching."
             ))
             Spacer()
         }

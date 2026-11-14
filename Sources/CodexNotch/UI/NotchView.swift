@@ -11,17 +11,29 @@ final class NotchViewModel: ObservableObject {
     @Published private(set) var compactLeadingInset: CGFloat = 0
     @Published private(set) var surfaceSize: CGSize
     @Published private(set) var isResetScheduleExpanded = false
+    @Published private(set) var isAccountDrawerExpanded = false
+    @Published private(set) var accountPickerFilter: AccountPickerFilter = .availableFirst
+    @Published private(set) var selectedAccountIDForSwitch: UUID?
+    @Published private(set) var accountsRevision: UInt64 = 0
+    @Published var hoveredAccountID: UUID?
     @Published var isUsingResetCredit = false
     @Published var isAwaitingResetConfirmation = false
     @Published private(set) var animationsEnabled: Bool
     @Published private(set) var surfaceExpansionLimit: CGSize?
     @Published private(set) var isPointerInside = false
+    var accountsService: AccountsService?
 
     var onOpenThread: (String) -> Void
     var onActivateChatGPT: () -> Void
     var onHoverChanged: (Bool) -> Void
     var onResetScheduleExpandedChanged: (Bool) -> Void
     var onUseResetCredit: (ResetCredit) -> Void
+    var onAccountDrawerExpandedChanged: (Bool) -> Void
+    var onAccountPickerFilterChanged: (AccountPickerFilter) -> Void
+    var onSelectedAccountForSwitchChanged: (UUID?) -> Void
+    var onConfirmAccountSwitch: (UUID) -> Void
+    var onRefreshAllAccountQuotas: () -> Void
+    var onDismissAccountSwitchError: () -> Void
 
     init(
         state: NotchPresentationState = .hidden,
@@ -35,11 +47,18 @@ final class NotchViewModel: ObservableObject {
             height: NotchCompactLayout.height
         ),
         animationsEnabled: Bool = AppAnimationPreference.defaultEnabled,
+        accountsService: AccountsService? = nil,
         onOpenThread: @escaping (String) -> Void = { _ in },
         onActivateChatGPT: @escaping () -> Void = {},
         onHoverChanged: @escaping (Bool) -> Void = { _ in },
         onResetScheduleExpandedChanged: @escaping (Bool) -> Void = { _ in },
-        onUseResetCredit: @escaping (ResetCredit) -> Void = { _ in }
+        onUseResetCredit: @escaping (ResetCredit) -> Void = { _ in },
+        onAccountDrawerExpandedChanged: @escaping (Bool) -> Void = { _ in },
+        onAccountPickerFilterChanged: @escaping (AccountPickerFilter) -> Void = { _ in },
+        onSelectedAccountForSwitchChanged: @escaping (UUID?) -> Void = { _ in },
+        onConfirmAccountSwitch: @escaping (UUID) -> Void = { _ in },
+        onRefreshAllAccountQuotas: @escaping () -> Void = {},
+        onDismissAccountSwitchError: @escaping () -> Void = {}
     ) {
         self.state = state
         self.now = now
@@ -49,12 +68,23 @@ final class NotchViewModel: ObservableObject {
         self.compactHeight = compactHeight
         self.surfaceSize = surfaceSize
         self.animationsEnabled = animationsEnabled
+        self.accountsService = accountsService
         self.surfaceExpansionLimit = Self.isExpanded(state) ? surfaceSize : nil
         self.onOpenThread = onOpenThread
         self.onActivateChatGPT = onActivateChatGPT
         self.onHoverChanged = onHoverChanged
         self.onResetScheduleExpandedChanged = onResetScheduleExpandedChanged
         self.onUseResetCredit = onUseResetCredit
+        self.onAccountDrawerExpandedChanged = onAccountDrawerExpandedChanged
+        self.onAccountPickerFilterChanged = onAccountPickerFilterChanged
+        self.onSelectedAccountForSwitchChanged = onSelectedAccountForSwitchChanged
+        self.onConfirmAccountSwitch = onConfirmAccountSwitch
+        self.onRefreshAllAccountQuotas = onRefreshAllAccountQuotas
+        self.onDismissAccountSwitchError = onDismissAccountSwitchError
+    }
+
+    func bumpAccountsRevision() {
+        accountsRevision &+= 1
     }
 
     @discardableResult
@@ -71,6 +101,9 @@ final class NotchViewModel: ObservableObject {
             height: NotchCompactLayout.height
         ),
         isResetScheduleExpanded: Bool = false,
+        isAccountDrawerExpanded: Bool = false,
+        accountPickerFilter: AccountPickerFilter = .availableFirst,
+        selectedAccountIDForSwitch: UUID? = nil,
         isPointerInside: Bool = false,
         animationsEnabled: Bool = AppAnimationPreference.defaultEnabled,
         onSurfaceAnimationCompleted: (() -> Void)? = nil
@@ -85,6 +118,9 @@ final class NotchViewModel: ObservableObject {
             || self.compactLeadingInset != compactLeadingInset
             || self.surfaceSize != surfaceSize
             || self.isResetScheduleExpanded != isResetScheduleExpanded
+            || self.isAccountDrawerExpanded != isAccountDrawerExpanded
+            || self.accountPickerFilter != accountPickerFilter
+            || self.selectedAccountIDForSwitch != selectedAccountIDForSwitch
             || self.isPointerInside != isPointerInside
             || self.animationsEnabled != animationsEnabled
         guard changesModel else { return false }
@@ -101,6 +137,8 @@ final class NotchViewModel: ObservableObject {
             || self.compactHeight != compactHeight
             || self.compactLeadingInset != compactLeadingInset
             || self.isResetScheduleExpanded != isResetScheduleExpanded
+            || self.isAccountDrawerExpanded != isAccountDrawerExpanded
+            || self.selectedAccountIDForSwitch != selectedAccountIDForSwitch
 
         // A content-height reduction must start at the previous full size.
         // Keep this ceiling through clock refreshes until another surface move.
@@ -125,6 +163,18 @@ final class NotchViewModel: ObservableObject {
             if self.surfaceSize != surfaceSize { self.surfaceSize = surfaceSize }
             if self.isResetScheduleExpanded != isResetScheduleExpanded {
                 self.isResetScheduleExpanded = isResetScheduleExpanded
+            }
+            if self.isAccountDrawerExpanded != isAccountDrawerExpanded {
+                self.isAccountDrawerExpanded = isAccountDrawerExpanded
+            }
+            if self.accountPickerFilter != accountPickerFilter {
+                self.accountPickerFilter = accountPickerFilter
+            }
+            if self.selectedAccountIDForSwitch != selectedAccountIDForSwitch {
+                self.selectedAccountIDForSwitch = selectedAccountIDForSwitch
+            }
+            if (!willBeExpanded || !isAccountDrawerExpanded), self.hoveredAccountID != nil {
+                self.hoveredAccountID = nil
             }
             if self.isPointerInside != isPointerInside { self.isPointerInside = isPointerInside }
             if self.animationsEnabled != animationsEnabled {
@@ -360,10 +410,22 @@ struct NotchView: View {
             isResetScheduleExpanded: model.isResetScheduleExpanded,
             isUsingResetCredit: model.isUsingResetCredit,
             isAwaitingResetConfirmation: model.isAwaitingResetConfirmation,
+            accountsService: model.accountsService,
+            accountsRevision: model.accountsRevision,
+            isAccountDrawerExpanded: model.isAccountDrawerExpanded,
+            accountPickerFilter: model.accountPickerFilter,
+            selectedAccountIDForSwitch: model.selectedAccountIDForSwitch,
+            hoveredAccountID: $model.hoveredAccountID,
             onActivateChatGPT: model.onActivateChatGPT,
             onOpenThread: model.onOpenThread,
             onResetScheduleExpandedChanged: model.onResetScheduleExpandedChanged,
             onUseResetCredit: model.onUseResetCredit,
+            onAccountDrawerExpandedChanged: model.onAccountDrawerExpandedChanged,
+            onAccountPickerFilterChanged: model.onAccountPickerFilterChanged,
+            onSelectedAccountForSwitchChanged: model.onSelectedAccountForSwitchChanged,
+            onConfirmAccountSwitch: model.onConfirmAccountSwitch,
+            onRefreshAllAccountQuotas: model.onRefreshAllAccountQuotas,
+            onDismissAccountSwitchError: model.onDismissAccountSwitchError,
             notchDisplayEnabled: notchDisplayEnabled,
             onNotchDisplayEnabledChanged: { notchDisplayEnabled = $0 }
         )
@@ -1499,12 +1561,36 @@ private struct ExpandedNotchView: View {
     let isResetScheduleExpanded: Bool
     let isUsingResetCredit: Bool
     let isAwaitingResetConfirmation: Bool
+    let accountsService: AccountsService?
+    let accountsRevision: UInt64
+    let isAccountDrawerExpanded: Bool
+    let accountPickerFilter: AccountPickerFilter
+    let selectedAccountIDForSwitch: UUID?
+    @Binding var hoveredAccountID: UUID?
     let onActivateChatGPT: () -> Void
     let onOpenThread: (String) -> Void
     let onResetScheduleExpandedChanged: (Bool) -> Void
     let onUseResetCredit: (ResetCredit) -> Void
+    let onAccountDrawerExpandedChanged: (Bool) -> Void
+    let onAccountPickerFilterChanged: (AccountPickerFilter) -> Void
+    let onSelectedAccountForSwitchChanged: (UUID?) -> Void
+    let onConfirmAccountSwitch: (UUID) -> Void
+    let onRefreshAllAccountQuotas: () -> Void
+    let onDismissAccountSwitchError: () -> Void
     let notchDisplayEnabled: Bool
     let onNotchDisplayEnabledChanged: (Bool) -> Void
+
+    private var previewState: AccountPreviewState {
+        _ = accountsRevision
+        return AccountPreviewResolver.resolve(
+            activeUsage: content.usage,
+            accounts: accountsService?.accounts ?? [],
+            activeAccountID: accountsService?.activeAccountID,
+            hoveredAccountID: hoveredAccountID,
+            selectedAccountIDForSwitch: selectedAccountIDForSwitch,
+            isDrawerExpanded: isAccountDrawerExpanded
+        )
+    }
 
     var body: some View {
         detailContent
@@ -1517,7 +1603,7 @@ private struct ExpandedNotchView: View {
             icon: headerIcon,
             title: headerTitle,
             subtitle: headerSubtitle,
-            usage: content.usage,
+            usage: previewState.displayedUsage,
             quotaDisplayStyle: quotaDisplayStyle,
             runningStartedAt: content.sessions.first?.startedAt,
             now: now,
@@ -1528,22 +1614,40 @@ private struct ExpandedNotchView: View {
     }
 
     private var detailContent: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let preview = previewState
+        return VStack(alignment: .leading, spacing: 0) {
             QuotaWindowsProgressView(
-                usage: content.usage,
+                usage: preview.displayedUsage,
                 now: now,
                 isResetScheduleExpanded: isResetScheduleExpanded,
                 isUsingResetCredit: isUsingResetCredit,
                 isAwaitingResetConfirmation: isAwaitingResetConfirmation,
+                previewAccount: preview.previewAccount,
+                isLockedConfirmation: preview.isLockedConfirmation,
+                locksFiveHourRow: preview.locksFiveHourRow,
+                inlineFiveHourPercent: preview.inlineFiveHourPercent,
                 onResetScheduleExpandedChanged: onResetScheduleExpandedChanged,
                 onUseResetCredit: onUseResetCredit
             )
 
-            AccountSwitchList(
-                service: .shared,
-                language: language,
-                isTaskRunning: !content.sessions.isEmpty
-            )
+            if let accountsService {
+                AccountSwitchList(
+                    service: accountsService,
+                    language: language,
+                    now: now,
+                    isTaskRunning: !content.sessions.isEmpty,
+                    isDrawerExpanded: isAccountDrawerExpanded,
+                    pickerFilter: accountPickerFilter,
+                    selectedAccountID: selectedAccountIDForSwitch,
+                    hoveredAccountID: $hoveredAccountID,
+                    onDrawerExpandedChanged: onAccountDrawerExpandedChanged,
+                    onPickerFilterChanged: onAccountPickerFilterChanged,
+                    onSelectedAccountChanged: onSelectedAccountForSwitchChanged,
+                    onConfirmSwitch: onConfirmAccountSwitch,
+                    onRefreshAll: onRefreshAllAccountQuotas,
+                    onDismissError: onDismissAccountSwitchError
+                )
+            }
 
             if !content.conversations.isEmpty {
                 Spacer(minLength: 16)
@@ -1707,7 +1811,7 @@ private struct ExpandedNotchView: View {
         if let conversation = content.headerConversation {
             return NotchText.projectName(cwd: conversation.cwd, language: language)
         }
-        return NotchText.quotaSubtitle(usage: content.usage, language: language)
+        return NotchText.quotaSubtitle(usage: previewState.displayedUsage, language: language)
     }
 
     private var headerAction: () -> Void {
@@ -1838,9 +1942,14 @@ private struct QuotaWindowsProgressView: View {
     let isResetScheduleExpanded: Bool
     let isUsingResetCredit: Bool
     let isAwaitingResetConfirmation: Bool
+    var previewAccount: AccountProfile? = nil
+    var isLockedConfirmation = false
+    var locksFiveHourRow = false
+    var inlineFiveHourPercent: Double? = nil
     let onResetScheduleExpandedChanged: (Bool) -> Void
     let onUseResetCredit: (ResetCredit) -> Void
     @Environment(\.notchAppLanguage) private var language
+    @Environment(\.notchMotionEnabled) private var motionEnabled
 
     private var weeklyWindow: UsageWindow? {
         usage?.weeklyWindow
@@ -1854,21 +1963,49 @@ private struct QuotaWindowsProgressView: View {
         usage?.resetCredits ?? []
     }
 
+    private var showsFiveHourRow: Bool {
+        locksFiveHourRow || (previewAccount == nil && fiveHourWindow != nil)
+    }
+
     var body: some View {
         VStack(spacing: 7) {
-            if let fiveHourWindow {
+            VStack(spacing: 7) {
+                if showsFiveHourRow {
+                    QuotaWindowProgressRow(
+                        kind: .rolling(hours: 5),
+                        window: fiveHourWindow,
+                        now: now,
+                        isPreviewUnavailableWindow: previewAccount != nil && fiveHourWindow == nil,
+                        previewAccount: previewAccount,
+                        isLockedConfirmation: isLockedConfirmation
+                    )
+                }
+
                 QuotaWindowProgressRow(
-                    kind: .rolling(hours: 5),
-                    window: fiveHourWindow,
-                    now: now
+                    kind: .weekly,
+                    window: weeklyWindow,
+                    now: now,
+                    previewAccount: showsFiveHourRow ? nil : previewAccount,
+                    isLockedConfirmation: isLockedConfirmation,
+                    inlineFiveHourPercent: showsFiveHourRow ? nil : inlineFiveHourPercent
                 )
             }
-
-            QuotaWindowProgressRow(
-                kind: .weekly,
-                window: weeklyWindow,
-                now: now
-            )
+            .background {
+                if previewAccount != nil {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(NotchPalette.accent.opacity(0.06))
+                        .padding(.horizontal, -7)
+                        .padding(.vertical, -4)
+                }
+            }
+            .overlay {
+                if previewAccount != nil {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .stroke(NotchPalette.accent.opacity(0.32), lineWidth: 0.75)
+                        .padding(.horizontal, -7)
+                        .padding(.vertical, -4)
+                }
+            }
 
             ResetScheduleDisclosure(
                 credits: resetCredits,
@@ -1876,14 +2013,69 @@ private struct QuotaWindowsProgressView: View {
                 isExpanded: isResetScheduleExpanded,
                 isUsingResetCredit: isUsingResetCredit,
                 isAwaitingResetConfirmation: isAwaitingResetConfirmation,
+                isPreviewDisabled: previewAccount != nil,
                 title: NotchText.resetCredits(usage: usage, language: language),
                 onExpandedChanged: onResetScheduleExpandedChanged,
                 onUseResetCredit: onUseResetCredit
             )
         }
         .frame(maxWidth: .infinity, minHeight: 52, alignment: .top)
-        .animation(.easeInOut(duration: 0.28), value: weeklyWindow?.remainingPercent ?? 0)
-        .animation(.easeInOut(duration: 0.28), value: fiveHourWindow?.remainingPercent ?? 0)
+        .animation(motionEnabled ? .easeInOut(duration: 0.28) : nil, value: weeklyWindow?.remainingPercent ?? 0)
+        .animation(motionEnabled ? .easeInOut(duration: 0.28) : nil, value: fiveHourWindow?.remainingPercent ?? 0)
+        .animation(motionEnabled ? .easeInOut(duration: 0.18) : nil, value: previewAccount?.id)
+    }
+}
+
+private struct AccountPreviewInlineBadge: View {
+    let account: AccountProfile
+    let isLockedConfirmation: Bool
+    let inlineFiveHourPercent: Double?
+    let language: AppLanguage
+
+    private var status: AccountAvailabilityStatus {
+        account.resolvedAvailabilityStatus
+    }
+
+    private var tintColor: Color {
+        status == .available ? NotchPalette.accent : NotchPalette.danger
+    }
+
+    private var badgeText: String {
+        let prefix = language.localized(
+            chinese: isLockedConfirmation ? "待切换" : "预览",
+            english: isLockedConfirmation ? "Selected" : "Preview"
+        )
+        var text = "\(prefix) · \(account.shortLabel)"
+        switch status {
+        case .available:
+            if let inlineFiveHourPercent {
+                text += " · 5h \(NotchText.percent(inlineFiveHourPercent))"
+            }
+        case .reauthRequired:
+            text += language.localized(chinese: " · 已退出", english: " · Signed out")
+        case .unavailable:
+            text += language.localized(chinese: " · 不可用", english: " · Unavailable")
+        }
+        return text
+    }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(tintColor)
+                .frame(width: 5, height: 5)
+            Text(badgeText)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(tintColor)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .padding(.horizontal, 6)
+        .frame(height: 16)
+        .background(tintColor.opacity(0.16), in: Capsule())
+        .overlay {
+            Capsule().stroke(tintColor.opacity(0.32), lineWidth: 0.5)
+        }
     }
 }
 
@@ -1891,6 +2083,10 @@ private struct QuotaWindowProgressRow: View {
     let kind: UsageWindowKind
     let window: UsageWindow?
     let now: Date
+    var isPreviewUnavailableWindow = false
+    var previewAccount: AccountProfile? = nil
+    var isLockedConfirmation = false
+    var inlineFiveHourPercent: Double? = nil
     @Environment(\.notchAppLanguage) private var language
 
     private var progressColor: Color {
@@ -1900,12 +2096,22 @@ private struct QuotaWindowProgressRow: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            HStack {
+            HStack(spacing: 6) {
                 Text(NotchText.quotaWindowTitle(kind, language: language))
                     .font(.system(size: 12, weight: .regular))
                     .foregroundStyle(NotchPalette.primaryText.opacity(0.78))
+                    .layoutPriority(1)
 
-                Spacer()
+                if let previewAccount {
+                    AccountPreviewInlineBadge(
+                        account: previewAccount,
+                        isLockedConfirmation: isLockedConfirmation,
+                        inlineFiveHourPercent: inlineFiveHourPercent,
+                        language: language
+                    )
+                }
+
+                Spacer(minLength: 4)
 
                 Text(window.map { NotchText.percent($0.remainingPercent) } ?? "—")
                     .font(.system(size: 14, weight: .medium))
@@ -1951,6 +2157,12 @@ private struct QuotaWindowProgressRow: View {
     }
 
     private var resetTimestampText: String {
+        if isPreviewUnavailableWindow {
+            return language.localized(
+                chinese: "暂无 5h 窗口",
+                english: "No 5h window"
+            )
+        }
         guard let resetAt = window?.resetAt else {
             return language.localized(
                 chinese: "重置时间暂不可用",
@@ -1981,6 +2193,7 @@ struct ResetScheduleDisclosure: View {
     let isExpanded: Bool
     let isUsingResetCredit: Bool
     var isAwaitingResetConfirmation = false
+    var isPreviewDisabled = false
     let title: String
     let onExpandedChanged: (Bool) -> Void
     let onUseResetCredit: (ResetCredit) -> Void
@@ -1989,7 +2202,7 @@ struct ResetScheduleDisclosure: View {
     var body: some View {
         VStack(spacing: NotchExpandedLayout.resetScheduleDetailSpacing) {
             Button {
-                guard !credits.isEmpty else { return }
+                guard !isPreviewDisabled, !credits.isEmpty else { return }
                 onExpandedChanged(!isExpanded)
             } label: {
                 HStack(spacing: 4) {
@@ -2002,6 +2215,12 @@ struct ResetScheduleDisclosure: View {
                         .lineLimit(1)
 
                     Spacer(minLength: 4)
+
+                    if isPreviewDisabled {
+                        Text(language.localized(chinese: "仅当前账号", english: "Active only"))
+                            .font(.system(size: 9.5, weight: .regular))
+                            .foregroundStyle(NotchPalette.secondaryText)
+                    }
 
                     Image(systemName: "chevron.down")
                         .font(.system(size: 10, weight: .regular))
@@ -2023,6 +2242,8 @@ struct ResetScheduleDisclosure: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(NotchButtonStyle())
+            .disabled(isPreviewDisabled)
+            .opacity(isPreviewDisabled ? 0.45 : 1)
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
             .accessibilityLabel(

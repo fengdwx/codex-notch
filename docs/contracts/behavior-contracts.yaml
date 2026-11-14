@@ -3631,7 +3631,7 @@ contracts:
 
   - id: ACCOUNTS-SHARED-HOME-065
     title: Every account shares one project and session pool
-    status: active
+    status: superseded
     statement: >-
       All Codex accounts use the original shared CODEX_HOME (`~/.codex`).
       Switching writes only `~/.codex/auth.json` from the account vault and
@@ -3683,5 +3683,76 @@ contracts:
       - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
     supersedes: [ACCOUNTS-ISOLATION-064]
+    superseded_by: ACCOUNTS-SWITCHER-UI-066
+    last_verified_commit: null
+
+  - id: ACCOUNTS-SWITCHER-UI-066
+    title: On-demand vertical account drawer with live quota preview and shared Codex home
+    status: active
+    statement: >-
+      Preserve all shared CODEX_HOME (`~/.codex`), vault (`0700/0600`), token
+      privacy, per-account quota tracking, and `.codex-global-state.json`
+      project-pool synchronization guarantees from ACCOUNTS-SHARED-HOME-065
+      plus compact geometry NOTCH-LAYOUT-035 and Reduce Motion SETTINGS-MOTION-021.
+      Settings copy matches the shared `~/.codex` architecture. Inside the
+      expanded notch card, `AccountSwitchList` sits directly below
+      `QuotaWindowsProgressView` and is hidden (`0pt`) for `<= 1` account. With
+      `2+` accounts it defaults collapsed to a `36pt` anchor bar (`44pt` total
+      overhead) displaying active identity, `K/N` available count (amber low-quota
+      best cue when active `<= 20%`), and a `1.8s` `已切换` confirmation badge after
+      switching. Opening the vertical drawer triggers `refreshStaleQuotas(ttl: 120)`,
+      marks `> 1h` or failed caches `旧`, renders pure-mouse filter pills
+      (`余量优先`, `最近使用`, `全部`) persisted in UserDefaults for `>= 5` accounts
+      with an empty-filter rescue control, and caps visible `40pt` cards at `5`
+      rows with scrolling. Hovering (or click-locking) a standby card previews
+      its quota live in the header ring and top progress bars with strictly
+      `0.0pt` vertical height shift (locking `5h` row presence to the active
+      account and disabling `ResetScheduleDisclosure` with an active-only label).
+      Selecting an inactive card opens an untimed `+36pt` inline confirm footer
+      (amber interruption warning while tasks are running). Accounts whose quota
+      check or shared `~/.codex/auth.json` probe reports 401/missing/invalid auth
+      are marked `.reauthRequired` (`已退出`), and 402/403 are marked `.unavailable`
+      (`不可用`), excluding them from `K/N` pool availability, `余量优先`
+      filtering, and standby cues while preserving transient network/5xx errors
+      as `旧`. Switching confirmation onto an unusable account displays a red
+      warning footer, Settings marks unusable rows with a red badge, and
+      re-importing or opening the drawer re-checks their status. Account quotas map
+      windows by semantic duration (`fiveHourWindow` -> `5h`, `weeklyWindow` -> `7d`)
+      rather than JSON key position (`primary_window` may hold a 604800s weekly
+      window when no 5h window exists), and pre-fix cached records are normalized on
+      load and refreshed on drawer open.
+      `AccountsService.switchPhase` persists switching and sanitized non-secret
+      errors across hover collapses and prevents concurrent switches.
+    rationale: >-
+      Default collapsing keeps quota bars primary and saves 96pt while giving
+      users with 5 to 20 accounts fast quota-first filtering, zero-jump live
+      quota comparison, and collapse-safe switching feedback, while ensuring
+      signed-out or disabled accounts never masquerade as healthy standby pool
+      capacity.
+    source: user-confirmed
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [account-switching, shared-codex-home, notch-account-drawer, quota-preview, settings]
+      exclude: [per-account-homes, cloud-sync, history-migration, release-publishing]
+    examples:
+      positive: >-
+        Hovering the notch shows quotas first and a 36pt anchor bar for 12
+        accounts; clicking opens the quota-sorted vertical drawer; hovering any
+        standby card previews its 7d/5h bars at the top without vertical jump;
+        401/missing auth marks an account `已退出` and removes it from healthy pool
+        counts until re-imported; confirming switches `~/.codex/auth.json` and
+        surfaces persistent status.
+      negative: >-
+        Rendering horizontal mini-chips when collapsed, shifting vertical height
+        during hover preview, expiring confirm prompts after 3.2s, leaking tokens
+        or raw paths in switch errors, counting signed-out/disabled accounts as
+        available standby capacity, or writing isolated per-account CODEX_HOME.
+    guards:
+      - Tests/CodexNotchTests/AccountsTests.swift
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - docs/decisions/014-on-demand-account-drawer-and-live-preview.md
+      - "manual: verify anchor bar, 5+ account filter pills, hover quota preview without height jump, scrolling past 5 cards, untimed confirm, and post-switch completion on physical-notch hardware"
+    supersedes: [ACCOUNTS-SHARED-HOME-065]
     superseded_by: null
     last_verified_commit: null
