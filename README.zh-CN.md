@@ -138,7 +138,7 @@ SIGN_IDENTITY=none ./scripts/build_app.sh
 CodexNotch 是一款完全独立的原生 macOS 应用，不依赖任何第三方刘海宿主框架；谨向在开发过程中提供技术启发、基础组件或交流反馈的开源项目与社区表示感谢：
 
 - [**Atoll**](https://github.com/Ebullioscopic/Atoll) — 启发了 CodexNotch 的固定透明画布分层、阻尼弹簧过渡与刘海悬停交互架构（参见 [ADR 001](docs/decisions/001-fixed-canvas-notch-motion.md)、[ADR 035](docs/decisions/035-spring-card-transitions.md)、[ADR 045](docs/decisions/045-hover-response-and-shadow.md)）。
-- [**Codex Account Switcher**](https://github.com/liuzhao1225/codex-account-switcher) — 启发了 CodexNotch 的多账号本机凭据保险库（`0700`/`0600`）、退出重启式安全切号流程，以及独立沙盒网页 OAuth 登录方案。
+- [**Codex Account Switcher (`pengshengege/CodexAccountSwitcher`)**](https://github.com/pengshengege/CodexAccountSwitcher) — 启发了 CodexNotch 的独立 `CODEX_HOME` 沙盒 OAuth 登录、`0700`/`0600` 本地凭据保险库、账号本地备注，以及切换前先归档再原子替换 `~/.codex/auth.json` 并重启 Codex 的切号设计。
 - [**Sparkle**](https://github.com/sparkle-project/Sparkle) — 提供基于 Ed25519 签名验证的应用内更新机制（[官方文档](https://sparkle-project.org/documentation/)）。
 - **macOS 与 Codex 开源生态** — 感谢围绕本地 AI 配额监测与开发者体验做出探索的同类项目（如 [**CodexBar**](https://github.com/steipete/CodexBar)、[**CC Switch**](https://github.com/farion1231/cc-switch) 等），以及 [LINUX DO](https://linux.do) 社区提供的反馈与真机建议。
 
