@@ -68,6 +68,7 @@ final class QuotaRunningHaloLayerView: QuotaAnimatedLayerView {
     override func layout() {
         super.layout()
         updateHaloPath()
+        refreshLayerAnimation()
     }
 
     override func startLayerAnimation() {

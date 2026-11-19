@@ -47,6 +47,11 @@ class QuotaAnimatedLayerView: NSView {
         super.viewWillMove(toSuperview: newSuperview)
     }
 
+    override func viewDidMoveToSuperview() {
+        super.viewDidMoveToSuperview()
+        refreshLayerAnimation()
+    }
+
     override func viewWillMove(toWindow newWindow: NSWindow?) {
         // `orderOut` changes occlusion, but a true window detachment does not
         // need to wait for that asynchronous notification.
@@ -99,7 +104,7 @@ class QuotaAnimatedLayerView: NSView {
             && bounds.height > 0
     }
 
-    private func refreshLayerAnimation() {
+    func refreshLayerAnimation() {
         let shouldRun = QuotaLayerAnimationPolicy.shouldRun(
             requested: animationIsRequested,
             surfaceIsVisible: surfaceIsVisible
@@ -178,6 +183,9 @@ final class QuotaGradientLayerView: QuotaAnimatedLayerView {
                 ), transform: nil)
             }
         }
+        // SwiftUI attaches representables at `.zero` before first layout; once
+        // nonzero bounds arrive, start any already-requested running animation.
+        refreshLayerAnimation()
     }
 
     func configure(
@@ -302,7 +310,10 @@ final class QuotaWaveLayerView: QuotaAnimatedLayerView {
 
     override func layout() {
         super.layout()
-        guard bounds.size != renderedSize else { return }
+        guard bounds.size != renderedSize else {
+            refreshLayerAnimation()
+            return
+        }
 
         renderedSize = bounds.size
         rebuildWavePath(animated: false)

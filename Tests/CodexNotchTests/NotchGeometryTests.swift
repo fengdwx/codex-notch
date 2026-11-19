@@ -384,11 +384,11 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertEqual(NotchExpandedLayout.accountCardHeight, 40, accuracy: 0.1)
         XCTAssertEqual(NotchExpandedLayout.maxVisibleAccountCards, 5)
 
-        // Single or zero accounts need no switcher section.
+        // Zero accounts need no switcher section.
         XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 0), 0)
-        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 1), 0)
 
-        // Collapsed default for 2..20 accounts stays at the 36pt anchor bar (44pt total).
+        // Collapsed default for 1..20 accounts stays at the 36pt anchor bar (44pt total).
+        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 1), 44)
         XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 2), 44)
         XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 4), 44)
         XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 15), 44)

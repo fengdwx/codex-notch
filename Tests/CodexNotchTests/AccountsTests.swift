@@ -9,15 +9,18 @@ final class AccountsTests: XCTestCase {
     private var root: URL!
     private var service: AccountsService!
     private var launcher: FakeCodexLauncher!
+    private var detector: FakeCodexSessionDetector!
 
     override func setUpWithError() throws {
         root = FileManager.default.temporaryDirectory
             .appendingPathComponent("codexnotch-accounts-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         launcher = FakeCodexLauncher()
+        detector = FakeCodexSessionDetector()
         service = AccountsService(
             paths: AccountPaths(root: root.appendingPathComponent("Accounts", isDirectory: true)),
             launcher: launcher,
+            sessionDetector: detector,
             defaultCodexHome: root.appendingPathComponent("DefaultCodex", isDirectory: true),
             legacyRoot: root.appendingPathComponent("Legacy", isDirectory: true)
         )
@@ -87,6 +90,347 @@ final class AccountsTests: XCTestCase {
         XCTAssertEqual(try service.vault.retrieve(other.id), try service.exportSession(other.id))
     }
 
+    func testSwitchRefusesWhenExternalCLISessionIsRunning() async throws {
+        let target = try service.importSession(
+            makeAuthData(email: "a@example.com", accountID: "acct-a")
+        )
+        let source = makeAuthData(email: "b@example.com", accountID: "acct-b")
+        _ = try service.importSession(source)
+        try writeSharedAuth(source)
+
+        detector.sessions = [
+            CodexExternalSession(pid: 4242, command: "/usr/local/bin/codex exec hello")
+        ]
+
+        do {
+            try await service.switchTo(target.id)
+            XCTFail("Expected the switch to be blocked")
+        } catch let error as AccountError {
+            XCTAssertEqual(error, .externalSessionsRunning(1))
+        }
+
+        XCTAssertEqual(launcher.quitCalls, 0)
+        XCTAssertEqual(try Data(contentsOf: sharedAuthFile), source)
+    }
+
+    func testSwitchQuitsBeforeWritingTheTargetAuth() async throws {
+        let targetAuth = makeAuthData(email: "a@example.com", accountID: "acct-a")
+        let sourceAuth = makeAuthData(email: "b@example.com", accountID: "acct-b")
+        let target = try service.importSession(targetAuth)
+        _ = try service.importSession(sourceAuth)
+        try writeSharedAuth(sourceAuth)
+
+        var authWhenQuit: Data?
+        launcher.onQuit = {
+            authWhenQuit = try? Data(contentsOf: self.sharedAuthFile)
+        }
+
+        try await service.switchTo(target.id)
+
+        XCTAssertEqual(authWhenQuit, sourceAuth)
+        XCTAssertEqual(try Data(contentsOf: sharedAuthFile), targetAuth)
+    }
+
+    func testSwitchCapturesFresherTokenWrittenDuringShutdown() async throws {
+        let stale = makeAuthData(
+            email: "a@example.com",
+            accountID: "acct-a",
+            accessToken: "stale",
+            lastRefresh: "2026-01-01T00:00:00Z"
+        )
+        let fresh = makeAuthData(
+            email: "a@example.com",
+            accountID: "acct-a",
+            accessToken: "fresh",
+            lastRefresh: "2026-03-01T00:00:00Z"
+        )
+        let profile = try service.importSession(stale)
+        try writeSharedAuth(stale)
+
+        launcher.onQuit = {
+            try? fresh.write(to: self.sharedAuthFile, options: .atomic)
+        }
+
+        try await service.switchTo(profile.id)
+
+        XCTAssertEqual(try service.vault.retrieve(profile.id), fresh)
+        XCTAssertEqual(try Data(contentsOf: sharedAuthFile), fresh)
+    }
+
+    func testSwitchRestoresPreviousAuthWhenRelaunchFails() async throws {
+        let targetAuth = makeAuthData(email: "a@example.com", accountID: "acct-a")
+        let sourceAuth = makeAuthData(email: "b@example.com", accountID: "acct-b")
+        let target = try service.importSession(targetAuth)
+        _ = try service.importSession(sourceAuth)
+        try writeSharedAuth(sourceAuth)
+        launcher.launchErrors = [NSError(domain: "test", code: 1)]
+
+        do {
+            try await service.switchTo(target.id)
+            XCTFail("Expected launch failure")
+        } catch {
+            // Expected.
+        }
+
+        XCTAssertEqual(try Data(contentsOf: sharedAuthFile), sourceAuth)
+        XCTAssertNil(service.activeAccountID)
+        XCTAssertEqual(launcher.launchCalls, 2)
+    }
+
+    func testSwitchRollbackPreservesTokenFlushedDuringQuitWhenTargetLaunchFails() async throws {
+        let sourceStale = makeAuthData(
+            email: "b@example.com",
+            accountID: "acct-b",
+            accessToken: "source-stale",
+            lastRefresh: "2026-01-01T00:00:00Z"
+        )
+        let sourceFlushed = makeAuthData(
+            email: "b@example.com",
+            accountID: "acct-b",
+            accessToken: "source-flushed",
+            lastRefresh: "2026-03-01T00:00:00Z"
+        )
+        let targetAuth = makeAuthData(
+            email: "a@example.com",
+            accountID: "acct-a",
+            accessToken: "target",
+            lastRefresh: "2026-02-01T00:00:00Z"
+        )
+
+        let target = try service.importSession(targetAuth)
+        let source = try service.importSession(sourceStale)
+        try writeSharedAuth(sourceStale)
+
+        launcher.onQuit = {
+            try? sourceFlushed.write(to: self.sharedAuthFile, options: [.atomic])
+        }
+        launcher.launchErrors = [NSError(domain: "test", code: 2)]
+
+        do {
+            try await service.switchTo(target.id)
+            XCTFail("Expected launch failure")
+        } catch {
+            // Expected.
+        }
+
+        XCTAssertEqual(try Data(contentsOf: sharedAuthFile), sourceFlushed)
+        XCTAssertEqual(try service.vault.retrieve(source.id), sourceFlushed)
+    }
+
+    @MainActor
+    func testQuotaAndExportAndUsageSuccessNeverDowngradeNewerVaultWithOlderSharedAuth() async throws {
+        defer { AccountMockURLProtocol.requestHandler = nil }
+
+        let subRoot = root.appendingPathComponent("monotonic-vault", isDirectory: true)
+        let customHome = subRoot.appendingPathComponent("shared-codex", isDirectory: true)
+        try FileManager.default.createDirectory(at: customHome, withIntermediateDirectories: true)
+
+        let olderShared = makeAuthData(
+            email: "alice@example.com",
+            accountID: "acct_a",
+            accessToken: "tok-older",
+            lastRefresh: "2026-01-01T00:00:00Z"
+        )
+        let newerVault = makeAuthData(
+            email: "alice@example.com",
+            accountID: "acct_a",
+            accessToken: "tok-newer",
+            lastRefresh: "2026-03-01T00:00:00Z"
+        )
+        let freshestShared = makeAuthData(
+            email: "alice@example.com",
+            accountID: "acct_a",
+            accessToken: "tok-freshest",
+            lastRefresh: "2026-04-01T00:00:00Z"
+        )
+
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [AccountMockURLProtocol.self]
+        let mockEndpoint = URL(string: "https://example.test/wham/usage")!
+        let healthyJSON = Data("""
+        {
+          "plan_type": "plus",
+          "secondary_window": { "used_percent": 15, "limit_window_seconds": 604800, "reset_at": 1893456000 }
+        }
+        """.utf8)
+        var seenTokens: [String] = []
+        AccountMockURLProtocol.requestHandler = { request in
+            if request.url == mockEndpoint,
+               let bearer = request.value(forHTTPHeaderField: "Authorization") {
+                seenTokens.append(bearer.replacingOccurrences(of: "Bearer ", with: ""))
+            }
+            let response = HTTPURLResponse(
+                url: request.url ?? mockEndpoint,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: ["Content-Type": "application/json"]
+            )!
+            return (response, healthyJSON)
+        }
+
+        let mockService = AccountsService(
+            paths: AccountPaths(root: subRoot),
+            launcher: FakeCodexLauncher(),
+            defaultCodexHome: customHome,
+            legacyRoot: subRoot.appendingPathComponent("no-legacy", isDirectory: true),
+            urlSession: URLSession(configuration: config),
+            usageEndpoint: mockEndpoint
+        )
+        try mockService.load()
+
+        let acctA = try mockService.importSession(olderShared)
+        try await mockService.switchTo(acctA.id)
+        // Promote Vault to newerVault while shared auth.json still holds olderShared.
+        _ = try mockService.importSession(newerVault)
+        let mockSharedAuthURL = customHome.appendingPathComponent("auth.json")
+        try olderShared.write(to: mockSharedAuthURL, options: [.atomic])
+
+        // 1. Older shared auth must not downgrade newer Vault in export, quota, or usage sync.
+        XCTAssertEqual(try mockService.exportSession(acctA.id), newerVault)
+        XCTAssertEqual(try mockService.vault.retrieve(acctA.id), newerVault)
+
+        try await mockService.refreshQuota(for: acctA.id)
+        XCTAssertEqual(seenTokens.last, "tok-newer")
+        XCTAssertEqual(try mockService.vault.retrieve(acctA.id), newerVault)
+
+        let sampleSnap = UsageSnapshot(
+            windows: [UsageWindow(id: "secondary", kind: .weekly, usedPercent: 15, resetAt: nil)],
+            resetCreditsAvailable: nil,
+            resetCredits: [],
+            fetchedAt: .now
+        )
+        mockService.recordSharedAuthUsageSuccess(
+            credentials: CodexCredentials(accessToken: "tok-newer", accountID: "acct_a"),
+            snapshot: sampleSnap
+        )
+        XCTAssertEqual(try mockService.vault.retrieve(acctA.id), newerVault)
+
+        // 2. Fresher shared auth promotes Vault across all entry points.
+        try freshestShared.write(to: mockSharedAuthURL, options: [.atomic])
+        mockService.recordSharedAuthUsageSuccess(
+            credentials: CodexCredentials(accessToken: "tok-freshest", accountID: "acct_a"),
+            snapshot: sampleSnap
+        )
+        XCTAssertEqual(try mockService.vault.retrieve(acctA.id), freshestShared)
+
+        try mockService.vault.store(newerVault, for: acctA.id)
+        XCTAssertEqual(try mockService.exportSession(acctA.id), freshestShared)
+        XCTAssertEqual(try mockService.vault.retrieve(acctA.id), freshestShared)
+
+        try mockService.vault.store(newerVault, for: acctA.id)
+        try await mockService.refreshQuota(for: acctA.id)
+        XCTAssertEqual(seenTokens.last, "tok-freshest")
+        XCTAssertEqual(try mockService.vault.retrieve(acctA.id), freshestShared)
+
+        // 3. load() on startup also promotes a fresher shared auth into a stale Vault.
+        try mockService.vault.store(newerVault, for: acctA.id)
+        let reloaded = AccountsService(
+            paths: AccountPaths(root: subRoot),
+            launcher: FakeCodexLauncher(),
+            defaultCodexHome: customHome,
+            legacyRoot: subRoot.appendingPathComponent("no-legacy", isDirectory: true)
+        )
+        try reloaded.load()
+        XCTAssertEqual(try reloaded.vault.retrieve(acctA.id), freshestShared)
+    }
+
+    func testLiveCodexSessionDetectorIgnoresBundledAppPathsAndDetectsExternalCLI() {
+        let lines = [
+            "  101 /Applications/ChatGPT.app/Contents/Resources/codex app-server --analytics-default-enabled",
+            "  102 /Applications/Codex.app/Contents/Resources/codex app-server",
+            "  103 /Users/tester/Applications/Custom Codex.app/Contents/Resources/codex app-server",
+            "  104 /Applications/CodexNotch.app/Contents/MacOS/CodexNotch",
+            "  201 /opt/homebrew/bin/codex exec fix",
+            "  202 codex --full-auto",
+        ]
+
+        let customDetector = LiveCodexSessionDetector(bundledAppPaths: [
+            "/Applications/ChatGPT.app/",
+            "/Applications/Codex.app/",
+            "/Users/tester/Applications/Custom Codex.app",
+        ])
+        let customSessions = customDetector.filterExternalSessions(fromLines: lines)
+        XCTAssertEqual(customSessions.map(\.pid), [201, 202])
+        XCTAssertEqual(customSessions.map(\.displayName), ["codex", "codex"])
+
+        let defaultDetector = LiveCodexSessionDetector()
+        let defaultLines = [
+            "  301 /Applications/ChatGPT.app/Contents/Resources/codex app-server",
+            "  302 /Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex -c features.code_mode_host=true app-server",
+            "  303 /Applications/Codex.app/Contents/Resources/codex app-server",
+            "  304 /usr/local/bin/codex --version",
+        ]
+        let defaultSessions = defaultDetector.filterExternalSessions(fromLines: defaultLines)
+        XCTAssertEqual(defaultSessions.map(\.pid), [304])
+    }
+
+    func testSubprocessRunnerDrainsLargeStdoutAndStderrWithoutPipeDeadlock() throws {
+        // Exceed the 64 KB macOS pipe buffer on both stdout and stderr simultaneously
+        // to ensure SubprocessRunner never deadlocks before waitUntilExit().
+        let output = try SubprocessRunner.run(
+            executableURL: URL(fileURLWithPath: "/usr/bin/python3"),
+            arguments: [
+                "-c",
+                "import sys; sys.stdout.write('A' * 300000); sys.stdout.flush(); sys.stderr.write('B' * 200000); sys.stderr.flush()",
+            ]
+        )
+        XCTAssertEqual(output.terminationStatus, 0)
+        XCTAssertEqual(output.stdout.count, 300_000)
+        XCTAssertEqual(output.stderr.count, 200_000)
+    }
+
+    func testLiveCodexSessionDetectorReadsLiveProcessTableWithoutDeadlock() throws {
+        let output = try SubprocessRunner.run(
+            executableURL: URL(fileURLWithPath: "/bin/ps"),
+            arguments: ["-axo", "pid=,command="],
+            captureStdout: true,
+            captureStderr: false
+        )
+        XCTAssertEqual(output.terminationStatus, 0)
+        XCTAssertGreaterThan(output.stdout.count, 128)
+        _ = LiveCodexSessionDetector().externalSessions()
+    }
+
+    func testFreshnessNeverDowngradesAnOlderToken() {
+        let older = makeAuthData(
+            email: "a@example.com",
+            accountID: "acct-a",
+            lastRefresh: "2026-01-01T00:00:00Z"
+        )
+        let newer = makeAuthData(
+            email: "a@example.com",
+            accountID: "acct-a",
+            lastRefresh: "2026-02-01T00:00:00Z"
+        )
+
+        XCTAssertFalse(AccountAuthFreshness.shouldReplace(
+            existing: newer,
+            with: older,
+            preferCandidateOnTie: true
+        ))
+        XCTAssertTrue(AccountAuthFreshness.shouldReplace(
+            existing: older,
+            with: newer,
+            preferCandidateOnTie: false
+        ))
+        let sameTimeDifferentToken = makeAuthData(
+            email: "a@example.com",
+            accountID: "acct-a",
+            accessToken: "rotated",
+            lastRefresh: "2026-01-01T00:00:00Z"
+        )
+        XCTAssertTrue(AccountAuthFreshness.shouldReplace(
+            existing: older,
+            with: sameTimeDifferentToken,
+            preferCandidateOnTie: true
+        ))
+        XCTAssertFalse(AccountAuthFreshness.shouldReplace(
+            existing: older,
+            with: sameTimeDifferentToken,
+            preferCandidateOnTie: false
+        ))
+    }
+
     func testLoadImportsLegacySwitcherData() throws {
         let legacyID = UUID()
         let legacyRoot = root.appendingPathComponent("Legacy", isDirectory: true)
@@ -154,9 +498,9 @@ final class AccountsTests: XCTestCase {
         XCTAssertFalse(args.contains { $0.hasPrefix("CODEX_HOME=") })
     }
 
-    func testAccountListHeightOnlyAppliesWhenThereAreMultipleAccounts() {
+    func testAccountListHeightOnlyAppliesWhenThereAreSavedAccounts() {
         XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 0), 0)
-        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 1), 0)
+        XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 1), 44)
         XCTAssertEqual(NotchExpandedLayout.accountListHeight(accountCount: 4), 44)
     }
 
@@ -832,6 +1176,18 @@ final class AccountsTests: XCTestCase {
         XCTAssertEqual(mapB?[targetTupleKey] as? String, "open-science")
     }
 
+    private var sharedAuthFile: URL {
+        root
+            .appendingPathComponent("DefaultCodex", isDirectory: true)
+            .appendingPathComponent("auth.json")
+    }
+
+    private func writeSharedAuth(_ data: Data) throws {
+        let directory = sharedAuthFile.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try data.write(to: sharedAuthFile, options: [.atomic])
+    }
+
     // MARK: - Fixtures
 
     private func makeAuthData(
@@ -839,7 +1195,8 @@ final class AccountsTests: XCTestCase {
         accountID: String,
         userID: String? = nil,
         plan: String = "plus",
-        accessToken: String = "access-token"
+        accessToken: String = "access-token",
+        lastRefresh: String? = nil
     ) -> Data {
         var auth: [String: Any] = [
             "chatgpt_account_id": accountID,
@@ -858,7 +1215,7 @@ final class AccountsTests: XCTestCase {
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
         let idToken = "e30.\(payloadSegment).signature"
-        let object: [String: Any] = [
+        var object: [String: Any] = [
             "auth_mode": "chatgpt",
             "tokens": [
                 "id_token": idToken,
@@ -867,6 +1224,9 @@ final class AccountsTests: XCTestCase {
                 "account_id": accountID
             ]
         ]
+        if let lastRefresh {
+            object["last_refresh"] = lastRefresh
+        }
         return try! JSONSerialization.data(withJSONObject: object)
     }
 
@@ -1235,18 +1595,239 @@ final class AccountsTests: XCTestCase {
         await migratedService.refreshStaleQuotas(ttl: 120)
         XCTAssertEqual(usageRequestsSeen, 1)
     }
+
+    func testAccountQuotaDecodesLegacyNestedSwitcherFormat() throws {
+        let json = """
+        {
+          "version": 1,
+          "accounts": [
+            {
+              "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+              "displayName": "plus-legacy",
+              "planType": "plus",
+              "fingerprint": "fp-plus",
+              "importedAt": "2026-11-11T10:00:00Z",
+              "lastCheckedAt": "2026-11-11T12:00:00Z",
+              "quota": {
+                "checkedAt": "2026-11-11T12:00:00Z",
+                "planType": "plus",
+                "primary": { "durationMinutes": 300, "resetsAt": "2026-11-11T17:00:00Z", "usedPercent": 35 },
+                "secondary": { "durationMinutes": 10080, "resetsAt": "2026-11-18T12:00:00Z", "usedPercent": 80 }
+              }
+            },
+            {
+              "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+              "displayName": "pro-legacy",
+              "planType": "pro",
+              "fingerprint": "fp-pro",
+              "importedAt": "2026-11-11T10:00:00Z",
+              "lastCheckedAt": "2026-11-11T12:00:00Z",
+              "quota": {
+                "checkedAt": "2026-11-11T12:00:00Z",
+                "planType": "pro",
+                "primary": { "durationMinutes": 10080, "resetsAt": "2026-11-18T12:00:00Z", "usedPercent": 27 }
+              }
+            }
+          ]
+        }
+        """
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let envelope = try decoder.decode(AccountEnvelope.self, from: Data(json.utf8))
+        XCTAssertEqual(envelope.accounts.count, 2)
+
+        let plus = envelope.accounts[0]
+        XCTAssertEqual(plus.quota?.primaryRemainingPercent ?? 0, 65, accuracy: 0.1)
+        XCTAssertEqual(plus.quota?.secondaryRemainingPercent ?? 0, 20, accuracy: 0.1)
+        XCTAssertNotNil(plus.quota?.primaryResetsAt)
+        XCTAssertNotNil(plus.quota?.secondaryResetsAt)
+
+        let pro = envelope.accounts[1]
+        XCTAssertNil(pro.quota?.primaryRemainingPercent)
+        XCTAssertEqual(pro.quota?.secondaryRemainingPercent ?? 0, 73, accuracy: 0.1)
+    }
+
+    func testProActiveHoveringPlusAccountShowsFiveHourWindowEvenBeforeCachedQuota() {
+        let now = Date(timeIntervalSince1970: 1_760_000_000)
+        let proUsage = UsageSnapshot(
+            windows: [UsageWindow(id: "primary", kind: .weekly, usedPercent: 15, resetAt: now.addingTimeInterval(86_400))],
+            fetchedAt: now
+        )
+        let proActive = AccountProfile(
+            displayName: "pro-main",
+            planType: "pro",
+            fingerprint: "fp-pro",
+            quota: AccountQuota(primaryUsedPercent: nil, secondaryUsedPercent: 15, planType: "pro", checkedAt: now)
+        )
+        let plusUncached = AccountProfile(
+            displayName: "plus-fresh",
+            planType: "plus",
+            fingerprint: "fp-plus-uncached"
+        )
+        let plusCached = AccountProfile(
+            displayName: "plus-cached",
+            planType: "plus",
+            fingerprint: "fp-plus-cached",
+            quota: AccountQuota(primaryUsedPercent: 32, secondaryUsedPercent: 45, planType: "plus", checkedAt: now)
+        )
+
+        // Opening the drawer on an active Pro account must not pop out a 5h row.
+        let uncachedIdle = AccountPreviewResolver.resolve(
+            activeUsage: proUsage,
+            accounts: [proActive, plusUncached],
+            activeAccountID: proActive.id,
+            hoveredAccountID: nil,
+            selectedAccountIDForSwitch: nil,
+            isDrawerExpanded: true
+        )
+        XCTAssertFalse(uncachedIdle.locksFiveHourRow)
+        XCTAssertNil(uncachedIdle.displayedUsage?.fiveHourWindow)
+
+        // Hovering a Plus standby provides both 5h and 7d windows without changing vertical row lock.
+        let hoveringPlus = AccountPreviewResolver.resolve(
+            activeUsage: proUsage,
+            accounts: [proActive, plusCached],
+            activeAccountID: proActive.id,
+            hoveredAccountID: plusCached.id,
+            selectedAccountIDForSwitch: nil,
+            isDrawerExpanded: true
+        )
+        XCTAssertFalse(hoveringPlus.locksFiveHourRow)
+        XCTAssertEqual(hoveringPlus.displayedUsage?.fiveHourWindow?.remainingPercent ?? 0, 68, accuracy: 0.1)
+        XCTAssertEqual(hoveringPlus.displayedUsage?.weeklyWindow?.remainingPercent ?? 0, 55, accuracy: 0.1)
+    }
+
+    func testIsolatedLoginServiceValidatesTrustedAuthURLsAndStartupMessages() {
+        XCTAssertTrue(IsolatedLoginService.isTrustedAuthorizationURL(URL(string: "https://auth.openai.com/authorize?foo=1")!))
+        XCTAssertTrue(IsolatedLoginService.isTrustedAuthorizationURL(URL(string: "https://chatgpt.com/oauth/authorize")!))
+        XCTAssertFalse(IsolatedLoginService.isTrustedAuthorizationURL(URL(string: "http://auth.openai.com/authorize")!))
+        XCTAssertFalse(IsolatedLoginService.isTrustedAuthorizationURL(URL(string: "https://evil-openai.com/authorize")!))
+        XCTAssertFalse(IsolatedLoginService.isTrustedAuthorizationURL(URL(string: "file:///tmp/auth")!))
+
+        let startup = IsolatedLoginService.startupMessages()
+        XCTAssertEqual(startup.count, 3)
+        XCTAssertEqual(startup[0]["method"] as? String, "initialize")
+        XCTAssertEqual(startup[1]["method"] as? String, "initialized")
+        XCTAssertEqual(startup[2]["method"] as? String, "account/login/start")
+    }
+
+    @MainActor
+    func testIsolatedLoginServiceCompletesMockAppServerHandshakeAndCleansSandbox() async throws {
+        let pendingRoot = root.appendingPathComponent("PendingLogins", isDirectory: true)
+        let mockAuthData = makeAuthData(
+            email: "oauth-user@example.com",
+            accountID: "acct-oauth",
+            userID: "user-oauth",
+            plan: "plus"
+        )
+        let authFixtureURL = root.appendingPathComponent("mock-oauth-auth.json")
+        try mockAuthData.write(to: authFixtureURL)
+
+        let scriptURL = root.appendingPathComponent("mock-codex")
+        let script = """
+        #!/bin/sh
+        while IFS= read -r line; do
+          case "$line" in
+            *'"method":"initialize"'*)
+              echo '{"id":0,"result":{"userAgent":"mock-codex"}}'
+              echo '{"method":"remoteControl/status/changed","params":{}}'
+              ;;
+            *'"method":"account/login/start"'*)
+              echo '{"id":1,"result":{"type":"chatgpt","authUrl":"https://auth.openai.com/authorize?state=mock","loginId":"login-123"}}'
+              cp "\(authFixtureURL.path)" "$CODEX_HOME/auth.json"
+              echo '{"method":"account/login/completed","params":{"success":true}}'
+              exit 0
+              ;;
+          esac
+        done
+        """
+        try script.write(to: scriptURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
+
+        var openedURLs: [URL] = []
+        let completionExpectation = expectation(description: "Isolated login completes")
+        var importedProfile: AccountProfile?
+
+        let loginService = IsolatedLoginService(
+            rootDirectory: pendingRoot,
+            codexBinaryProvider: { scriptURL },
+            urlOpener: { url in openedURLs.append(url) },
+            timeoutInterval: 10
+        ) { [weak self] data in
+            guard let self else { throw AccountError.accountNotFound }
+            return try self.service.importSession(data)
+        }
+
+        loginService.startLogin(language: .chinese) { state in
+            if case let .completed(profile) = state.phase {
+                importedProfile = profile
+                completionExpectation.fulfill()
+            } else if case let .failed(reason) = state.phase {
+                XCTFail("Unexpected failure: \(reason)")
+                completionExpectation.fulfill()
+            }
+        }
+
+        await fulfillment(of: [completionExpectation], timeout: 5)
+
+        XCTAssertEqual(openedURLs.first?.absoluteString, "https://auth.openai.com/authorize?state=mock")
+        XCTAssertEqual(importedProfile?.email, "oauth-user@example.com")
+        XCTAssertEqual(service.accounts.count, 1)
+        XCTAssertEqual(try service.vault.retrieve(try XCTUnwrap(importedProfile?.id)), mockAuthData)
+
+        let leftover = (try? FileManager.default.contentsOfDirectory(atPath: pendingRoot.path)) ?? []
+        XCTAssertTrue(leftover.isEmpty)
+    }
+
+    @MainActor
+    func testAccountsSettingsFooterCopyAndSanitizedExternalSessionErrorMatchSharedHomeContract() {
+        let zhFooter = AccountsSettingsView.sharedHomeFooterText(for: .chinese)
+        let enFooter = AccountsSettingsView.sharedHomeFooterText(for: .english)
+        XCTAssertFalse(zhFooter.contains("不会覆盖"))
+        XCTAssertFalse(enFooter.localizedCaseInsensitiveContains("without touching"))
+        XCTAssertTrue(zhFooter.contains("~/.codex/auth.json"))
+        XCTAssertTrue(enFooter.contains("~/.codex/auth.json"))
+
+        let zhErr = AccountsService.sanitizedSwitchErrorMessage(
+            for: AccountError.externalSessionsRunning(2),
+            language: .chinese
+        )
+        let enErr = AccountsService.sanitizedSwitchErrorMessage(
+            for: AccountError.externalSessionsRunning(2),
+            language: .english
+        )
+        XCTAssertTrue(zhErr.contains("2"))
+        XCTAssertTrue(enErr.contains("2"))
+        XCTAssertFalse(zhErr.contains("auth.json"))
+        XCTAssertFalse(enErr.contains("auth.json"))
+    }
 }
 
 final class FakeCodexLauncher: CodexLaunching {
     private(set) var quitCalls = 0
     private(set) var launchCalls = 0
+    var onQuit: (() -> Void)?
+    var launchErrors: [Error] = []
 
     func quit() async {
         quitCalls += 1
+        onQuit?()
     }
 
     func launchShared() async throws {
         launchCalls += 1
+        if !launchErrors.isEmpty {
+            throw launchErrors.removeFirst()
+        }
+    }
+}
+
+final class FakeCodexSessionDetector: CodexSessionDetecting {
+    var sessions: [CodexExternalSession] = []
+
+    func externalSessions() -> [CodexExternalSession] {
+        sessions
     }
 }
 

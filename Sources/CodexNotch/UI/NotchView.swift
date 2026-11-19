@@ -1291,6 +1291,25 @@ private struct QuotaWaveBall: View {
             Circle()
                 .strokeBorder(NotchPalette.border, lineWidth: lineWidth)
 
+            if QuotaInnerGlowMotion.shouldAnimate(
+                activity: activity,
+                hasQuota: window != nil,
+                motionEnabled: motionEnabled
+            ) {
+                QuotaGradientLayer(
+                    color: QuotaInnerGlowMotion.color,
+                    isAnimating: true,
+                    style: .innerGlow,
+                    circularMask: QuotaGradientCircularMask(
+                        inset: QuotaInnerGlowMotion.strokeInset(quotaLineWidth: lineWidth),
+                        lineWidth: QuotaInnerGlowMotion.lineWidth
+                    )
+                )
+                .frame(width: diameter, height: diameter)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
+
             if QuotaIndicatorMotion.shouldShowCompletionFirework(
                 activity: activity,
                 motionEnabled: motionEnabled
@@ -1967,28 +1986,54 @@ private struct QuotaWindowsProgressView: View {
         locksFiveHourRow || (previewAccount == nil && fiveHourWindow != nil)
     }
 
+    private var showsCompactDualPreview: Bool {
+        !showsFiveHourRow && previewAccount != nil && fiveHourWindow != nil
+    }
+
     var body: some View {
         VStack(spacing: 7) {
-            VStack(spacing: 7) {
-                if showsFiveHourRow {
-                    QuotaWindowProgressRow(
-                        kind: .rolling(hours: 5),
-                        window: fiveHourWindow,
-                        now: now,
-                        isPreviewUnavailableWindow: previewAccount != nil && fiveHourWindow == nil,
-                        previewAccount: previewAccount,
-                        isLockedConfirmation: isLockedConfirmation
-                    )
-                }
+            Group {
+                if showsCompactDualPreview {
+                    HStack(alignment: .top, spacing: 12) {
+                        QuotaWindowProgressRow(
+                            kind: .rolling(hours: 5),
+                            window: fiveHourWindow,
+                            now: now,
+                            previewAccount: previewAccount,
+                            isLockedConfirmation: isLockedConfirmation,
+                            isCompactDualPreview: true
+                        )
 
-                QuotaWindowProgressRow(
-                    kind: .weekly,
-                    window: weeklyWindow,
-                    now: now,
-                    previewAccount: showsFiveHourRow ? nil : previewAccount,
-                    isLockedConfirmation: isLockedConfirmation,
-                    inlineFiveHourPercent: showsFiveHourRow ? nil : inlineFiveHourPercent
-                )
+                        QuotaWindowProgressRow(
+                            kind: .weekly,
+                            window: weeklyWindow,
+                            now: now,
+                            isCompactDualPreview: true
+                        )
+                    }
+                } else {
+                    VStack(spacing: 7) {
+                        if showsFiveHourRow {
+                            QuotaWindowProgressRow(
+                                kind: .rolling(hours: 5),
+                                window: fiveHourWindow,
+                                now: now,
+                                isPreviewUnavailableWindow: previewAccount != nil && fiveHourWindow == nil,
+                                previewAccount: previewAccount,
+                                isLockedConfirmation: isLockedConfirmation
+                            )
+                        }
+
+                        QuotaWindowProgressRow(
+                            kind: .weekly,
+                            window: weeklyWindow,
+                            now: now,
+                            previewAccount: showsFiveHourRow ? nil : previewAccount,
+                            isLockedConfirmation: isLockedConfirmation,
+                            inlineFiveHourPercent: showsFiveHourRow ? nil : inlineFiveHourPercent
+                        )
+                    }
+                }
             }
             .background {
                 if previewAccount != nil {
@@ -2087,17 +2132,40 @@ private struct QuotaWindowProgressRow: View {
     var previewAccount: AccountProfile? = nil
     var isLockedConfirmation = false
     var inlineFiveHourPercent: Double? = nil
+    var isCompactDualPreview = false
     @Environment(\.notchAppLanguage) private var language
+
+    private static let compactTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.dateFormat = "MM-dd HH:mm"
+        return formatter
+    }()
 
     private var progressColor: Color {
         guard window != nil else { return NotchPalette.secondaryText }
         return QuotaColorScale.color(for: window?.remainingPercent ?? 0)
     }
 
+    private var rowTitle: String {
+        guard isCompactDualPreview else {
+            return NotchText.quotaWindowTitle(kind, language: language)
+        }
+        switch kind {
+        case let .rolling(hours):
+            return "\(hours)h"
+        case .weekly:
+            return language.localized(chinese: "本周", english: "Weekly")
+        default:
+            return NotchText.quotaWindowTitle(kind, language: language)
+        }
+    }
+
     var body: some View {
         VStack(spacing: 6) {
             HStack(spacing: 6) {
-                Text(NotchText.quotaWindowTitle(kind, language: language))
+                Text(rowTitle)
                     .font(.system(size: 12, weight: .regular))
                     .foregroundStyle(NotchPalette.primaryText.opacity(0.78))
                     .layoutPriority(1)
@@ -2141,12 +2209,7 @@ private struct QuotaWindowProgressRow: View {
 
                 Spacer(minLength: 4)
 
-                Text(
-                    language.localized(
-                        chinese: "还剩 \(resetCountdownText)",
-                        english: "\(resetCountdownText) remaining"
-                    )
-                )
+                Text(compactOrFullCountdownText)
                     .font(.system(size: 10, weight: .regular))
                     .foregroundStyle(NotchPalette.secondaryText)
                     .monospacedDigit()
@@ -2169,9 +2232,23 @@ private struct QuotaWindowProgressRow: View {
                 english: "Reset time unavailable"
             )
         }
+        if isCompactDualPreview {
+            let short = Self.compactTimeFormatter.string(from: resetAt)
+            return language.localized(chinese: "\(short) 重置", english: "Resets \(short)")
+        }
         return language.localized(
             chinese: "重置于 \(NotchText.resetTimestamp(resetAt))",
             english: "Resets at \(NotchText.resetTimestamp(resetAt))"
+        )
+    }
+
+    private var compactOrFullCountdownText: String {
+        if isCompactDualPreview {
+            return resetCountdownText
+        }
+        return language.localized(
+            chinese: "还剩 \(resetCountdownText)",
+            english: "\(resetCountdownText) remaining"
         )
     }
 

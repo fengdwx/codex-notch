@@ -83,6 +83,7 @@ final class StatusMarkEchoLayerView: QuotaAnimatedLayerView {
         silhouetteMask.frame = echoLayer.bounds
         silhouetteMask.contentsScale = window?.backingScaleFactor ?? 2
         CATransaction.commit()
+        refreshLayerAnimation()
     }
 
     override func startLayerAnimation() {

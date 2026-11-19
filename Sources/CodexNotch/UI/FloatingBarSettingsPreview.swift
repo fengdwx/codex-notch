@@ -15,20 +15,32 @@ enum FloatingSettingsContext: Equatable {
         case .active: return language.localized(chinese: "当前：无刘海或外接屏幕模式", english: "Current mode: no notch / external display")
         case .notched: return language.localized(chinese: "当前：刘海模式", english: "Current mode: notch")
         case .hidden: return language.localized(chinese: "顶部显示已隐藏", english: "The top display is hidden")
-        case .unavailable: return language.localized(chinese: "当前没有显示顶部横条", english: "No bar is showing at the top of the screen")
+        case .unavailable: return language.localized(chinese: "当前未显示顶部悬浮岛", english: "No floating island is showing at the top")
         }
     }
 
     func explanation(for language: AppLanguage) -> String {
         switch self {
         case .active:
-            return language.localized(chinese: "所选样式将立即应用到屏幕顶部的横条。", english: "The selected style applies immediately to the bar at the top of the screen.")
+            return language.localized(
+                chinese: "所选样式将立即应用到无刘海或外接屏顶部的悬浮岛。",
+                english: "The selected style applies immediately to the top floating island on notchless or external displays."
+            )
         case .notched:
-            return language.localized(chinese: "仅适用于无刘海或外接屏幕上的横条，不影响刘海两侧显示。无需外接屏幕，也可在下方预览。", english: "These settings apply to the bar on screens without a notch or on external displays. They do not affect the sides of the notch. The preview is available without an external display.")
+            return language.localized(
+                chinese: "仅适用于无刘海或外接屏顶部的悬浮岛，不影响刘海两侧显示；无需外接屏幕也可在下方预览。",
+                english: "Applies only to the floating island on notchless or external displays without affecting the notch. You can preview it below anytime."
+            )
         case .hidden:
-            return language.localized(chinese: "可在下方预览无刘海或外接屏幕的样式，设置将自动保存。", english: "No-notch and external display styles remain available in the preview. Settings are saved automatically.")
+            return language.localized(
+                chinese: "可在下方预览无刘海或外接屏悬浮岛样式，设置将自动保存。",
+                english: "Floating island styles for notchless or external displays remain available in the preview. Settings are saved automatically."
+            )
         case .unavailable:
-            return language.localized(chinese: "可在下方预览样式，设置将自动保存。", english: "Styles are available in the preview. Settings are saved automatically.")
+            return language.localized(
+                chinese: "可在下方预览悬浮岛样式，设置将自动保存。",
+                english: "Floating island styles are available in the preview. Settings are saved automatically."
+            )
         }
     }
 }

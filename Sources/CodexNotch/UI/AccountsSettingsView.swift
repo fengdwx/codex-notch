@@ -5,309 +5,555 @@ import UniformTypeIdentifiers
 struct AccountsSettingsView: View {
     @ObservedObject var service: AccountsService
     let appLanguage: AppLanguage
+    @Binding var isShowingWebLoginSheet: Bool
 
-    @State private var editing: AccountProfile?
+    @State private var editingAccountID: UUID?
     @State private var editingName = ""
     @State private var editingNote = ""
-    @State private var pendingDelete: AccountProfile?
+    @State private var confirmingDeleteAccountID: UUID?
+    @State private var deleteResetTask: Task<Void, Never>?
     @State private var busyAccountID: UUID?
-    @State private var isRefreshing = false
-    @State private var errorMessage: String?
+    @State private var refreshingAccountIDs: Set<UUID> = []
+    @State private var noticeBanner: SettingsNoticeBanner?
+    @State private var noticeDismissTask: Task<Void, Never>?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            header
-            Divider()
+            SettingsSheetIntro(
+                subtitle: appLanguage.localized(
+                    chinese: "共用本地 ~/.codex 工作区，切换自动延续项目与对话",
+                    english: "Shared ~/.codex workspace with automatic project continuation"
+                )
+            )
+
+            quickImportStrip
+
+            if let noticeBanner {
+                bannerRow(noticeBanner)
+            }
+
             if service.accounts.isEmpty {
-                emptyState
+                emptyStateCard
             } else {
-                ScrollView {
-                    VStack(spacing: 8) {
+                ScrollView(.vertical, showsIndicators: service.accounts.count > 3) {
+                    LazyVStack(spacing: 10) {
                         ForEach(service.accounts) { account in
-                            accountRow(account)
+                            accountCard(account)
                         }
                     }
+                    .padding(.vertical, 1)
                 }
             }
-            footer
+
+            Spacer(minLength: 0)
+
+            footerNote
         }
-        .sheet(item: $editing) { account in
-            editSheet(account)
-        }
-        .confirmationDialog(
-            appLanguage.localized(
-                chinese: "删除「\(pendingDelete?.shortLabel ?? "")」？",
-                english: "Delete \(pendingDelete?.shortLabel ?? "")?"
-            ),
-            isPresented: Binding(
-                get: { pendingDelete != nil },
-                set: { if !$0 { pendingDelete = nil } }
-            )
-        ) {
-            Button(appLanguage.localized(chinese: "删除账号和本地数据", english: "Delete account and local data"), role: .destructive) {
-                if let account = pendingDelete {
-                    try? service.delete(account.id)
-                }
-                pendingDelete = nil
+        .sheet(isPresented: $isShowingWebLoginSheet, onDismiss: {
+            if service.isolatedLoginState.phase.isInProgress {
+                service.cancelWebLogin(language: appLanguage)
             }
-            Button(appLanguage.localized(chinese: "取消", english: "Cancel"), role: .cancel) {
-                pendingDelete = nil
+            service.resetWebLoginState()
+        }) {
+            IsolatedLoginSheet(service: service, appLanguage: appLanguage) {
+                isShowingWebLoginSheet = false
             }
-        } message: {
-            Text(appLanguage.localized(
-                chinese: "会从本机账号库中移除该账号及保存的 auth.json，不会删除 ~/.codex 中的共享项目和对话记录，也不会退出当前已运行的 Codex。",
-                english: "This removes the account and its saved auth.json from the local vault. Shared projects and sessions in ~/.codex stay untouched, and a running Codex session is left as is."
-            ))
         }
-        .alert(
-            appLanguage.localized(chinese: "操作失败", english: "Something went wrong"),
-            isPresented: Binding(
-                get: { errorMessage != nil },
-                set: { if !$0 { errorMessage = nil } }
-            )
-        ) {
-            Button("OK") { errorMessage = nil }
-        } message: {
-            Text(errorMessage ?? "")
+        .onDisappear {
+            deleteResetTask?.cancel()
+            noticeDismissTask?.cancel()
         }
     }
 
-    private var header: some View {
-        HStack(alignment: .center, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(appLanguage.localized(chinese: "Codex 账号", english: "Codex accounts"))
-                    .font(.headline)
-                Text(appLanguage.localized(
-                    chinese: "所有账号共享 ~/.codex 中的项目与对话记录，切换时更新 auth.json 并重启 Codex。",
-                    english: "Accounts share projects and sessions in ~/.codex; switching updates auth.json and relaunches Codex."
-                ))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button {
+    // MARK: - Quiet Secondary Import Utility Strip
+
+    private var quickImportStrip: some View {
+        HStack(spacing: 8) {
+            Text(appLanguage.localized(chinese: "其他导入方式：", english: "Or import:"))
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+
+            utilityLink(
+                title: appLanguage.localized(chinese: "导入 auth.json 文件", english: "Import auth.json"),
+                systemImage: "doc"
+            ) {
                 importAuthFile()
-            } label: {
-                Label(appLanguage.localized(chinese: "导入", english: "Import"), systemImage: "square.and.arrow.down")
             }
-            Button {
-                Task { await refreshAll() }
-            } label: {
-                if isRefreshing {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Label(appLanguage.localized(chinese: "刷新额度", english: "Refresh quota"), systemImage: "arrow.clockwise")
+
+            Text("·")
+                .font(.system(size: 11))
+                .foregroundStyle(.quaternary)
+
+            utilityLink(
+                title: appLanguage.localized(chinese: "导入当前本地登录", english: "Adopt local login"),
+                systemImage: "desktopcomputer"
+            ) {
+                importCurrentLocalSession()
+            }
+
+            if service.hasLegacySwitcherData {
+                Text("·")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.quaternary)
+
+                utilityLink(
+                    title: appLanguage.localized(chinese: "同步原切换器", english: "Sync legacy"),
+                    systemImage: "tray.and.arrow.down"
+                ) {
+                    importLegacyAccounts()
                 }
             }
-            .disabled(isRefreshing || service.accounts.isEmpty)
+
+            Spacer(minLength: 0)
         }
     }
 
-    private var emptyState: some View {
-        VStack(spacing: 8) {
-            Spacer()
-            Image(systemName: "person.2.badge.key")
-                .font(.system(size: 28))
-                .foregroundStyle(.secondary)
-            Text(appLanguage.localized(chinese: "还没有账号", english: "No accounts yet"))
-                .font(.headline)
-            Text(appLanguage.localized(
-                chinese: "导入一个 `auth.json`，或从原来的 Codex Account Switcher 自动接管已有账号。",
-                english: "Import an `auth.json`, or let CodexNotch adopt accounts from the existing Codex Account Switcher."
-            ))
-            .font(.caption)
+    private func utilityLink(
+        title: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 10.5))
+                Text(title)
+                    .font(.system(size: 11, weight: .medium))
+            }
             .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: 380)
-            Button {
-                importAuthFile()
-            } label: {
-                Label(appLanguage.localized(chinese: "导入 auth.json", english: "Import auth.json"), systemImage: "plus")
-            }
-            Spacer()
+            .contentShape(Rectangle())
         }
-        .frame(maxWidth: .infinity)
+        .buttonStyle(.plain)
     }
 
-    private func accountRow(_ account: AccountProfile) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(Color.accentColor.opacity(0.15))
-                Text(String(account.shortLabel.prefix(1)).uppercased())
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.accentColor)
-            }
-            .frame(width: 30, height: 30)
+    // MARK: - Empty State
 
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(account.shortLabel)
-                        .font(.system(size: 13, weight: .semibold))
-                    if account.id == service.activeAccountID {
-                        Text(appLanguage.localized(chinese: "当前", english: "Active"))
-                            .font(.system(size: 9, weight: .bold))
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 1)
-                            .background(Capsule().fill(Color.green.opacity(0.18)))
-                            .foregroundStyle(.green)
-                    }
-                    if let plan = account.planType, !plan.isEmpty {
-                        Text(plan.uppercased())
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(.secondary)
-                    }
-                    if account.resolvedAvailabilityStatus != .available {
-                        Text(
-                            account.resolvedAvailabilityStatus == .reauthRequired
-                                ? appLanguage.localized(chinese: "已退出", english: "Signed out")
-                                : appLanguage.localized(chinese: "不可用", english: "Unavailable")
-                        )
-                        .font(.system(size: 9, weight: .bold))
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1)
-                        .background(Capsule().fill(Color.red.opacity(0.16)))
-                        .foregroundStyle(.red)
-                    }
-                }
-                if let email = account.email {
-                    Text(email)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Text(quotaSummary(account))
-                    .font(.caption2)
+    private var emptyStateCard: some View {
+        SettingsSurfaceCard(padding: 24) {
+            VStack(spacing: 8) {
+                Image(systemName: "person.2")
+                    .font(.system(size: 24, weight: .light))
                     .foregroundStyle(.secondary)
-                if let note = account.note, !note.isEmpty {
-                    Text(note)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                }
+                Text(appLanguage.localized(chinese: "暂无已保存账号", english: "No accounts saved"))
+                    .font(.system(size: 13.5, weight: .semibold))
+                Text(appLanguage.localized(
+                    chinese: "点击右上角「+ 网页登录」在独立浏览器沙盒中授权添加，或使用上方导入选项。",
+                    english: "Click + Sign in above to authorize via browser, or use one of the import options."
+                ))
+                .font(.system(size: 11.5))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 340)
             }
-
-            Spacer()
-
-            Button {
-                switchTo(account)
-            } label: {
-                if busyAccountID == account.id {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Text(account.id == service.activeAccountID
-                         ? appLanguage.localized(chinese: "重启", english: "Relaunch")
-                         : appLanguage.localized(chinese: "切换", english: "Switch"))
-                }
-            }
-            .disabled(busyAccountID != nil)
-
-            Menu {
-                Button(appLanguage.localized(chinese: "编辑名称和备注", english: "Edit name and note")) {
-                    editingName = account.displayName
-                    editingNote = account.note ?? ""
-                    editing = account
-                }
-                Button(appLanguage.localized(chinese: "导出 auth.json", english: "Export auth.json")) {
-                    export(account)
-                }
-                Button(appLanguage.localized(chinese: "在 Finder 中显示数据目录", english: "Reveal data folder")) {
-                    NSWorkspace.shared.activateFileViewerSelecting([service.homeURL(for: account.id)])
-                }
-                Divider()
-                Button(appLanguage.localized(chinese: "删除", english: "Delete"), role: .destructive) {
-                    pendingDelete = account
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-            }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
         }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(account.id == service.activeAccountID
-                      ? Color.accentColor.opacity(0.07)
-                      : Color.secondary.opacity(0.06))
-        )
     }
 
-    private var footer: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "lock.shield")
-            Text(appLanguage.localized(
-                chinese: "账号凭据仅保存在本机隔离保险库（0700/0600），仅在切换时原子写入 ~/.codex/auth.json。",
-                english: "Account credentials stay in your local vault (0700/0600) and are written atomically to ~/.codex/auth.json only when switching."
-            ))
-            Spacer()
+    // MARK: - Clean Account Card
+
+    private func accountCard(_ account: AccountProfile) -> some View {
+        let isActive = account.id == service.activeAccountID
+        let isConfirmingDelete = confirmingDeleteAccountID == account.id
+        let isEditing = editingAccountID == account.id
+        let status = account.resolvedAvailabilityStatus
+
+        let border: Color? = isConfirmingDelete ? Color.red.opacity(0.42) : nil
+
+        return SettingsSurfaceCard(padding: 0, accentBorder: border) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .center, spacing: 11) {
+                    AccountMonogramAvatar(account: account, size: 32, cornerRadius: 8)
+
+                    VStack(alignment: .leading, spacing: 2.5) {
+                        HStack(spacing: 6) {
+                            Text(account.shortLabel)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+
+                            if let plan = account.planType, !plan.isEmpty {
+                                Text(plan.uppercased())
+                                    .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                            .fill(Color.primary.opacity(0.06))
+                                    )
+                            }
+
+                            if isActive {
+                                HStack(spacing: 4) {
+                                    Circle()
+                                        .fill(Color.green)
+                                        .frame(width: 5.5, height: 5.5)
+                                    Text(appLanguage.localized(chinese: "当前", english: "Active"))
+                                        .font(.system(size: 10.5, weight: .medium))
+                                        .foregroundStyle(.green)
+                                }
+                            }
+
+                            if status != .available {
+                                Text(
+                                    status == .reauthRequired
+                                        ? appLanguage.localized(chinese: "需重新登录", english: "Re-auth")
+                                        : appLanguage.localized(chinese: "不可用", english: "Unavailable")
+                                )
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(status == .reauthRequired ? .orange : .red)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(
+                                    Capsule()
+                                        .fill((status == .reauthRequired ? Color.orange : Color.red).opacity(0.12))
+                                )
+                            }
+                        }
+
+                        subtitleLine(for: account)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    cardActions(
+                        for: account,
+                        isActive: isActive,
+                        isConfirmingDelete: isConfirmingDelete,
+                        status: status
+                    )
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 11)
+
+                if isEditing {
+                    SettingsHairlineDivider()
+                        .padding(.horizontal, 14)
+                    inlineEditor(for: account)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                }
+
+                SettingsHairlineDivider()
+                    .padding(.horizontal, 14)
+
+                AccountQuotaStripView(
+                    account: account,
+                    appLanguage: appLanguage,
+                    isRefreshing: refreshingAccountIDs.contains(account.id),
+                    onRefresh: { Task { await refreshSingle(account) } }
+                )
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+            }
         }
-        .font(.caption2)
+        .animation(.easeInOut(duration: 0.15), value: isConfirmingDelete)
+        .animation(.easeInOut(duration: 0.15), value: isEditing)
+    }
+
+    private func subtitleLine(for account: AccountProfile) -> some View {
+        HStack(spacing: 5) {
+            if let email = account.email, !email.isEmpty {
+                Text(email)
+                    .lineLimit(1)
+            }
+            if let note = account.note, !note.isEmpty {
+                if account.email?.isEmpty == false {
+                    Text("·")
+                }
+                Text(note)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+            }
+            if let checkedAt = account.quota?.checkedAt ?? account.lastCheckedAt {
+                Text("· \(AccountProfile.conciseRelativeAge(since: checkedAt, now: .now, language: appLanguage))")
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .font(.system(size: 11))
         .foregroundStyle(.secondary)
     }
 
-    private func editSheet(_ account: AccountProfile) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(appLanguage.localized(chinese: "编辑账号", english: "Edit account"))
-                .font(.headline)
-            TextField(appLanguage.localized(chinese: "名称", english: "Name"), text: $editingName)
-                .textFieldStyle(.roundedBorder)
-            TextField(appLanguage.localized(chinese: "备注（仅本机）", english: "Note (local only)"), text: $editingNote)
-                .textFieldStyle(.roundedBorder)
-            HStack {
-                Spacer()
-                Button(appLanguage.localized(chinese: "取消", english: "Cancel")) {
-                    editing = nil
+    @ViewBuilder
+    private func cardActions(
+        for account: AccountProfile,
+        isActive: Bool,
+        isConfirmingDelete: Bool,
+        status: AccountAvailabilityStatus
+    ) -> some View {
+        let isSwitching = busyAccountID != nil || service.switchPhase.isSwitching
+
+        if isConfirmingDelete {
+            HStack(spacing: 6) {
+                SettingsActionButton(
+                    title: appLanguage.localized(chinese: "取消", english: "Cancel"),
+                    tone: .secondary
+                ) {
+                    cancelDeleteConfirmation()
                 }
-                Button(appLanguage.localized(chinese: "保存", english: "Save")) {
-                    try? service.rename(account.id, to: editingName)
-                    try? service.updateNote(account.id, note: editingNote)
-                    editing = nil
+
+                SettingsActionButton(
+                    title: appLanguage.localized(chinese: "确认删除", english: "Delete"),
+                    tone: .destructive,
+                    isDisabled: isSwitching
+                ) {
+                    performDelete(account)
                 }
-                .keyboardShortcut(.defaultAction)
+            }
+        } else {
+            HStack(spacing: 2) {
+                primaryActionButton(for: account, isActive: isActive, status: status)
+                    .padding(.trailing, 4)
+
+                SettingsIconButton(
+                    systemName: editingAccountID == account.id ? "pencil.circle.fill" : "pencil",
+                    tint: .secondary,
+                    isActive: editingAccountID == account.id,
+                    helpText: appLanguage.localized(chinese: "编辑名称与备注", english: "Edit name & note")
+                ) {
+                    toggleInlineEditor(for: account)
+                }
+
+                SettingsIconButton(
+                    systemName: "arrow.clockwise",
+                    tint: .secondary,
+                    isLoading: refreshingAccountIDs.contains(account.id),
+                    isDisabled: refreshingAccountIDs.contains(account.id),
+                    helpText: appLanguage.localized(chinese: "刷新此账号额度", english: "Refresh quota")
+                ) {
+                    Task { await refreshSingle(account) }
+                }
+
+                SettingsIconButton(
+                    systemName: "square.and.arrow.up",
+                    tint: .secondary,
+                    helpText: appLanguage.localized(chinese: "导出 auth.json…", english: "Export auth.json…")
+                ) {
+                    export(account)
+                }
+
+                SettingsIconButton(
+                    systemName: "folder",
+                    tint: .secondary,
+                    helpText: appLanguage.localized(chinese: "在 Finder 中显示 Codex 目录", english: "Reveal Codex folder")
+                ) {
+                    NSWorkspace.shared.activateFileViewerSelecting([service.homeURL(for: account.id)])
+                }
+
+                SettingsIconButton(
+                    systemName: "trash",
+                    tint: .red.opacity(0.75),
+                    isDisabled: isSwitching,
+                    helpText: appLanguage.localized(chinese: "删除账号", english: "Delete account")
+                ) {
+                    armDeleteConfirmation(for: account.id)
+                }
             }
         }
-        .padding(16)
-        .frame(width: 360)
     }
 
-    private func quotaSummary(_ account: AccountProfile) -> String {
-        guard let quota = account.quota else {
-            return appLanguage.localized(chinese: "额度未检查", english: "Quota not checked")
+    @ViewBuilder
+    private func primaryActionButton(
+        for account: AccountProfile,
+        isActive: Bool,
+        status: AccountAvailabilityStatus
+    ) -> some View {
+        let isAnySwitching = busyAccountID != nil || service.switchPhase.isSwitching
+        let isThisSwitching: Bool = {
+            if case let .switching(targetID) = service.switchPhase, targetID == account.id {
+                return true
+            }
+            return busyAccountID == account.id
+        }()
+
+        if status == .reauthRequired {
+            SettingsActionButton(
+                title: appLanguage.localized(chinese: "重新登录", english: "Sign in"),
+                tone: .prominent(.orange)
+            ) {
+                startBrowserLogin()
+            }
+        } else if isActive {
+            SettingsActionButton(
+                title: appLanguage.localized(chinese: "重启", english: "Relaunch"),
+                tone: .secondary,
+                isLoading: isThisSwitching,
+                isDisabled: isAnySwitching
+            ) {
+                switchTo(account)
+            }
+        } else {
+            SettingsActionButton(
+                title: appLanguage.localized(chinese: "切换", english: "Switch"),
+                tone: .prominent(.accentColor),
+                isLoading: isThisSwitching,
+                isDisabled: isAnySwitching
+            ) {
+                switchTo(account)
+            }
         }
-        var parts: [String] = []
-        if let primary = quota.primaryUsedPercent {
-            parts.append(appLanguage.localized(
-                chinese: String(format: "5 小时剩 %.0f%%", max(0, 100 - primary)),
-                english: String(format: "5h %.0f%% left", max(0, 100 - primary))
-            ))
+    }
+
+    private func inlineEditor(for account: AccountProfile) -> some View {
+        HStack(spacing: 6) {
+            TextField(appLanguage.localized(chinese: "名称", english: "Name"), text: $editingName)
+                .textFieldStyle(.roundedBorder)
+                .frame(maxWidth: 140)
+                .onSubmit { saveInlineEditor(for: account) }
+
+            TextField(appLanguage.localized(chinese: "备注（仅本机）", english: "Note (local only)"), text: $editingNote)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit { saveInlineEditor(for: account) }
+
+            SettingsActionButton(
+                title: appLanguage.localized(chinese: "取消", english: "Cancel"),
+                tone: .secondary
+            ) {
+                editingAccountID = nil
+            }
+
+            SettingsActionButton(
+                title: appLanguage.localized(chinese: "保存", english: "Save"),
+                tone: .prominent(.accentColor)
+            ) {
+                saveInlineEditor(for: account)
+            }
         }
-        if let secondary = quota.secondaryUsedPercent {
-            parts.append(appLanguage.localized(
-                chinese: String(format: "7 天剩 %.0f%%", max(0, 100 - secondary)),
-                english: String(format: "7d %.0f%% left", max(0, 100 - secondary))
-            ))
+    }
+
+    // MARK: - Banner & Footer
+
+    private func bannerRow(_ banner: SettingsNoticeBanner) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: banner.isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                .foregroundStyle(banner.isError ? .red : .green)
+                .font(.system(size: 12))
+            Text(banner.message)
+                .font(.system(size: 11.5))
+                .foregroundStyle(banner.isError ? .red : .primary)
+                .lineLimit(2)
+            Spacer()
+            SettingsIconButton(systemName: "xmark", tint: .secondary) {
+                noticeBanner = nil
+            }
         }
-        return parts.isEmpty
-            ? appLanguage.localized(chinese: "额度未检查", english: "Quota not checked")
-            : parts.joined(separator: " · ")
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill((banner.isError ? Color.red : Color.green).opacity(0.09))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .strokeBorder((banner.isError ? Color.red : Color.green).opacity(0.22), lineWidth: 0.75)
+        )
+    }
+
+    static func sharedHomeFooterText(for appLanguage: AppLanguage) -> String {
+        appLanguage.localized(
+            chinese: "凭据保存在本机 0700/0600 保险库；切换时会先回存当前凭据，再原子写入 ~/.codex/auth.json。",
+            english: "Credentials stay in your local 0700/0600 vault; switching saves the active token first, then updates ~/.codex/auth.json."
+        )
+    }
+
+    private var footerNote: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "lock.shield")
+                .font(.system(size: 10.5))
+            Text(Self.sharedHomeFooterText(for: appLanguage))
+            .font(.system(size: 10.5))
+            Spacer()
+        }
+        .foregroundStyle(.tertiary)
+    }
+
+    // MARK: - Actions
+
+    private func startBrowserLogin() {
+        isShowingWebLoginSheet = true
+        service.startWebLogin(language: appLanguage)
+    }
+
+    private func toggleInlineEditor(for account: AccountProfile) {
+        if editingAccountID == account.id {
+            editingAccountID = nil
+        } else {
+            editingName = account.displayName
+            editingNote = account.note ?? ""
+            editingAccountID = account.id
+        }
+    }
+
+    private func saveInlineEditor(for account: AccountProfile) {
+        do {
+            try service.rename(account.id, to: editingName)
+            try service.updateNote(account.id, note: editingNote)
+            editingAccountID = nil
+        } catch {
+            showNotice(error.localizedDescription, isError: true)
+        }
+    }
+
+    private func armDeleteConfirmation(for id: UUID) {
+        deleteResetTask?.cancel()
+        confirmingDeleteAccountID = id
+        deleteResetTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled else { return }
+            if confirmingDeleteAccountID == id {
+                confirmingDeleteAccountID = nil
+            }
+        }
+    }
+
+    private func cancelDeleteConfirmation() {
+        deleteResetTask?.cancel()
+        confirmingDeleteAccountID = nil
+    }
+
+    private func performDelete(_ account: AccountProfile) {
+        guard busyAccountID == nil, !service.switchPhase.isSwitching else { return }
+        deleteResetTask?.cancel()
+        confirmingDeleteAccountID = nil
+        if editingAccountID == account.id {
+            editingAccountID = nil
+        }
+        do {
+            try service.delete(account.id)
+            showNotice(
+                appLanguage.localized(
+                    chinese: "已删除账号「\(account.shortLabel)」的本地凭据。",
+                    english: "Removed saved credentials for \(account.shortLabel)."
+                ),
+                isError: false
+            )
+        } catch {
+            showNotice(error.localizedDescription, isError: true)
+        }
     }
 
     private func switchTo(_ account: AccountProfile) {
+        guard busyAccountID == nil, !service.switchPhase.isSwitching else { return }
+        guard let task = service.beginSwitch(to: account.id, language: appLanguage) else { return }
         busyAccountID = account.id
-        Task {
-            do {
-                try await service.switchTo(account.id)
-            } catch {
-                errorMessage = error.localizedDescription
+        Task { @MainActor in
+            await task.value
+            if case let .failed(_, message) = service.switchPhase {
+                showNotice(message, isError: true)
             }
             busyAccountID = nil
         }
     }
 
-    private func refreshAll() async {
-        isRefreshing = true
-        await service.refreshAllQuotas()
-        isRefreshing = false
+    private func refreshSingle(_ account: AccountProfile) async {
+        refreshingAccountIDs.insert(account.id)
+        defer { refreshingAccountIDs.remove(account.id) }
+        do {
+            try await service.refreshQuota(for: account.id)
+        } catch {
+            showNotice(error.localizedDescription, isError: true)
+        }
     }
 
     private func importAuthFile() {
@@ -318,9 +564,54 @@ struct AccountsSettingsView: View {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             let data = try Data(contentsOf: url)
-            _ = try service.importSession(data)
+            let profile = try service.importSession(data)
+            showNotice(
+                appLanguage.localized(
+                    chinese: "已导入账号「\(profile.shortLabel)」",
+                    english: "Imported account \(profile.shortLabel)"
+                ),
+                isError: false
+            )
+            Task { @MainActor in
+                try? await service.refreshQuota(for: profile.id)
+            }
         } catch {
-            errorMessage = error.localizedDescription
+            showNotice(error.localizedDescription, isError: true)
+        }
+    }
+
+    private func importCurrentLocalSession() {
+        do {
+            let profile = try service.importCurrentCodexSession()
+            showNotice(
+                appLanguage.localized(
+                    chinese: "已导入当前登录账号「\(profile.shortLabel)」",
+                    english: "Imported active session \(profile.shortLabel)"
+                ),
+                isError: false
+            )
+        } catch {
+            showNotice(error.localizedDescription, isError: true)
+        }
+    }
+
+    private func importLegacyAccounts() {
+        do {
+            let addedCount = try service.importLegacySwitcherAccounts()
+            showNotice(
+                addedCount > 0
+                    ? appLanguage.localized(
+                        chinese: "已同步 \(addedCount) 个原账号切换器账号",
+                        english: "Synced \(addedCount) legacy account(s)"
+                    )
+                    : appLanguage.localized(
+                        chinese: "原账号切换器中的账号均已存在，无新增项",
+                        english: "All legacy accounts are already present"
+                    ),
+                isError: false
+            )
+        } catch {
+            showNotice(error.localizedDescription, isError: true)
         }
     }
 
@@ -336,8 +627,136 @@ struct AccountsSettingsView: View {
                 [.posixPermissions: 0o600],
                 ofItemAtPath: url.path
             )
+            showNotice(
+                appLanguage.localized(chinese: "已导出凭据文件", english: "Exported auth.json"),
+                isError: false
+            )
         } catch {
-            errorMessage = error.localizedDescription
+            showNotice(error.localizedDescription, isError: true)
         }
+    }
+
+    private func showNotice(_ message: String, isError: Bool) {
+        noticeDismissTask?.cancel()
+        noticeBanner = SettingsNoticeBanner(message: message, isError: isError)
+        if !isError {
+            noticeDismissTask = Task { @MainActor in
+                try? await Task.sleep(for: .seconds(4))
+                guard !Task.isCancelled else { return }
+                noticeBanner = nil
+            }
+        }
+    }
+}
+
+private struct SettingsNoticeBanner: Equatable {
+    let message: String
+    let isError: Bool
+}
+
+private struct AccountQuotaStripView: View {
+    let account: AccountProfile
+    let appLanguage: AppLanguage
+    let isRefreshing: Bool
+    let onRefresh: () -> Void
+
+    private var snapshot: UsageSnapshot? {
+        account.quota?.previewUsageSnapshot(preservingResetCreditsFrom: nil)
+    }
+
+    var body: some View {
+        if let snapshot, snapshot.fiveHourWindow != nil || snapshot.weeklyWindow != nil {
+            HStack(spacing: 16) {
+                if let fiveHour = snapshot.fiveHourWindow {
+                    AccountQuotaLinearBar(
+                        title: appLanguage.localized(chinese: "5 小时", english: "5h"),
+                        window: fiveHour,
+                        appLanguage: appLanguage
+                    )
+                }
+
+                if let weekly = snapshot.weeklyWindow {
+                    AccountQuotaLinearBar(
+                        title: appLanguage.localized(chinese: "7 天周限额", english: "7d weekly"),
+                        window: weekly,
+                        appLanguage: appLanguage
+                    )
+                }
+            }
+        } else {
+            HStack(spacing: 8) {
+                Text(appLanguage.localized(
+                    chinese: "尚未获取额度快照",
+                    english: "No quota snapshot yet"
+                ))
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+
+                Spacer()
+
+                SettingsActionButton(
+                    title: appLanguage.localized(chinese: "立即刷新", english: "Refresh"),
+                    systemImage: "arrow.clockwise",
+                    tone: .secondary,
+                    isLoading: isRefreshing
+                ) {
+                    onRefresh()
+                }
+            }
+        }
+    }
+}
+
+private struct AccountQuotaLinearBar: View {
+    let title: String
+    let window: UsageWindow
+    let appLanguage: AppLanguage
+
+    private static let resetFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.dateFormat = "MM-dd HH:mm"
+        return formatter
+    }()
+
+    private var remaining: Double { window.remainingPercent }
+    private var barColor: Color { QuotaColorScale.color(for: remaining) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Text(title)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+
+                if let resetAt = window.resetAt {
+                    Text("· \(Self.resetFormatter.string(from: resetAt))")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 4)
+
+                Text(NotchText.percent(remaining))
+                    .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                    .foregroundStyle(barColor)
+                    .monospacedDigit()
+            }
+
+            GeometryReader { proxy in
+                Capsule()
+                    .fill(Color.primary.opacity(0.08))
+                    .overlay(alignment: .leading) {
+                        Capsule()
+                            .fill(barColor)
+                            .frame(width: max(0, proxy.size.width * CGFloat(min(max(remaining, 0), 100) / 100)))
+                    }
+            }
+            .frame(height: 4)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

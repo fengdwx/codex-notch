@@ -172,8 +172,8 @@ enum NotchExpandedLayout {
     static let accountEmptyGuardHeight: CGFloat = 72
 
     /// Default collapsed height is the 36pt anchor bar (44pt with top spacing)
-    /// when there are multiple accounts, expanding downward on demand up to
-    /// five visible 40pt cards plus optional confirmation footer or status banner.
+    /// when there is at least one saved account, expanding downward on demand
+    /// up to five visible 40pt cards plus optional confirmation footer or status banner.
     static func accountSwitcherHeight(
         accountCount: Int,
         isDrawerExpanded: Bool = false,
@@ -181,7 +181,7 @@ enum NotchExpandedLayout {
         isConfirmingAccount: Bool = false,
         showsStatusBanner: Bool = false
     ) -> CGFloat {
-        guard accountCount > 1 else {
+        guard accountCount >= 1 else {
             return showsStatusBanner
                 ? accountSectionTopSpacing + accountStatusBannerHeight
                 : 0

@@ -98,6 +98,24 @@ final class AppIconAssetTests: XCTestCase {
         XCTAssertTrue(source.contains("stroke=\"#fff\""))
     }
 
+    func testSettingsSidebarUsesCodexNotchOwnAppIconInsteadOfCodexStatusMark() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let settingsSource = try String(
+            contentsOf: repositoryRoot.appendingPathComponent(
+                "Sources/CodexNotch/UI/NotchSettingsView.swift"
+            ),
+            encoding: .utf8
+        )
+        XCTAssertTrue(settingsSource.contains("CodexNotchBrandIcon("))
+        XCTAssertFalse(
+            settingsSource.contains("sidebar-brand"),
+            "Settings sidebar brand header must display CodexNotch's own app icon, not the Codex status mark"
+        )
+    }
+
     func testNotchMarkUsesEmbeddedWhiteCodexArtworkWithoutReadingAnotherAppBundle() throws {
         let repositoryRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

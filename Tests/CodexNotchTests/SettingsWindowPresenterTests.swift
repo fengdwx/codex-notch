@@ -47,6 +47,37 @@ final class SettingsWindowPresenterTests: XCTestCase {
     }
 
     @MainActor
+    func testShowNativeSettingsOpensVisibleFullSizeWindowEvenWhenHiddenSwiftUISettingsWindowExists() async throws {
+        _ = NSApplication.shared
+        SettingsWindowPresenter.disposeOwnedSettingsWindowForTesting()
+        defer { SettingsWindowPresenter.disposeOwnedSettingsWindowForTesting() }
+
+        let hiddenSwiftUISettings = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1, height: 1),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        hiddenSwiftUISettings.isReleasedWhenClosed = false
+        hiddenSwiftUISettings.identifier = NSUserInterfaceItemIdentifier("com_apple_SwiftUI_Settings_window")
+        hiddenSwiftUISettings.alphaValue = 0
+        defer { dispose(hiddenSwiftUISettings) }
+
+        SettingsWindowPresenter.showNativeSettings()
+        let nativeWindow = SettingsWindowPresenter.createNativeSettingsWindow()
+        XCTAssertTrue(nativeWindow !== hiddenSwiftUISettings)
+        XCTAssertTrue(
+            nativeWindow.isVisible,
+            "Native Settings window must activate and order front synchronously inside the user's click event"
+        )
+        try await Task.sleep(for: .milliseconds(80))
+        XCTAssertTrue(nativeWindow.isVisible, "Native Settings window must remain visible after activation settles")
+        XCTAssertEqual(nativeWindow.alphaValue, 1, accuracy: 0.01)
+        XCTAssertEqual(nativeWindow.frame.width, NotchSettingsLayout.windowWidth, accuracy: 1)
+        XCTAssertEqual(nativeWindow.frame.height, NotchSettingsLayout.windowHeight, accuracy: 1)
+    }
+
+    @MainActor
     private func makeWindow(settings: Bool) -> NSWindow {
         let window = NSWindow(
             contentRect: NSRect(x: 100, y: 100, width: 220, height: 120),

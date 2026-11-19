@@ -226,6 +226,8 @@ final class NotchRuntimeCoordinator {
         usageTask?.cancel()
         usageRequestID = nil
         usageCredentials = nil
+        resetTask?.cancel()
+        resetController = nil
         usage = accountsService?.activeAccount?.quota?.previewUsageSnapshot(preservingResetCreditsFrom: nil)
         Task { await sessionStore.reset() }
         installRolloutCallbacks(generation: generation)
@@ -421,6 +423,10 @@ final class NotchRuntimeCoordinator {
         render()
     }
 
+    private var activeAuthReader: CodexAuthReader {
+        accountsService?.activeHomeURL.map { CodexAuthReader(codexHome: $0) } ?? authReader
+    }
+
     private func refreshUsage() {
         guard !viewModel.isUsingResetCredit else { return }
         let requestID = UUID()
@@ -428,7 +434,7 @@ final class NotchRuntimeCoordinator {
         lastUsageRequestAt = nowProvider()
         usageTask?.cancel()
 
-        let reader = authReader
+        let reader = activeAuthReader
         let urlSession = self.urlSession
         let endpoint = usageEndpoint
         usageTask = Task { [weak self] in
@@ -508,7 +514,7 @@ final class NotchRuntimeCoordinator {
         expectedCredentials: CodexCredentials,
         language: AppLanguage
     ) {
-        let reader = authReader
+        let reader = activeAuthReader
         let session = urlSession
         let endpoint = usageEndpoint
         if resetController == nil {
@@ -751,6 +757,15 @@ final class NotchRuntimeCoordinator {
             self?.scheduleRenderForAccountChange()
         }
         .store(in: &accountsCancellables)
+
+        viewModel.$hoveredAccountID
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self, self.started, self.isAccountDrawerExpanded else { return }
+                self.scheduleRenderForAccountChange()
+            }
+            .store(in: &accountsCancellables)
     }
 
     private func scheduleRenderForAccountChange() {
@@ -821,7 +836,7 @@ final class NotchRuntimeCoordinator {
                 conversationCount: 2,
                 isResetScheduleExpanded: isResetScheduleExpanded,
                 resetCreditCount: resetCreditCount(in: state),
-                hasFiveHourWindow: hasFiveHourWindow(in: state),
+                hasFiveHourWindow: hasFiveHourWindow(in: state, accountLayout: accountLayout),
                 accountCount: accountLayout.accountCount,
                 isAccountDrawerExpanded: accountLayout.isDrawerExpanded,
                 displayedAccountCount: accountLayout.displayedAccountCount,
@@ -833,7 +848,7 @@ final class NotchRuntimeCoordinator {
             conversationCount: content.conversations.count,
             isResetScheduleExpanded: isResetScheduleExpanded,
             resetCreditCount: content.usage?.resetCredits.count ?? 0,
-            hasFiveHourWindow: content.usage?.fiveHourWindow != nil,
+            hasFiveHourWindow: hasFiveHourWindow(in: state, accountLayout: accountLayout),
             accountCount: accountLayout.accountCount,
             isAccountDrawerExpanded: accountLayout.isDrawerExpanded,
             displayedAccountCount: accountLayout.displayedAccountCount,
@@ -850,7 +865,7 @@ final class NotchRuntimeCoordinator {
         NotchExpandedLayout.quotaContentSize(
             isResetScheduleExpanded: isResetScheduleExpanded,
             resetCreditCount: resetCreditCount(in: state),
-            hasFiveHourWindow: hasFiveHourWindow(in: state),
+            hasFiveHourWindow: hasFiveHourWindow(in: state, accountLayout: accountLayout),
             accountCount: accountLayout.accountCount,
             isAccountDrawerExpanded: accountLayout.isDrawerExpanded,
             displayedAccountCount: accountLayout.displayedAccountCount,
@@ -865,6 +880,7 @@ final class NotchRuntimeCoordinator {
         let displayedAccountCount: Int
         let isConfirmingAccount: Bool
         let showsStatusBanner: Bool
+        let reservesFiveHourRow: Bool
     }
 
     private var currentAccountSectionLayout: AccountSectionLayoutInputs {
@@ -874,12 +890,13 @@ final class NotchRuntimeCoordinator {
                 isDrawerExpanded: false,
                 displayedAccountCount: 0,
                 isConfirmingAccount: false,
-                showsStatusBanner: false
+                showsStatusBanner: false,
+                reservesFiveHourRow: false
             )
         }
         let accounts = accountsService.accounts
         let accountCount = accounts.count
-        let drawerExpanded = accountCount > 1 && isAccountDrawerExpanded
+        let drawerExpanded = accountCount >= 1 && isAccountDrawerExpanded
         let snapshot = AccountPickerLogic.snapshot(
             accounts: accounts,
             activeAccountID: accountsService.activeAccountID,
@@ -895,14 +912,16 @@ final class NotchRuntimeCoordinator {
         case .idle:
             showsBanner = false
         case .switching, .failed:
-            showsBanner = accountCount > 1
+            showsBanner = accountCount >= 1
         }
+        let reservesFiveHourRow = false
         return AccountSectionLayoutInputs(
             accountCount: accountCount,
             isDrawerExpanded: drawerExpanded,
             displayedAccountCount: snapshot.displayedAccounts.count,
             isConfirmingAccount: isConfirming,
-            showsStatusBanner: showsBanner
+            showsStatusBanner: showsBanner,
+            reservesFiveHourRow: reservesFiveHourRow
         )
     }
 
@@ -911,9 +930,12 @@ final class NotchRuntimeCoordinator {
         return content.usage?.resetCredits.count ?? 0
     }
 
-    private func hasFiveHourWindow(in state: NotchPresentationState) -> Bool {
+    private func hasFiveHourWindow(
+        in state: NotchPresentationState,
+        accountLayout: AccountSectionLayoutInputs
+    ) -> Bool {
         guard case let .expanded(content) = state else { return false }
-        return content.usage?.fiveHourWindow != nil
+        return content.usage?.fiveHourWindow != nil || accountLayout.reservesFiveHourRow
     }
 
     private func render(now: Date? = nil) {

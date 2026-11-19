@@ -12,7 +12,7 @@ struct CodexNotchApp: App {
 
     var body: some Scene {
         Settings {
-            NotchSettingsView()
+            SettingsSceneRedirectView()
         }
         .commands {
             CommandGroup(replacing: .appSettings) {

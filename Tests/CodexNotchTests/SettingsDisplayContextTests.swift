@@ -25,4 +25,14 @@ final class SettingsDisplayContextTests: XCTestCase {
                        "ACTIVITY-FEEDBACK-060 replaces the signature fallback with explicit state text")
         XCTAssertFalse(FloatingCenterStyle.flow.usesCustomText, "Flow must not offer an ineffective text control")
     }
+
+    func testExternalIslandContextCopyUsesConsistentIslandTerminology() {
+        for context in [FloatingSettingsContext.active, .notched, .hidden, .unavailable] {
+            let zhTitle = context.title(for: .chinese)
+            let zhExplanation = context.explanation(for: .chinese)
+            XCTAssertFalse(zhTitle.contains("横条"))
+            XCTAssertFalse(zhExplanation.contains("横条"))
+            XCTAssertTrue(zhExplanation.contains("悬浮岛"))
+        }
+    }
 }

@@ -162,7 +162,7 @@ contracts:
 
   - id: UI-READABILITY-058
     title: Settings fit their content and decorative quota light stays secondary
-    status: active
+    status: superseded
     statement: >-
       Preserve QUOTA-ALIGNMENT-056 geometry, native circular glint masking,
       backing density, quota values, color tiers, trim direction, dimensions,
@@ -199,6 +199,50 @@ contracts:
       - docs/decisions/058-settings-and-quota-readability.md
       - "manual: inspect all Settings pages in Chinese and English, switch pages repeatedly, check popups and login notices, confirm the labelled 75 percent example in both styles, and inspect a full glint rotation plus hover/collapse on the real notch"
     supersedes: [QUOTA-ALIGNMENT-056]
+    superseded_by: UI-SETTINGS-SIDEBAR-069
+    last_verified_commit: null
+
+  - id: UI-SETTINGS-SIDEBAR-069
+    title: Modern fixed-size unified-shell Settings window with inset rounded detail sheet
+    status: active
+    statement: >-
+      Preserve all decorative quota light intensity (0.55 glint opacity, 0.03..0.12
+      halo pulse), quota arc/number contrast, static 75 percent preview fixture,
+      preference keys, defaults, and SETTINGS-WINDOW-022 activation behavior from
+      UI-READABILITY-058. Supersede the variable-height 560pt TabView Settings
+      shell with a fixed-size 720x540 modern macOS Tahoe sidebar layout hosted in
+      a dedicated non-restorable native NSWindow (`.fullSizeContentView`,
+      transparent hidden titlebar, `.unifiedCompact` 40pt top bar) with a single
+      seamless cool-neutral window shell spanning the 186pt left sidebar, 40pt top
+      header bar, and 10pt outer inset margins (eliminating desktop-tinted sidebar
+      vibrancy and multi-block titlebar seams), paired with an inset continuous-
+      rounded detail sheet (14pt radius, hairline border, elevated white/graphite
+      surface) so switching tabs never resizes the window or clips content behind
+      the titlebar. Appearance and Floating Bar each present a unified dark
+      screen-top live preview stage above softly tinted hairline-bordered settings
+      cards, and Accounts places refresh and browser sign-in cleanly in the
+      unified top bar above quiet neutral account cards, inline rename/note
+      editing, and two-step inline delete controls.
+    rationale: >-
+      The user rejected the dated macOS TabView Settings shell, variable-height
+      clipping, three-color-block titlebar seams, and desktop-tinted sidebar
+      vibrancy, requesting modern macOS Tahoe unified-shell plus inset rounded
+      sheet geometry across all four tabs.
+    source: user-confirmed
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [settings-layout, settings-window-chrome, settings-sidebar, live-preview-stages, accounts-settings]
+      exclude: [notch-geometry, quota-semantics, task-state, isolated-homes, releases]
+    examples:
+      positive: Opening Settings shows a crisp 720x540 window with traffic lights vertically centered in the 40pt unified top bar, one clean cool-neutral shell covering both the left sidebar and top bar, an inset rounded detail sheet with hairline border, smooth native background dragging, live notch preview responding to the animation toggle in Appearance, live floating preview in Floating Bar, and clean neutral cards in Accounts.
+      negative: Clipping headers under the titlebar, three mismatched titlebar/sidebar/canvas color blocks, warm desktop-bleeding sidebar tint, resizing the window on tab switches, losing dragged window position, showing duplicated version prefixes like vv1.0.0, or dimming actual quota indicators.
+    guards:
+      - Tests/CodexNotchTests/SettingsReadabilityTests.swift
+      - Tests/CodexNotchTests/SettingsWindowPresenterTests.swift
+      - Tests/CodexNotchTests/AccountsTests.swift
+      - "manual: open Settings on physical macOS hardware, switch across General, Appearance, Floating Bar, and Accounts in Chinese and English, verify traffic-light clearance, live notch/floating previews, and inline account actions"
+    supersedes: [UI-READABILITY-058]
     superseded_by: null
     last_verified_commit: null
 
@@ -379,7 +423,12 @@ contracts:
       per-account UI state (root of `.codex-global-state.json` plus per-account
       entries under `electron-account-renderer-state-v1`), switching must copy
       the current project pool into every account entry before relaunch, so no
-      account ever opens with an empty project list. The expanded notch card
+      account ever opens with an empty project list. Switching quits Codex
+      first, captures the token a second time so shutdown-time rotations win,
+      refuses to run while standalone CLI/IDE sessions hold auth.json unless
+      forced, writes the target auth atomically, and restores the previous
+      auth plus relaunches the previous account if the target launch fails;
+      the active account is persisted only after a successful launch. The expanded notch card
       shows this list only with two or more accounts: 28pt single rows with the
       active account pinned first, a 14pt status mark, 12pt name, 9.5pt plan
       capsule and two 54pt quota columns colored by QuotaColorScale; more than
@@ -415,6 +464,7 @@ contracts:
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
       - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - docs/decisions/065-shared-home-switch-hardening.md
       - docs/decisions/012-shared-codex-home-for-accounts.md
       - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
@@ -468,7 +518,12 @@ contracts:
       per-account UI state (root of `.codex-global-state.json` plus per-account
       entries under `electron-account-renderer-state-v1`), switching must copy
       the current project pool into every account entry before relaunch, so no
-      account ever opens with an empty project list. The expanded notch card
+      account ever opens with an empty project list. Switching quits Codex
+      first, captures the token a second time so shutdown-time rotations win,
+      refuses to run while standalone CLI/IDE sessions hold auth.json unless
+      forced, writes the target auth atomically, and restores the previous
+      auth plus relaunches the previous account if the target launch fails;
+      the active account is persisted only after a successful launch. The expanded notch card
       shows this list only with two or more accounts: 28pt single rows with the
       active account pinned first, a 14pt status mark, 12pt name, 9.5pt plan
       capsule and two 54pt quota columns colored by QuotaColorScale; more than
@@ -504,6 +559,7 @@ contracts:
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
       - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - docs/decisions/065-shared-home-switch-hardening.md
       - docs/decisions/012-shared-codex-home-for-accounts.md
       - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
@@ -557,7 +613,12 @@ contracts:
       per-account UI state (root of `.codex-global-state.json` plus per-account
       entries under `electron-account-renderer-state-v1`), switching must copy
       the current project pool into every account entry before relaunch, so no
-      account ever opens with an empty project list. The expanded notch card
+      account ever opens with an empty project list. Switching quits Codex
+      first, captures the token a second time so shutdown-time rotations win,
+      refuses to run while standalone CLI/IDE sessions hold auth.json unless
+      forced, writes the target auth atomically, and restores the previous
+      auth plus relaunches the previous account if the target launch fails;
+      the active account is persisted only after a successful launch. The expanded notch card
       shows this list only with two or more accounts: 28pt single rows with the
       active account pinned first, a 14pt status mark, 12pt name, 9.5pt plan
       capsule and two 54pt quota columns colored by QuotaColorScale; more than
@@ -593,6 +654,7 @@ contracts:
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
       - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - docs/decisions/065-shared-home-switch-hardening.md
       - docs/decisions/012-shared-codex-home-for-accounts.md
       - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
@@ -909,7 +971,12 @@ contracts:
       per-account UI state (root of `.codex-global-state.json` plus per-account
       entries under `electron-account-renderer-state-v1`), switching must copy
       the current project pool into every account entry before relaunch, so no
-      account ever opens with an empty project list. The expanded notch card
+      account ever opens with an empty project list. Switching quits Codex
+      first, captures the token a second time so shutdown-time rotations win,
+      refuses to run while standalone CLI/IDE sessions hold auth.json unless
+      forced, writes the target auth atomically, and restores the previous
+      auth plus relaunches the previous account if the target launch fails;
+      the active account is persisted only after a successful launch. The expanded notch card
       shows this list only with two or more accounts: 28pt single rows with the
       active account pinned first, a 14pt status mark, 12pt name, 9.5pt plan
       capsule and two 54pt quota columns colored by QuotaColorScale; more than
@@ -945,6 +1012,7 @@ contracts:
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
       - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - docs/decisions/065-shared-home-switch-hardening.md
       - docs/decisions/012-shared-codex-home-for-accounts.md
       - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
@@ -1548,7 +1616,12 @@ contracts:
       per-account UI state (root of `.codex-global-state.json` plus per-account
       entries under `electron-account-renderer-state-v1`), switching must copy
       the current project pool into every account entry before relaunch, so no
-      account ever opens with an empty project list. The expanded notch card
+      account ever opens with an empty project list. Switching quits Codex
+      first, captures the token a second time so shutdown-time rotations win,
+      refuses to run while standalone CLI/IDE sessions hold auth.json unless
+      forced, writes the target auth atomically, and restores the previous
+      auth plus relaunches the previous account if the target launch fails;
+      the active account is persisted only after a successful launch. The expanded notch card
       shows this list only with two or more accounts: 28pt single rows with the
       active account pinned first, a 14pt status mark, 12pt name, 9.5pt plan
       capsule and two 54pt quota columns colored by QuotaColorScale; more than
@@ -1584,6 +1657,7 @@ contracts:
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
       - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - docs/decisions/065-shared-home-switch-hardening.md
       - docs/decisions/012-shared-codex-home-for-accounts.md
       - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
@@ -3403,7 +3477,12 @@ contracts:
       per-account UI state (root of `.codex-global-state.json` plus per-account
       entries under `electron-account-renderer-state-v1`), switching must copy
       the current project pool into every account entry before relaunch, so no
-      account ever opens with an empty project list. The expanded notch card
+      account ever opens with an empty project list. Switching quits Codex
+      first, captures the token a second time so shutdown-time rotations win,
+      refuses to run while standalone CLI/IDE sessions hold auth.json unless
+      forced, writes the target auth atomically, and restores the previous
+      auth plus relaunches the previous account if the target launch fails;
+      the active account is persisted only after a successful launch. The expanded notch card
       shows this list only with two or more accounts: 28pt single rows with the
       active account pinned first, a 14pt status mark, 12pt name, 9.5pt plan
       capsule and two 54pt quota columns colored by QuotaColorScale; more than
@@ -3439,6 +3518,7 @@ contracts:
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
       - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - docs/decisions/065-shared-home-switch-hardening.md
       - docs/decisions/012-shared-codex-home-for-accounts.md
       - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
@@ -3643,7 +3723,12 @@ contracts:
       per-account UI state (root of `.codex-global-state.json` plus per-account
       entries under `electron-account-renderer-state-v1`), switching must copy
       the current project pool into every account entry before relaunch, so no
-      account ever opens with an empty project list. The expanded notch card
+      account ever opens with an empty project list. Switching quits Codex
+      first, captures the token a second time so shutdown-time rotations win,
+      refuses to run while standalone CLI/IDE sessions hold auth.json unless
+      forced, writes the target auth atomically, and restores the previous
+      auth plus relaunches the previous account if the target launch fails;
+      the active account is persisted only after a successful launch. The expanded notch card
       shows this list only with two or more accounts: 28pt single rows with the
       active account pinned first, a 14pt status mark, 12pt name, 9.5pt plan
       capsule and two 54pt quota columns colored by QuotaColorScale; more than
@@ -3679,6 +3764,7 @@ contracts:
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
       - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - docs/decisions/065-shared-home-switch-hardening.md
       - docs/decisions/012-shared-codex-home-for-accounts.md
       - docs/decisions/013-sync-project-pool-across-accounts.md
       - "manual: switch between two accounts on physical-notch hardware and confirm projects stay shared while quota and the active badge follow the account"
@@ -3696,18 +3782,24 @@ contracts:
       plus compact geometry NOTCH-LAYOUT-035 and Reduce Motion SETTINGS-MOTION-021.
       Settings copy matches the shared `~/.codex` architecture. Inside the
       expanded notch card, `AccountSwitchList` sits directly below
-      `QuotaWindowsProgressView` and is hidden (`0pt`) for `<= 1` account. With
-      `2+` accounts it defaults collapsed to a `36pt` anchor bar (`44pt` total
-      overhead) displaying active identity, `K/N` available count (amber low-quota
-      best cue when active `<= 20%`), and a `1.8s` `已切换` confirmation badge after
-      switching. Opening the vertical drawer triggers `refreshStaleQuotas(ttl: 120)`,
+      `QuotaWindowsProgressView` and is hidden (`0pt`) for `0` saved accounts.
+      With `>= 1` saved account it defaults collapsed to a `36pt` anchor bar
+      (`44pt` total overhead) displaying active identity, `K/N` available count
+      (amber low-quota best cue when active `<= 20%`), and a `1.8s` `已切换`
+      confirmation badge after switching. `IsolatedLoginService` also supports
+      ephemeral `PendingLogins/<uuid>` browser OAuth sign-in that imports into
+      the vault without disturbing the active `~/.codex/auth.json`. Opening the
+      vertical drawer triggers `refreshStaleQuotas(ttl: 120)`,
       marks `> 1h` or failed caches `旧`, renders pure-mouse filter pills
       (`余量优先`, `最近使用`, `全部`) persisted in UserDefaults for `>= 5` accounts
       with an empty-filter rescue control, and caps visible `40pt` cards at `5`
       rows with scrolling. Hovering (or click-locking) a standby card previews
       its quota live in the header ring and top progress bars with strictly
-      `0.0pt` vertical height shift (locking `5h` row presence to the active
-      account and disabling `ResetScheduleDisclosure` with an active-only label).
+      `0.0pt` vertical height shift (locking the stacked `5h` row to the active
+      account so weekly-only `pro` accounts never pop out an extra `5h` row on
+      drawer open, rendering standby `plus` `5h + 7d` bars side-by-side inside
+      the single weekly row slot on hover, and disabling `ResetScheduleDisclosure`
+      with an active-only label).
       Selecting an inactive card opens an untimed `+36pt` inline confirm footer
       (amber interruption warning while tasks are running). Accounts whose quota
       check or shared `~/.codex/auth.json` probe reports 401/missing/invalid auth
@@ -3751,6 +3843,7 @@ contracts:
     guards:
       - Tests/CodexNotchTests/AccountsTests.swift
       - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - docs/decisions/065-shared-home-switch-hardening.md
       - docs/decisions/014-on-demand-account-drawer-and-live-preview.md
       - "manual: verify anchor bar, 5+ account filter pills, hover quota preview without height jump, scrolling past 5 cards, untimed confirm, and post-switch completion on physical-notch hardware"
     supersedes: [ACCOUNTS-SHARED-HOME-065]

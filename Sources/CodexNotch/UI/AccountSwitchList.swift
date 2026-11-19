@@ -39,7 +39,7 @@ struct AccountSwitchList: View {
     }
 
     private var showsAnchorBar: Bool {
-        service.accounts.count > 1
+        !service.accounts.isEmpty
     }
 
     var body: some View {
@@ -1065,7 +1065,7 @@ private struct AccountAvailabilityBadge: View {
     }
 }
 
-private struct AccountMonogramAvatar: View {
+struct AccountMonogramAvatar: View {
     let account: AccountProfile
     let size: CGFloat
     let cornerRadius: CGFloat
