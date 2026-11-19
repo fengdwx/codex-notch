@@ -12,9 +12,13 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-4c8bf5)](LICENSE)
 [![LINUX DO](https://img.shields.io/badge/LINUX-DO-FFB003.svg)](https://linux.do)
 
-[**下载最新版**](https://github.com/fengdwx/codex-notch/releases/latest) · [**v2.1.0 更新说明**](docs/releases/2.1.0.md) · [English](README.md)
+[**下载最新版**](https://github.com/fengdwx/codex-notch/releases/latest) · [**观看 1080p 演示视频**](docs/assets/codex-notch-demo-zh.mp4) · [**v2.1.0 更新说明**](docs/releases/2.1.0.md) · [English](README.md)
 
 </div>
+
+[![CodexNotch v2.1.0 中文产品演示](docs/assets/codex-notch-demo-zh-animated.gif)](docs/assets/codex-notch-demo-zh.mp4)
+
+<p align="center"><sub>v2.1.0 真实界面演示（全脱敏示例数据）：刘海实时额度与任务状态、悬停对比备用账号并共用 <code>~/.codex</code> 切号、外接屏悬浮岛，以及全新 macOS 设置界面。</sub></p>
 
 ---
 

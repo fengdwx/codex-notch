@@ -12,9 +12,13 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-4c8bf5)](LICENSE)
 [![LINUX DO](https://img.shields.io/badge/LINUX-DO-FFB003.svg)](https://linux.do)
 
-[**Download Latest Release**](https://github.com/fengdwx/codex-notch/releases/latest) · [**v2.1.0 Release Notes**](docs/releases/2.1.0.md) · [简体中文](README.zh-CN.md)
+[**Download Latest Release**](https://github.com/fengdwx/codex-notch/releases/latest) · [**Watch 1080p Video**](docs/assets/codex-notch-demo-en.mp4) · [**v2.1.0 Release Notes**](docs/releases/2.1.0.md) · [简体中文](README.zh-CN.md)
 
 </div>
+
+[![CodexNotch v2.1.0 product demo](docs/assets/codex-notch-demo-en.gif)](docs/assets/codex-notch-demo-en.mp4)
+
+<p align="center"><sub>Real v2.1.0 UI demo (synthetic sample accounts): notch quota & task pulse, live hover comparison & shared-home account switching, External Island modes, and macOS Settings.</sub></p>
 
 ---
 
