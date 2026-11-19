@@ -21,8 +21,7 @@ final class AccountsTests: XCTestCase {
             paths: AccountPaths(root: root.appendingPathComponent("Accounts", isDirectory: true)),
             launcher: launcher,
             sessionDetector: detector,
-            defaultCodexHome: root.appendingPathComponent("DefaultCodex", isDirectory: true),
-            legacyRoot: root.appendingPathComponent("Legacy", isDirectory: true)
+            defaultCodexHome: root.appendingPathComponent("DefaultCodex", isDirectory: true)
         )
     }
 
@@ -272,7 +271,6 @@ final class AccountsTests: XCTestCase {
             paths: AccountPaths(root: subRoot),
             launcher: FakeCodexLauncher(),
             defaultCodexHome: customHome,
-            legacyRoot: subRoot.appendingPathComponent("no-legacy", isDirectory: true),
             urlSession: URLSession(configuration: config),
             usageEndpoint: mockEndpoint
         )
@@ -327,8 +325,7 @@ final class AccountsTests: XCTestCase {
         let reloaded = AccountsService(
             paths: AccountPaths(root: subRoot),
             launcher: FakeCodexLauncher(),
-            defaultCodexHome: customHome,
-            legacyRoot: subRoot.appendingPathComponent("no-legacy", isDirectory: true)
+            defaultCodexHome: customHome
         )
         try reloaded.load()
         XCTAssertEqual(try reloaded.vault.retrieve(acctA.id), freshestShared)
@@ -431,40 +428,6 @@ final class AccountsTests: XCTestCase {
         ))
     }
 
-    func testLoadImportsLegacySwitcherData() throws {
-        let legacyID = UUID()
-        let legacyRoot = root.appendingPathComponent("Legacy", isDirectory: true)
-        let vault = legacyRoot.appendingPathComponent("AuthVault", isDirectory: true)
-        try FileManager.default.createDirectory(at: vault, withIntermediateDirectories: true)
-
-        let data = makeAuthData(email: "legacy@example.com", accountID: "acct-legacy")
-        try data.write(to: vault
-            .appendingPathComponent(legacyID.uuidString.lowercased())
-            .appendingPathExtension("authdata"))
-
-        let accounts = AccountEnvelope(
-            accounts: [
-                AccountProfile(
-                    id: legacyID,
-                    displayName: "legacy",
-                    email: "legacy@example.com",
-                    accountIdentifier: "acct-legacy",
-                    planType: "pro",
-                    fingerprint: AccountIdentityParser.fingerprint("legacy")
-                )
-            ]
-        )
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        try encoder.encode(accounts).write(to: legacyRoot.appendingPathComponent("accounts.json"))
-
-        try service.load()
-
-        XCTAssertEqual(service.accounts.count, 1)
-        XCTAssertEqual(service.accounts.first?.id, legacyID)
-        XCTAssertEqual(try service.vault.retrieve(legacyID), data)
-    }
-
     func testActiveAccountResolvesFromDefaultAuthFile() throws {
         let data = makeAuthData(email: "a@example.com", accountID: "acct-a")
         let profile = try service.importSession(data)
@@ -529,8 +492,7 @@ final class AccountsTests: XCTestCase {
         let gatedService = AccountsService(
             paths: AccountPaths(root: root.appendingPathComponent("GatedAccounts", isDirectory: true)),
             launcher: gatedLauncher,
-            defaultCodexHome: root.appendingPathComponent("GatedDefaultCodex", isDirectory: true),
-            legacyRoot: root.appendingPathComponent("GatedLegacy", isDirectory: true)
+            defaultCodexHome: root.appendingPathComponent("GatedDefaultCodex", isDirectory: true)
         )
         let gA = try gatedService.importSession(makeAuthData(email: "ga@example.com", accountID: "acct-ga"))
         let gB = try gatedService.importSession(makeAuthData(email: "gb@example.com", accountID: "acct-gb"))
@@ -1246,7 +1208,6 @@ final class AccountsTests: XCTestCase {
             paths: AccountPaths(root: subRoot),
             launcher: FakeCodexLauncher(),
             defaultCodexHome: customHome,
-            legacyRoot: subRoot.appendingPathComponent("no-legacy", isDirectory: true),
             urlSession: URLSession(configuration: config),
             usageEndpoint: mockEndpoint
         )
@@ -1371,7 +1332,6 @@ final class AccountsTests: XCTestCase {
             paths: AccountPaths(root: subRoot),
             launcher: FakeCodexLauncher(),
             defaultCodexHome: customHome,
-            legacyRoot: subRoot.appendingPathComponent("no-legacy", isDirectory: true),
             urlSession: URLSession(configuration: config),
             usageEndpoint: mockEndpoint
         )
@@ -1572,7 +1532,6 @@ final class AccountsTests: XCTestCase {
             paths: paths,
             launcher: FakeCodexLauncher(),
             defaultCodexHome: customHome,
-            legacyRoot: subRoot.appendingPathComponent("no-legacy", isDirectory: true),
             urlSession: URLSession(configuration: config),
             usageEndpoint: mockEndpoint
         )

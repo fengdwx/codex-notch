@@ -24,7 +24,6 @@ final class AccountsService: ObservableObject {
     private let sessionDetector: CodexSessionDetecting
     private let fileManager: FileManager
     private let defaultCodexHome: URL
-    private let legacyRoot: URL?
     private let urlSession: URLSession
     private let usageEndpoint: URL
     private let codexBinaryProvider: () -> URL?
@@ -52,7 +51,6 @@ final class AccountsService: ObservableObject {
         sessionDetector: CodexSessionDetecting = NoopCodexSessionDetector(),
         fileManager: FileManager = .default,
         defaultCodexHome: URL? = nil,
-        legacyRoot: URL? = nil,
         urlSession: URLSession = CodexUsageClient.defaultSession,
         usageEndpoint: URL = CodexUsageClient.defaultEndpoint,
         codexBinaryProvider: @escaping () -> URL? = { CodexBinaryLocator.locate() }
@@ -66,8 +64,6 @@ final class AccountsService: ObservableObject {
         self.fileManager = fileManager
         self.defaultCodexHome = defaultCodexHome ?? fileManager.homeDirectoryForCurrentUser
             .appendingPathComponent(".codex", isDirectory: true)
-        self.legacyRoot = legacyRoot ?? fileManager.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/CodexAccountSwitcher", isDirectory: true)
         self.urlSession = urlSession
         self.usageEndpoint = usageEndpoint
         self.codexBinaryProvider = codexBinaryProvider
@@ -102,13 +98,6 @@ final class AccountsService: ObservableObject {
         try PrivateFileWriter.ensureDirectory(paths.root, fileManager: fileManager)
 
         var envelope = try repository.load()
-        if envelope.accounts.isEmpty {
-            let imported = (try? importLegacyAccounts()) ?? []
-            if !imported.isEmpty {
-                envelope = AccountEnvelope(accounts: imported, activeAccountID: nil)
-                try repository.save(envelope)
-            }
-        }
 
         var didNormalize = false
         for index in envelope.accounts.indices {
@@ -129,19 +118,6 @@ final class AccountsService: ObservableObject {
         }
         try reconcileActiveAccount()
         captureActiveAuth()
-    }
-
-    private func importLegacyAccounts() throws -> [AccountProfile] {
-        guard let legacyRoot else { return [] }
-        let reader = LegacySwitcherReader(root: legacyRoot, fileManager: fileManager)
-        guard reader.isAvailable else { return [] }
-
-        let legacyAccounts = try reader.readAccounts()
-        for account in legacyAccounts {
-            guard let data = reader.authData(for: account.id) else { continue }
-            try vault.store(data, for: account.id)
-        }
-        return legacyAccounts
     }
 
     private func reconcileActiveAccount() throws {
@@ -235,11 +211,6 @@ final class AccountsService: ObservableObject {
                 return language.localized(
                     chinese: "重启 Codex 失败，请重试",
                     english: "Failed to relaunch Codex"
-                )
-            case .legacyImportFailed:
-                return language.localized(
-                    chinese: "账号数据读取失败",
-                    english: "Could not read account data"
                 )
             case .externalSessionsRunning(let count):
                 return language.localized(
@@ -426,68 +397,6 @@ final class AccountsService: ObservableObject {
             try? await self?.refreshQuota(for: profile.id)
         }
         return profile
-    }
-
-    var hasLegacySwitcherData: Bool {
-        guard let legacyRoot else { return false }
-        return LegacySwitcherReader(root: legacyRoot, fileManager: fileManager).isAvailable
-    }
-
-    @MainActor
-    @discardableResult
-    func importLegacySwitcherAccounts() throws -> Int {
-        guard let legacyRoot else { return 0 }
-        let reader = LegacySwitcherReader(root: legacyRoot, fileManager: fileManager)
-        guard reader.isAvailable else { return 0 }
-        let legacyAccounts = try reader.readAccounts()
-        var importedIDs: [UUID] = []
-        var didModify = false
-
-        for legacy in legacyAccounts {
-            guard let data = reader.authData(for: legacy.id),
-                  let identity = try? AccountIdentityParser.parse(data) else {
-                continue
-            }
-            if let existingIndex = accounts.firstIndex(where: {
-                $0.id == legacy.id || matches(identity, $0)
-            }) {
-                var updated = accounts[existingIndex]
-                if updated.quota == nil, let legacyQuota = legacy.quota {
-                    updated.quota = legacyQuota
-                    updated.lastCheckedAt = updated.lastCheckedAt ?? legacy.lastCheckedAt
-                }
-                if updated.note == nil, let legacyNote = legacy.note {
-                    updated.note = legacyNote
-                }
-                if updated != accounts[existingIndex] {
-                    accounts[existingIndex] = updated
-                    didModify = true
-                }
-                if !vault.contains(updated.id) {
-                    try vault.store(data, for: updated.id)
-                }
-            } else {
-                var newProfile = legacy
-                newProfile.availabilityStatus = newProfile.availabilityStatus ?? .available
-                accounts.append(newProfile)
-                try vault.store(data, for: newProfile.id)
-                importedIDs.append(newProfile.id)
-                didModify = true
-            }
-        }
-
-        if didModify {
-            try persist()
-        }
-        if !importedIDs.isEmpty {
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                for id in importedIDs {
-                    try? await self.refreshQuota(for: id)
-                }
-            }
-        }
-        return importedIDs.count
     }
 
     // MARK: - Ephemeral Browser OAuth Login

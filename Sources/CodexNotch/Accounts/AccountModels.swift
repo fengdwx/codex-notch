@@ -430,7 +430,6 @@ enum AccountError: LocalizedError, Equatable {
     case authDataMissing(String)
     case accountNotFound
     case launchFailed(String)
-    case legacyImportFailed(String)
     case externalSessionsRunning(Int)
 
     var errorDescription: String? {
@@ -443,8 +442,6 @@ enum AccountError: LocalizedError, Equatable {
             return "That account no longer exists."
         case .launchFailed(let reason):
             return "Could not launch Codex: \(reason)"
-        case .legacyImportFailed(let reason):
-            return "Could not import the existing Codex Account Switcher data: \(reason)"
         case .externalSessionsRunning(let count):
             return "\(count) Codex CLI or IDE session(s) are still using auth.json."
         }

@@ -212,37 +212,3 @@ final class AccountRepository {
         return encoder
     }
 }
-
-/// Reads the legacy standalone switcher data so existing accounts can be
-/// adopted without a new OAuth round trip.
-struct LegacySwitcherReader {
-    let root: URL
-    private let fileManager: FileManager
-
-    init(root: URL, fileManager: FileManager = .default) {
-        self.root = root
-        self.fileManager = fileManager
-    }
-
-    var accountsFile: URL { root.appendingPathComponent("accounts.json") }
-    var vaultDirectory: URL { root.appendingPathComponent("AuthVault", isDirectory: true) }
-
-    var isAvailable: Bool {
-        fileManager.fileExists(atPath: accountsFile.path)
-    }
-
-    func readAccounts() throws -> [AccountProfile] {
-        let data = try Data(contentsOf: accountsFile)
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(AccountEnvelope.self, from: data).accounts
-    }
-
-    func authData(for id: UUID) -> Data? {
-        let url = vaultDirectory
-            .appendingPathComponent(id.uuidString.lowercased())
-            .appendingPathExtension("authdata")
-        guard fileManager.fileExists(atPath: url.path) else { return nil }
-        return try? Data(contentsOf: url)
-    }
-}

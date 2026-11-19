@@ -91,19 +91,6 @@ struct AccountsSettingsView: View {
                 importCurrentLocalSession()
             }
 
-            if service.hasLegacySwitcherData {
-                Text("·")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.quaternary)
-
-                utilityLink(
-                    title: appLanguage.localized(chinese: "同步原切换器", english: "Sync legacy"),
-                    systemImage: "tray.and.arrow.down"
-                ) {
-                    importLegacyAccounts()
-                }
-            }
-
             Spacer(minLength: 0)
         }
     }
@@ -588,26 +575,6 @@ struct AccountsSettingsView: View {
                     chinese: "已导入当前登录账号「\(profile.shortLabel)」",
                     english: "Imported active session \(profile.shortLabel)"
                 ),
-                isError: false
-            )
-        } catch {
-            showNotice(error.localizedDescription, isError: true)
-        }
-    }
-
-    private func importLegacyAccounts() {
-        do {
-            let addedCount = try service.importLegacySwitcherAccounts()
-            showNotice(
-                addedCount > 0
-                    ? appLanguage.localized(
-                        chinese: "已同步 \(addedCount) 个原账号切换器账号",
-                        english: "Synced \(addedCount) legacy account(s)"
-                    )
-                    : appLanguage.localized(
-                        chinese: "原账号切换器中的账号均已存在，无新增项",
-                        english: "All legacy accounts are already present"
-                    ),
                 isError: false
             )
         } catch {
