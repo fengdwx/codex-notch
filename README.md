@@ -137,6 +137,7 @@ SIGN_IDENTITY=none ./scripts/build_app.sh
 CodexNotch is a standalone native macOS app with zero runtime dependency on external notch hosts. Thanks to the open-source projects, frameworks, and community efforts that inspired or support this project:
 
 - [**Atoll**](https://github.com/Ebullioscopic/Atoll) — Inspired CodexNotch's fixed transparent canvas layering, damped spring transitions, and non-intrusive hover interaction beside the physical notch (documented in [ADR 001](docs/decisions/001-fixed-canvas-notch-motion.md), [ADR 035](docs/decisions/035-spring-card-transitions.md), and [ADR 045](docs/decisions/045-hover-response-and-shadow.md)).
+- [**Codex Account Switcher**](https://github.com/liuzhao1225/codex-account-switcher) — Inspired CodexNotch's multi-account local credential vault (`0700`/`0600`), confirmed Desktop quit-and-relaunch switching flow, and isolated `app-server` OAuth login architecture.
 - [**Sparkle**](https://github.com/sparkle-project/Sparkle) — Powers Ed25519-verified, user-initiated in-app updates ([Documentation](https://sparkle-project.org/documentation/)).
 - **macOS & Codex Open-Source Ecosystem** — Fellow explorations around local AI quota visibility and developer workflows such as [**CodexBar**](https://github.com/steipete/CodexBar) and [**CC Switch**](https://github.com/farion1231/cc-switch), plus real-hardware feedback from the [LINUX DO](https://linux.do) community.
 
