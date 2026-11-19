@@ -24,7 +24,8 @@ struct NotchSettingsView: View {
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject private var updater = AppUpdater.shared
     @ObservedObject private var launchAtLogin = LaunchAtLogin.shared
-    @ObservedObject private var accountsService = AccountsService.shared
+    @ObservedObject private var accountsService: AccountsService
+    private let appVersionOverride: AppVersion?
 
     @State private var selectedTab: SettingsTab
     @State private var hoveredTab: SettingsTab?
@@ -34,7 +35,13 @@ struct NotchSettingsView: View {
     @State private var layoutMode: NotchLayoutMode?
     @State private var previewState = FloatingPreviewState.running
 
-    init(initialTab: SettingsTab = .general) {
+    init(
+        initialTab: SettingsTab = .general,
+        accountsService: AccountsService = .shared,
+        appVersion: AppVersion? = nil
+    ) {
+        self.accountsService = accountsService
+        self.appVersionOverride = appVersion
         _selectedTab = State(initialValue: initialTab)
     }
 
@@ -90,7 +97,7 @@ struct NotchSettingsView: View {
     }
 
     private var currentVersion: AppVersion {
-        AppVersion.fromBundle() ?? .zero
+        appVersionOverride ?? AppVersion.fromBundle() ?? .zero
     }
 
     var body: some View {
