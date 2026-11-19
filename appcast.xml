@@ -3,26 +3,24 @@
     <channel>
         <title>CodexNotch</title>
         <item>
-            <title>2.0.0</title>
-            <pubDate>Thu, 19 Nov 2026 23:21:45 +0800</pubDate>
-            <sparkle:version>26</sparkle:version>
-            <sparkle:shortVersionString>2.0.0</sparkle:shortVersionString>
+            <title>2.1.0</title>
+            <pubDate>Thu, 19 Nov 2026 23:39:25 +0800</pubDate>
+            <sparkle:version>27</sparkle:version>
+            <sparkle:shortVersionString>2.1.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# CodexNotch 2.0.0
+            <description sparkle:format="markdown"><![CDATA[# CodexNotch 2.1.0
 
-CodexNotch 2.0.0 delivers a redesigned macOS Settings interface, isolated browser OAuth sign-in, and hardened shared-home account switching.
+CodexNotch 2.1.0 simplifies account onboarding in **Settings → Accounts** and brings the project documentation up to date.
 
-- **Modernized Settings experience:** Replaces the multi-size tab shell with a fixed unified-chrome sidebar (`General`, `Appearance`, `External Island`, and `Accounts`), refined frameless notch icon, constant-contrast capsule switches honoring **Reduce Motion**, and quick **Check Updates** / **GitHub** links in the sidebar footer.
-- **Browser-isolated OAuth sign-in:** Add or re-authenticate ChatGPT/Codex accounts in an isolated browser sandbox via **+ Sign in** without interrupting or signing out of your active Codex session.
-- **Hardened shared-home switching:** Quits Codex before capturing rotated credentials with token freshness checks, detects conflicting standalone CLI/IDE processes safely, synchronizes project and New Chat continuation across switches, and rolls back automatically if relaunch fails.
-- **Dual-row hover quota & visual polish:** Standby accounts show side-by-side 5h and 7d quota previews without shifting card height, running and completion cues render crisply across notch and external displays, and the external-screen customization tab is clearly titled **External Island**.
+- **Cleaner account onboarding:** Removed the obsolete external `CodexAccountSwitcher` auto-import and "Sync legacy" link. Add accounts cleanly via **+ Sign in**, **Import auth.json**, or **Adopt local login**.
+- **Updated documentation:** Rewrote the English and Simplified Chinese READMEs to reflect multi-account shared-workspace workflows, **External Island** customization, privacy boundaries, and a new **Acknowledgments & References** section crediting open-source inspirations and dependencies.
 
-Update from Settings → Check Updates, or download the DMG or ZIP. Existing preferences are preserved.
+Update from Settings → Check Updates, or download the DMG or ZIP. Existing preferences and saved accounts are preserved.
 
-Downloads are available for Apple Silicon on macOS 14 or later. The app has not been notarized by Apple. See the [installation guide](https://github.com/fengdwx/codex-notch/blob/v2.0.0/README.md#install).
+Downloads are available for Apple Silicon on macOS 14 or later. The app has not been notarized by Apple. See the [installation guide](https://github.com/fengdwx/codex-notch/blob/v2.1.0/README.md#install).
 ]]></description>
-            <enclosure url="https://github.com/fengdwx/codex-notch/releases/download/v2.0.0/CodexNotch-2.0.0-macOS-arm64.zip" length="4874792" type="application/octet-stream" sparkle:edSignature="hGDCJ0mAY4ZO/CXqy1Ye+/AtNSSvdJ1kmVStNZJUGycAiy6MBQRzq0DImtACaAmqPOJhjNlm811yJgtpKhfNDQ=="/>
+            <enclosure url="https://github.com/fengdwx/codex-notch/releases/download/v2.1.0/CodexNotch-2.1.0-macOS-arm64.zip" length="4863837" type="application/octet-stream" sparkle:edSignature="d3F8vS2WHRtu3j1zu0fNQHekV5deGpI/7cZ9QZfae4c+QsIVhWKibrhBEjA0KcpVdposKGZ0g/qhbF82CQHwCg=="/>
         </item>
     </channel>
 </rss>
