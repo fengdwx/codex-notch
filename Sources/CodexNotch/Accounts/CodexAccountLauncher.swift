@@ -47,27 +47,25 @@ struct LiveCodexLauncher: CodexLaunching {
             throw AccountError.launchFailed("Codex.app is not installed.")
         }
 
-        let process = Process()
-        process.executableURL = Self.openExecutable
-        process.arguments = Self.openArguments(appURL: appURL)
-
-        let errorPipe = Pipe()
-        process.standardError = errorPipe
-        process.standardOutput = Pipe()
-
+        let output: SubprocessRunner.Output
         do {
-            try process.run()
+            output = try await Task.detached(priority: .userInitiated) {
+                try SubprocessRunner.run(
+                    executableURL: Self.openExecutable,
+                    arguments: Self.openArguments(appURL: appURL),
+                    captureStdout: false,
+                    captureStderr: true
+                )
+            }.value
         } catch {
             throw AccountError.launchFailed(error.localizedDescription)
         }
-        process.waitUntilExit()
 
-        guard process.terminationStatus == 0 else {
-            let data = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            let message = String(data: data, encoding: .utf8)?
+        guard output.terminationStatus == 0 else {
+            let message = String(data: output.stderr, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             throw AccountError.launchFailed(
-                message?.isEmpty == false ? message! : "open exited with \(process.terminationStatus)"
+                message?.isEmpty == false ? message! : "open exited with \(output.terminationStatus)"
             )
         }
     }
@@ -95,5 +93,79 @@ struct LiveCodexLauncher: CodexLaunching {
         ) {
             _ = application.forceTerminate()
         }
+    }
+}
+
+/// Runs a short-lived child process while draining attached stdout/stderr pipes
+/// concurrently *before* `waitUntilExit()` so outputs exceeding the 64 KB macOS
+/// pipe buffer never deadlock.
+enum SubprocessRunner {
+    struct Output: Sendable {
+        let terminationStatus: Int32
+        let stdout: Data
+        let stderr: Data
+    }
+
+    private final class LockedData: @unchecked Sendable {
+        private let lock = NSLock()
+        private var data = Data()
+
+        func set(_ value: Data) {
+            lock.lock()
+            data = value
+            lock.unlock()
+        }
+
+        func get() -> Data {
+            lock.lock()
+            let copy = data
+            lock.unlock()
+            return copy
+        }
+    }
+
+    static func run(
+        executableURL: URL,
+        arguments: [String],
+        captureStdout: Bool = true,
+        captureStderr: Bool = true
+    ) throws -> Output {
+        let process = Process()
+        process.executableURL = executableURL
+        process.arguments = arguments
+
+        let stdoutPipe = captureStdout ? Pipe() : nil
+        let stderrPipe = captureStderr ? Pipe() : nil
+        process.standardOutput = stdoutPipe ?? FileHandle.nullDevice
+        process.standardError = stderrPipe ?? FileHandle.nullDevice
+
+        try process.run()
+
+        let stdoutBox = LockedData()
+        let stderrBox = LockedData()
+        let group = DispatchGroup()
+
+        if let stdoutPipe {
+            group.enter()
+            DispatchQueue.global(qos: .userInitiated).async {
+                stdoutBox.set(stdoutPipe.fileHandleForReading.readDataToEndOfFile())
+                group.leave()
+            }
+        }
+        if let stderrPipe {
+            group.enter()
+            DispatchQueue.global(qos: .userInitiated).async {
+                stderrBox.set(stderrPipe.fileHandleForReading.readDataToEndOfFile())
+                group.leave()
+            }
+        }
+
+        group.wait()
+        process.waitUntilExit()
+        return Output(
+            terminationStatus: process.terminationStatus,
+            stdout: stdoutBox.get(),
+            stderr: stderrBox.get()
+        )
     }
 }

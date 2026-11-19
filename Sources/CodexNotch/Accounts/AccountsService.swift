@@ -21,12 +21,22 @@ final class AccountsService: ObservableObject {
 
     private let repository: AccountRepository
     private let launcher: CodexLaunching
+    private let sessionDetector: CodexSessionDetecting
     private let fileManager: FileManager
     private let defaultCodexHome: URL
     private let legacyRoot: URL?
     private let urlSession: URLSession
     private let usageEndpoint: URL
+    private let codexBinaryProvider: () -> URL?
     private var switchCompletionResetTask: Task<Void, Never>?
+    private lazy var isolatedLoginService: IsolatedLoginService = IsolatedLoginService(
+        rootDirectory: paths.root.appendingPathComponent("PendingLogins", isDirectory: true),
+        fileManager: fileManager,
+        codexBinaryProvider: codexBinaryProvider
+    ) { [weak self] data in
+        guard let self else { throw AccountError.accountNotFound }
+        return try self.importSession(data)
+    }
 
     @Published private(set) var accounts: [AccountProfile] = []
     @Published private(set) var activeAccountID: UUID?
@@ -34,21 +44,25 @@ final class AccountsService: ObservableObject {
     @Published private(set) var recentSwitchCompletedAt: Date?
     @Published private(set) var isRefreshingQuotas = false
     @Published private(set) var failedQuotaAccountIDs: Set<UUID> = []
+    @Published private(set) var isolatedLoginState = IsolatedLoginState()
 
     init(
         paths: AccountPaths = .default(),
         launcher: CodexLaunching? = nil,
+        sessionDetector: CodexSessionDetecting = NoopCodexSessionDetector(),
         fileManager: FileManager = .default,
         defaultCodexHome: URL? = nil,
         legacyRoot: URL? = nil,
         urlSession: URLSession = CodexUsageClient.defaultSession,
-        usageEndpoint: URL = CodexUsageClient.defaultEndpoint
+        usageEndpoint: URL = CodexUsageClient.defaultEndpoint,
+        codexBinaryProvider: @escaping () -> URL? = { CodexBinaryLocator.locate() }
     ) {
         self.paths = paths
         self.vault = AccountVault(directory: paths.vaultDirectory, fileManager: fileManager)
         self.homeStore = AccountHomeStore(directory: paths.homesDirectory, fileManager: fileManager)
         self.repository = AccountRepository(paths: paths, fileManager: fileManager)
         self.launcher = launcher ?? LiveCodexLauncher()
+        self.sessionDetector = sessionDetector
         self.fileManager = fileManager
         self.defaultCodexHome = defaultCodexHome ?? fileManager.homeDirectoryForCurrentUser
             .appendingPathComponent(".codex", isDirectory: true)
@@ -56,9 +70,10 @@ final class AccountsService: ObservableObject {
             .appendingPathComponent("Library/Application Support/CodexAccountSwitcher", isDirectory: true)
         self.urlSession = urlSession
         self.usageEndpoint = usageEndpoint
+        self.codexBinaryProvider = codexBinaryProvider
     }
 
-    static let shared = AccountsService()
+    static let shared = AccountsService(sessionDetector: LiveCodexSessionDetector())
 
     /// All accounts share the original `~/.codex`, so there is no separate
     /// per-account home to report. The notch always reads the default home.
@@ -113,6 +128,7 @@ final class AccountsService: ObservableObject {
             accounts.contains { $0.id == id } ? id : nil
         }
         try reconcileActiveAccount()
+        captureActiveAuth()
     }
 
     private func importLegacyAccounts() throws -> [AccountProfile] {
@@ -225,6 +241,11 @@ final class AccountsService: ObservableObject {
                     chinese: "账号数据读取失败",
                     english: "Could not read account data"
                 )
+            case .externalSessionsRunning(let count):
+                return language.localized(
+                    chinese: "检测到 \(count) 个 Codex CLI/IDE 会话，请先结束它们再切换",
+                    english: "\(count) Codex CLI/IDE session(s) are running; end them first"
+                )
             }
         }
         return language.localized(
@@ -233,27 +254,77 @@ final class AccountsService: ObservableObject {
         )
     }
 
-    func switchTo(_ id: UUID) async throws {
+    /// Switches the shared `~/.codex` account.
+    ///
+    /// Ordering matters: Codex is quit first so the renderer/app-server flush
+    /// any rotated token, then the freshest auth payload is captured into the
+    /// vault, then the target auth is written and the project continuation
+    /// state is synchronized before Codex relaunches.
+    ///
+    /// `force` bypasses the external-session guard (CLI/IDE processes that
+    /// would otherwise race on `auth.json`). The UI only passes `true` after
+    /// showing the detected sessions to the user.
+    func switchTo(_ id: UUID, force: Bool = false) async throws {
         guard accounts.contains(where: { $0.id == id }) else {
             throw AccountError.accountNotFound
         }
 
-        let sourceIdentity = (try? Data(contentsOf: sharedAuthURL))
-            .flatMap { try? AccountIdentityParser.parse($0) }
+        if !force {
+            let sessions = sessionDetector.externalSessions()
+            if !sessions.isEmpty {
+                throw AccountError.externalSessionsRunning(sessions.count)
+            }
+        }
 
-        try captureActiveAuth()
-        let authData = try authDataForLaunch(id)
-        let targetIdentity = try AccountIdentityParser.parse(authData)
-        try PrivateFileWriter.write(authData, to: sharedAuthURL, fileManager: fileManager)
+        let sourceAuthURL = sharedAuthURL
+        var sourceAuthData = try? Data(contentsOf: sourceAuthURL)
+
+        // Safety net in case quitting fails before the authoritative capture.
+        captureActiveAuth()
 
         await launcher.quit()
-        _ = try? SidebarProjectSynchronizer.synchronizeCodexHome(
-            defaultCodexHome,
-            sourceIdentity: sourceIdentity,
-            targetIdentity: targetIdentity,
-            fileManager: fileManager
-        )
-        try await launcher.launchShared()
+        if let postQuitAuthData = try? Data(contentsOf: sourceAuthURL) {
+            if let existingSource = sourceAuthData {
+                if AccountAuthFreshness.shouldReplace(
+                    existing: existingSource,
+                    with: postQuitAuthData,
+                    preferCandidateOnTie: true
+                ) {
+                    sourceAuthData = postQuitAuthData
+                }
+            } else {
+                sourceAuthData = postQuitAuthData
+            }
+        }
+        let sourceIdentity = sourceAuthData.flatMap { try? AccountIdentityParser.parse($0) }
+        captureActiveAuth()
+
+        let authData = try authDataForLaunch(id)
+        let targetIdentity = try AccountIdentityParser.parse(authData)
+
+        do {
+            try PrivateFileWriter.write(authData, to: sourceAuthURL, fileManager: fileManager)
+            _ = try? SidebarProjectSynchronizer.synchronizeCodexHome(
+                defaultCodexHome,
+                sourceIdentity: sourceIdentity,
+                targetIdentity: targetIdentity,
+                fileManager: fileManager
+            )
+            try await launcher.launchShared()
+        } catch {
+            // Codex is already closed and auth.json may point at the target.
+            // Restore the previous credentials and bring the old session back
+            // so a failed switch never leaves the user without Codex.
+            if let sourceAuthData {
+                try? PrivateFileWriter.write(
+                    sourceAuthData,
+                    to: sourceAuthURL,
+                    fileManager: fileManager
+                )
+            }
+            try? await launcher.launchShared()
+            throw error
+        }
 
         try await MainActor.run {
             guard let index = accounts.firstIndex(where: { $0.id == id }) else {
@@ -267,14 +338,31 @@ final class AccountsService: ObservableObject {
     }
 
     /// Persists the tokens the running Codex refreshed inside `~/.codex`
-    /// before that process is replaced.
-    private func captureActiveAuth() throws {
+    /// without ever downgrading a fresher Vault copy.
+    private func captureActiveAuth() {
         guard let data = try? Data(contentsOf: sharedAuthURL),
               let identity = try? AccountIdentityParser.parse(data),
               let profile = match(identity) else {
             return
         }
-        try? vault.store(data, for: profile.id)
+        syncVaultIfFresher(data, for: profile.id, preferCandidateOnTie: true)
+    }
+
+    private func syncVaultIfFresher(
+        _ candidate: Data,
+        for id: UUID,
+        preferCandidateOnTie: Bool
+    ) {
+        if let existing = try? vault.retrieve(id) {
+            guard AccountAuthFreshness.shouldReplace(
+                existing: existing,
+                with: candidate,
+                preferCandidateOnTie: preferCandidateOnTie
+            ) else {
+                return
+            }
+        }
+        try? vault.store(candidate, for: id)
     }
 
     private func authDataForLaunch(_ id: UUID) throws -> Data {
@@ -322,14 +410,115 @@ final class AccountsService: ObservableObject {
         guard let profile = account(withID: id) else {
             throw AccountError.accountNotFound
         }
-        let sharedData = try? Data(contentsOf: sharedAuthURL)
-        if let sharedData,
-           let identity = try? AccountIdentityParser.parse(sharedData),
-           matches(identity, profile) {
-            try vault.store(sharedData, for: id)
-            return sharedData
+        if let best = sharedAuthDataIfMatching(profile) {
+            return best
         }
         return try vault.retrieve(id)
+    }
+
+    @MainActor
+    func importCurrentCodexSession() throws -> AccountProfile {
+        guard let data = try? Data(contentsOf: sharedAuthURL) else {
+            throw CodexAuthError.authFileUnavailable
+        }
+        let profile = try importSession(data)
+        Task { @MainActor [weak self] in
+            try? await self?.refreshQuota(for: profile.id)
+        }
+        return profile
+    }
+
+    var hasLegacySwitcherData: Bool {
+        guard let legacyRoot else { return false }
+        return LegacySwitcherReader(root: legacyRoot, fileManager: fileManager).isAvailable
+    }
+
+    @MainActor
+    @discardableResult
+    func importLegacySwitcherAccounts() throws -> Int {
+        guard let legacyRoot else { return 0 }
+        let reader = LegacySwitcherReader(root: legacyRoot, fileManager: fileManager)
+        guard reader.isAvailable else { return 0 }
+        let legacyAccounts = try reader.readAccounts()
+        var importedIDs: [UUID] = []
+        var didModify = false
+
+        for legacy in legacyAccounts {
+            guard let data = reader.authData(for: legacy.id),
+                  let identity = try? AccountIdentityParser.parse(data) else {
+                continue
+            }
+            if let existingIndex = accounts.firstIndex(where: {
+                $0.id == legacy.id || matches(identity, $0)
+            }) {
+                var updated = accounts[existingIndex]
+                if updated.quota == nil, let legacyQuota = legacy.quota {
+                    updated.quota = legacyQuota
+                    updated.lastCheckedAt = updated.lastCheckedAt ?? legacy.lastCheckedAt
+                }
+                if updated.note == nil, let legacyNote = legacy.note {
+                    updated.note = legacyNote
+                }
+                if updated != accounts[existingIndex] {
+                    accounts[existingIndex] = updated
+                    didModify = true
+                }
+                if !vault.contains(updated.id) {
+                    try vault.store(data, for: updated.id)
+                }
+            } else {
+                var newProfile = legacy
+                newProfile.availabilityStatus = newProfile.availabilityStatus ?? .available
+                accounts.append(newProfile)
+                try vault.store(data, for: newProfile.id)
+                importedIDs.append(newProfile.id)
+                didModify = true
+            }
+        }
+
+        if didModify {
+            try persist()
+        }
+        if !importedIDs.isEmpty {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                for id in importedIDs {
+                    try? await self.refreshQuota(for: id)
+                }
+            }
+        }
+        return importedIDs.count
+    }
+
+    // MARK: - Ephemeral Browser OAuth Login
+
+    @MainActor
+    func startWebLogin(language: AppLanguage = .chinese) {
+        isolatedLoginState = IsolatedLoginState(phase: .startingServer)
+        isolatedLoginService.startLogin(language: language) { [weak self] nextState in
+            guard let self else { return }
+            self.isolatedLoginState = nextState
+            if case let .completed(profile) = nextState.phase {
+                Task { @MainActor [weak self] in
+                    try? await self?.refreshQuota(for: profile.id)
+                }
+            }
+        }
+    }
+
+    @MainActor
+    func cancelWebLogin(language: AppLanguage = .chinese) {
+        isolatedLoginService.cancel(language: language)
+        if isolatedLoginState.phase.isInProgress {
+            isolatedLoginState.phase = .cancelled
+        }
+    }
+
+    @MainActor
+    func resetWebLoginState() {
+        if !isolatedLoginState.phase.isInProgress {
+            isolatedLoginState = IsolatedLoginState()
+        }
     }
 
     // MARK: - Quota
@@ -412,6 +601,9 @@ final class AccountsService: ObservableObject {
         snapshot: UsageSnapshot
     ) {
         guard let index = targetAccountIndex(for: credentials) else { return }
+        if accounts[index].id == activeAccountID {
+            captureActiveAuth()
+        }
         accounts[index].quota = AccountQuota(
             snapshot: snapshot,
             planType: accounts[index].planType
@@ -491,17 +683,13 @@ final class AccountsService: ObservableObject {
     private func quotaAuthData(for id: UUID) throws -> Data {
         let profile = account(withID: id)
         // The active account's token in the shared home may be newer than the
-        // vault copy because Codex refreshes it in place. Only adopt it when it
-        // still belongs to `id`, and do not fall back to a stale vault token
-        // once the active account has already been observed as signed out
+        // vault copy because Codex refreshes it in place. Promote monotonically
+        // when `auth.json` belongs to `id`, and never fall back to a stale
+        // vault token once the active account has been observed as signed out
         // with no `~/.codex/auth.json` present.
         if activeAccountID == id {
-            if let profile,
-               let sharedData = try? Data(contentsOf: sharedAuthURL),
-               let identity = try? AccountIdentityParser.parse(sharedData),
-               matches(identity, profile) {
-                try? vault.store(sharedData, for: id)
-                return sharedData
+            if let best = sharedAuthDataIfMatching(profile) {
+                return best
             }
             if profile?.availabilityStatus == .reauthRequired,
                !fileManager.fileExists(atPath: sharedAuthURL.path) {
@@ -509,6 +697,17 @@ final class AccountsService: ObservableObject {
             }
         }
         return try vault.retrieve(id)
+    }
+
+    private func sharedAuthDataIfMatching(_ profile: AccountProfile?) -> Data? {
+        guard let profile,
+              let sharedData = try? Data(contentsOf: sharedAuthURL),
+              let identity = try? AccountIdentityParser.parse(sharedData),
+              matches(identity, profile) else {
+            return nil
+        }
+        syncVaultIfFresher(sharedData, for: profile.id, preferCandidateOnTie: true)
+        return (try? vault.retrieve(profile.id)) ?? sharedData
     }
 
     // MARK: - Editing

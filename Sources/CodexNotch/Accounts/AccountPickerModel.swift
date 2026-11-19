@@ -185,6 +185,23 @@ struct AccountPreviewState: Equatable, Sendable {
 }
 
 enum AccountPreviewResolver {
+    static func accountSupportsFiveHourWindow(_ account: AccountProfile) -> Bool {
+        if account.quota?.primaryRemainingPercent != nil {
+            return true
+        }
+        let normalizedPlan = (account.planType ?? account.quota?.planType)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        guard let normalizedPlan, !normalizedPlan.isEmpty else {
+            return false
+        }
+        return normalizedPlan != "pro" && normalizedPlan != "free"
+    }
+
+    static func anyAccountHasFiveHourWindow(_ accounts: [AccountProfile]) -> Bool {
+        accounts.contains(where: accountSupportsFiveHourWindow)
+    }
+
     static func resolve(
         activeUsage: UsageSnapshot?,
         accounts: [AccountProfile],

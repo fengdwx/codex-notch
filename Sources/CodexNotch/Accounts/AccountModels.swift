@@ -49,6 +49,90 @@ struct AccountQuota: Codable, Equatable, Sendable {
         )
     }
 
+    enum CodingKeys: String, CodingKey {
+        case primaryUsedPercent
+        case primaryResetsAt
+        case secondaryUsedPercent
+        case secondaryResetsAt
+        case planType
+        case checkedAt
+        case windowLayoutVersion
+    }
+
+    private enum LegacyCodingKeys: String, CodingKey {
+        case primary
+        case secondary
+        case fetchedAt
+    }
+
+    private struct LegacyWindow: Decodable {
+        let durationMinutes: Int?
+        let usedPercent: Double?
+        let resetsAt: Date?
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let legacyContainer = try decoder.container(keyedBy: LegacyCodingKeys.self)
+
+        var primaryUsed = try container.decodeIfPresent(Double.self, forKey: .primaryUsedPercent)
+        var primaryReset = try container.decodeIfPresent(Date.self, forKey: .primaryResetsAt)
+        var secondaryUsed = try container.decodeIfPresent(Double.self, forKey: .secondaryUsedPercent)
+        var secondaryReset = try container.decodeIfPresent(Date.self, forKey: .secondaryResetsAt)
+        let decodedPlanType = try container.decodeIfPresent(String.self, forKey: .planType)
+        let decodedCheckedAt = try container.decodeIfPresent(Date.self, forKey: .checkedAt)
+            ?? (try legacyContainer.decodeIfPresent(Date.self, forKey: .fetchedAt))
+        var layoutVersion = try container.decodeIfPresent(Int.self, forKey: .windowLayoutVersion)
+
+        if primaryUsed == nil && secondaryUsed == nil {
+            let legacyPrimary = try legacyContainer.decodeIfPresent(LegacyWindow.self, forKey: .primary)
+            let legacySecondary = try legacyContainer.decodeIfPresent(LegacyWindow.self, forKey: .secondary)
+
+            var hasLegacyDuration = false
+            for (isSecondarySlot, window) in [(false, legacyPrimary), (true, legacySecondary)] {
+                guard let window, let used = window.usedPercent else { continue }
+                if let durationMinutes = window.durationMinutes {
+                    hasLegacyDuration = true
+                    if durationMinutes > 360 {
+                        secondaryUsed = used
+                        secondaryReset = window.resetsAt
+                    } else {
+                        primaryUsed = used
+                        primaryReset = window.resetsAt
+                    }
+                } else if isSecondarySlot {
+                    secondaryUsed = used
+                    secondaryReset = window.resetsAt
+                } else {
+                    primaryUsed = used
+                    primaryReset = window.resetsAt
+                }
+            }
+            if hasLegacyDuration && layoutVersion == nil {
+                layoutVersion = Self.currentWindowLayoutVersion
+            }
+        }
+
+        self.primaryUsedPercent = primaryUsed
+        self.primaryResetsAt = primaryReset
+        self.secondaryUsedPercent = secondaryUsed
+        self.secondaryResetsAt = secondaryReset
+        self.planType = decodedPlanType
+        self.checkedAt = decodedCheckedAt
+        self.windowLayoutVersion = layoutVersion
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(primaryUsedPercent, forKey: .primaryUsedPercent)
+        try container.encodeIfPresent(primaryResetsAt, forKey: .primaryResetsAt)
+        try container.encodeIfPresent(secondaryUsedPercent, forKey: .secondaryUsedPercent)
+        try container.encodeIfPresent(secondaryResetsAt, forKey: .secondaryResetsAt)
+        try container.encodeIfPresent(planType, forKey: .planType)
+        try container.encodeIfPresent(checkedAt, forKey: .checkedAt)
+        try container.encodeIfPresent(windowLayoutVersion, forKey: .windowLayoutVersion)
+    }
+
     /// Migrates pre-fix cached records where a single weekly window (> 6h reset
     /// horizon) had been misfiled into `primaryUsedPercent`.
     mutating func normalizeLegacySingleWindowLayout(fallbackCheckedAt: Date?) -> Bool {
@@ -347,6 +431,7 @@ enum AccountError: LocalizedError, Equatable {
     case accountNotFound
     case launchFailed(String)
     case legacyImportFailed(String)
+    case externalSessionsRunning(Int)
 
     var errorDescription: String? {
         switch self {
@@ -360,6 +445,8 @@ enum AccountError: LocalizedError, Equatable {
             return "Could not launch Codex: \(reason)"
         case .legacyImportFailed(let reason):
             return "Could not import the existing Codex Account Switcher data: \(reason)"
+        case .externalSessionsRunning(let count):
+            return "\(count) Codex CLI or IDE session(s) are still using auth.json."
         }
     }
 }
