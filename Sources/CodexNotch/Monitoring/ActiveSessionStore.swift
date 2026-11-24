@@ -3,6 +3,7 @@ import Foundation
 struct ActiveSessionStoreSnapshot: Equatable, Sendable {
     let activeSessions: [SessionActivity]
     let recentCompletions: [CompletedSession]
+    var latestRateLimit: RolloutRateLimitObservation? = nil
 
     var latestCompletion: CompletedSession? {
         recentCompletions.first
@@ -16,6 +17,7 @@ actor ActiveSessionStore {
         let active: [SessionActivity]
         let completed: [CompletedSession]
         let lastModifiedAt: Date
+        let latestRateLimit: RolloutRateLimitObservation?
     }
 
     private let staleAfter: TimeInterval
@@ -32,14 +34,16 @@ actor ActiveSessionStore {
     func replace(
         rolloutID: String,
         reduction: ActiveSessionReduction,
-        lastModifiedAt: Date
+        lastModifiedAt: Date,
+        latestRateLimit: RolloutRateLimitObservation? = nil
     ) {
         rollouts[rolloutID] = RolloutState(
             active: reduction.active,
             completed: reduction.completed.map {
                 CompletedSession(session: $0, completedAt: $0.lastActivityAt)
             },
-            lastModifiedAt: lastModifiedAt
+            lastModifiedAt: lastModifiedAt,
+            latestRateLimit: latestRateLimit
         )
     }
 
@@ -62,10 +66,14 @@ actor ActiveSessionStore {
         let recentCompletions = sortedCompletions.filter { completion in
             seenThreadIDs.insert(completion.session.threadID).inserted
         }
+        let latestRateLimit = rollouts.values
+            .compactMap(\.latestRateLimit)
+            .max { $0.observedAt < $1.observedAt }
 
         return ActiveSessionStoreSnapshot(
             activeSessions: active,
-            recentCompletions: recentCompletions
+            recentCompletions: recentCompletions,
+            latestRateLimit: latestRateLimit
         )
     }
 

@@ -15,8 +15,18 @@ protocol CredentialsReading: Sendable {
     func read() throws -> CodexCredentials
 }
 
+struct CodexAuthFileFingerprint: Equatable, Sendable {
+    let size: UInt64
+    let modifiedAt: Date
+    let inode: UInt64
+}
+
 struct CodexAuthReader: CredentialsReading {
     let rootDirectory: URL
+
+    var authFileURL: URL {
+        rootDirectory.appendingPathComponent("auth.json")
+    }
 
     init(environment: [String: String] = ProcessInfo.processInfo.environment,
          homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser) {
@@ -30,11 +40,22 @@ struct CodexAuthReader: CredentialsReading {
         self.rootDirectory = codexHome
     }
 
+    func authFileFingerprint(fileManager: FileManager = .default) -> CodexAuthFileFingerprint? {
+        guard let attributes = try? fileManager.attributesOfItem(atPath: authFileURL.path),
+              let modifiedAt = attributes[.modificationDate] as? Date else {
+            return nil
+        }
+        return CodexAuthFileFingerprint(
+            size: (attributes[.size] as? NSNumber)?.uint64Value ?? 0,
+            modifiedAt: modifiedAt,
+            inode: (attributes[.systemFileNumber] as? NSNumber)?.uint64Value ?? 0
+        )
+    }
+
     func read() throws -> CodexCredentials {
-        let authURL = rootDirectory.appendingPathComponent("auth.json")
         let data: Data
         do {
-            data = try Data(contentsOf: authURL)
+            data = try Data(contentsOf: authFileURL)
         } catch {
             throw CodexAuthError.authFileUnavailable
         }

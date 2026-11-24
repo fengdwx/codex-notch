@@ -121,19 +121,16 @@ final class AccountsService: ObservableObject {
     }
 
     private func reconcileActiveAccount() throws {
-        if let activeAccountID, accounts.contains(where: { $0.id == activeAccountID }) {
+        let authURL = sharedAuthURL
+        guard let data = try? Data(contentsOf: authURL),
+              let identity = try? AccountIdentityParser.parse(data) else {
             return
         }
-        let authURL = defaultCodexHome.appendingPathComponent("auth.json")
-        guard
-            let data = try? Data(contentsOf: authURL),
-            let identity = try? AccountIdentityParser.parse(data),
-            let match = match(identity)
-        else {
-            return
+        let resolvedID = match(identity)?.id
+        if activeAccountID != resolvedID {
+            activeAccountID = resolvedID
+            try persist()
         }
-        activeAccountID = match.id
-        try persist()
     }
 
     // MARK: - Switching
@@ -509,7 +506,7 @@ final class AccountsService: ObservableObject {
         credentials: CodexCredentials,
         snapshot: UsageSnapshot
     ) {
-        guard let index = targetAccountIndex(for: credentials) else { return }
+        guard let index = reconcileTargetAccountIndex(for: credentials) else { return }
         if accounts[index].id == activeAccountID {
             captureActiveAuth()
         }
@@ -529,7 +526,7 @@ final class AccountsService: ObservableObject {
         error: Error
     ) {
         guard let status = Self.availabilityStatus(for: error),
-              let index = targetAccountIndex(for: credentials) else {
+              let index = reconcileTargetAccountIndex(for: credentials) else {
             return
         }
         accounts[index].availabilityStatus = status
@@ -538,16 +535,53 @@ final class AccountsService: ObservableObject {
         try? persist()
     }
 
-    private func targetAccountIndex(for credentials: CodexCredentials?) -> Int? {
-        if let accountID = credentials?.accountID,
-           let matched = accounts.firstIndex(where: { $0.accountIdentifier == accountID }) {
-            return matched
+    @MainActor
+    private func reconcileTargetAccountIndex(for credentials: CodexCredentials?) -> Int? {
+        let sharedIdentity: AccountIdentity? = (try? Data(contentsOf: sharedAuthURL))
+            .flatMap { try? AccountIdentityParser.parse($0) }
+
+        if let rawAccountID = credentials?.accountID?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !rawAccountID.isEmpty {
+            if let matched = accounts.firstIndex(where: { $0.accountIdentifier == rawAccountID }) {
+                reconcileActiveAccountIDIfIdle(to: accounts[matched].id)
+                return matched
+            }
+            if let sharedIdentity,
+               sharedIdentity.accountIdentifier == nil || sharedIdentity.accountIdentifier == rawAccountID,
+               let matchedProfile = match(sharedIdentity),
+               let matched = accounts.firstIndex(where: { $0.id == matchedProfile.id }) {
+                reconcileActiveAccountIDIfIdle(to: accounts[matched].id)
+                return matched
+            }
+            // The shared auth belongs to a real external account that has not
+            // been imported into CodexNotch. Never overwrite an unrelated
+            // saved account's quota or keep a stale active badge pointing at it.
+            reconcileActiveAccountIDIfIdle(to: nil)
+            return nil
         }
+
+        if credentials != nil, let sharedIdentity {
+            if let matchedProfile = match(sharedIdentity),
+               let matched = accounts.firstIndex(where: { $0.id == matchedProfile.id }) {
+                reconcileActiveAccountIDIfIdle(to: accounts[matched].id)
+                return matched
+            }
+            reconcileActiveAccountIDIfIdle(to: nil)
+            return nil
+        }
+
         if let activeAccountID,
            let activeIndex = accounts.firstIndex(where: { $0.id == activeAccountID }) {
             return activeIndex
         }
         return nil
+    }
+
+    @MainActor
+    private func reconcileActiveAccountIDIfIdle(to resolvedID: UUID?) {
+        guard !switchPhase.isSwitching, activeAccountID != resolvedID else { return }
+        activeAccountID = resolvedID
+        try? persist()
     }
 
     @MainActor

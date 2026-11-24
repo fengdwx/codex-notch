@@ -14,6 +14,7 @@ final class NotchViewModel: ObservableObject {
     @Published private(set) var isAccountDrawerExpanded = false
     @Published private(set) var accountPickerFilter: AccountPickerFilter = .availableFirst
     @Published private(set) var selectedAccountIDForSwitch: UUID?
+    @Published private(set) var sessionAuthDrift: SessionAuthDrift?
     @Published private(set) var accountsRevision: UInt64 = 0
     @Published var hoveredAccountID: UUID?
     @Published var isUsingResetCredit = false
@@ -104,6 +105,7 @@ final class NotchViewModel: ObservableObject {
         isAccountDrawerExpanded: Bool = false,
         accountPickerFilter: AccountPickerFilter = .availableFirst,
         selectedAccountIDForSwitch: UUID? = nil,
+        sessionAuthDrift: SessionAuthDrift? = nil,
         isPointerInside: Bool = false,
         animationsEnabled: Bool = AppAnimationPreference.defaultEnabled,
         onSurfaceAnimationCompleted: (() -> Void)? = nil
@@ -121,6 +123,7 @@ final class NotchViewModel: ObservableObject {
             || self.isAccountDrawerExpanded != isAccountDrawerExpanded
             || self.accountPickerFilter != accountPickerFilter
             || self.selectedAccountIDForSwitch != selectedAccountIDForSwitch
+            || self.sessionAuthDrift != sessionAuthDrift
             || self.isPointerInside != isPointerInside
             || self.animationsEnabled != animationsEnabled
         guard changesModel else { return false }
@@ -139,6 +142,7 @@ final class NotchViewModel: ObservableObject {
             || self.isResetScheduleExpanded != isResetScheduleExpanded
             || self.isAccountDrawerExpanded != isAccountDrawerExpanded
             || self.selectedAccountIDForSwitch != selectedAccountIDForSwitch
+            || (self.sessionAuthDrift == nil) != (sessionAuthDrift == nil)
 
         // A content-height reduction must start at the previous full size.
         // Keep this ceiling through clock refreshes until another surface move.
@@ -172,6 +176,9 @@ final class NotchViewModel: ObservableObject {
             }
             if self.selectedAccountIDForSwitch != selectedAccountIDForSwitch {
                 self.selectedAccountIDForSwitch = selectedAccountIDForSwitch
+            }
+            if self.sessionAuthDrift != sessionAuthDrift {
+                self.sessionAuthDrift = sessionAuthDrift
             }
             if (!willBeExpanded || !isAccountDrawerExpanded), self.hoveredAccountID != nil {
                 self.hoveredAccountID = nil
@@ -415,6 +422,7 @@ struct NotchView: View {
             isAccountDrawerExpanded: model.isAccountDrawerExpanded,
             accountPickerFilter: model.accountPickerFilter,
             selectedAccountIDForSwitch: model.selectedAccountIDForSwitch,
+            sessionAuthDrift: model.sessionAuthDrift,
             hoveredAccountID: $model.hoveredAccountID,
             onActivateChatGPT: model.onActivateChatGPT,
             onOpenThread: model.onOpenThread,
@@ -1585,6 +1593,7 @@ private struct ExpandedNotchView: View {
     let isAccountDrawerExpanded: Bool
     let accountPickerFilter: AccountPickerFilter
     let selectedAccountIDForSwitch: UUID?
+    var sessionAuthDrift: SessionAuthDrift? = nil
     @Binding var hoveredAccountID: UUID?
     let onActivateChatGPT: () -> Void
     let onOpenThread: (String) -> Void
@@ -1658,6 +1667,7 @@ private struct ExpandedNotchView: View {
                     isDrawerExpanded: isAccountDrawerExpanded,
                     pickerFilter: accountPickerFilter,
                     selectedAccountID: selectedAccountIDForSwitch,
+                    sessionAuthDrift: sessionAuthDrift,
                     hoveredAccountID: $hoveredAccountID,
                     onDrawerExpandedChanged: onAccountDrawerExpandedChanged,
                     onPickerFilterChanged: onAccountPickerFilterChanged,
@@ -1665,6 +1675,11 @@ private struct ExpandedNotchView: View {
                     onConfirmSwitch: onConfirmAccountSwitch,
                     onRefreshAll: onRefreshAllAccountQuotas,
                     onDismissError: onDismissAccountSwitchError
+                )
+            } else if let sessionAuthDrift {
+                StandaloneSessionAuthDriftSection(
+                    drift: sessionAuthDrift,
+                    language: language
                 )
             }
 

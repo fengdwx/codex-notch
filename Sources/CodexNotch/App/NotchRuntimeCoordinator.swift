@@ -19,6 +19,7 @@ final class NotchRuntimeCoordinator {
     // Recovery only stats unchanged files; normal events read just changed paths.
     static let rolloutRescanInterval: TimeInterval = 5
     static let usageRefreshInterval: TimeInterval = 60
+    static let driftRevalidationCooldown: TimeInterval = 15
     static let titleRefreshInterval: TimeInterval = 15
     static let hoverExpandDelay: TimeInterval = 0.18
     static let hoverCollapseDelay: TimeInterval = 0.12
@@ -34,6 +35,7 @@ final class NotchRuntimeCoordinator {
     private let urlSession: URLSession
     private let usageEndpoint: URL
     private let nowProvider: () -> Date
+    private let codexAppLaunchDateProvider: () -> Date?
     private let userDefaults: UserDefaults
     private let viewModel: NotchViewModel
     private let titleReadQueue = DispatchQueue(
@@ -65,6 +67,11 @@ final class NotchRuntimeCoordinator {
     private var titleRefreshInFlight = false
     private var usage: UsageSnapshot?
     private var usageCredentials: CodexCredentials?
+    private var usageAuthModifiedAt: Date?
+    private var lastObservedAuthFileFingerprint: CodexAuthFileFingerprint?
+    private var latestRolloutRateLimit: RolloutRateLimitObservation?
+    private var sessionAuthDrift: SessionAuthDrift?
+    private var lastDriftRevalidationRequestAt: Date?
     private var lastUsageRequestAt: Date?
     private var usageRequestID: UUID?
     private var hoverExpandWorkItem: DispatchWorkItem?
@@ -88,6 +95,11 @@ final class NotchRuntimeCoordinator {
         urlSession: URLSession = CodexUsageClient.defaultSession,
         usageEndpoint: URL = CodexUsageClient.defaultEndpoint,
         nowProvider: @escaping () -> Date = { .now },
+        codexAppLaunchDateProvider: @escaping () -> Date? = {
+            NSRunningApplication.runningApplications(
+                withBundleIdentifier: AppIdentity.chatGPTCodexBundleIdentifier
+            ).compactMap(\.launchDate).max()
+        },
         userDefaults: UserDefaults = .standard,
         viewModel: NotchViewModel = NotchViewModel(),
         resetDialogs: ResetCreditDialogPresenter = ResetCreditDialogPresenter(),
@@ -101,6 +113,7 @@ final class NotchRuntimeCoordinator {
         self.urlSession = urlSession
         self.usageEndpoint = usageEndpoint
         self.nowProvider = nowProvider
+        self.codexAppLaunchDateProvider = codexAppLaunchDateProvider
         self.userDefaults = userDefaults
         self.viewModel = viewModel
         self.resetDialogs = resetDialogs
@@ -196,9 +209,15 @@ final class NotchRuntimeCoordinator {
             withTimeInterval: Self.rolloutRescanInterval,
             repeats: true
         ) { [weak self] _ in
-            self?.rolloutMonitor.rescan()
+            guard let self else { return }
+            self.rolloutMonitor.rescan()
+            self.checkSharedAuthFileChangeIfNeeded()
+            if self.sessionAuthDrift != nil, self.recomputeSessionAuthDrift() {
+                self.render()
+            }
         }
 
+        lastObservedAuthFileFingerprint = activeAuthReader.authFileFingerprint()
         refreshUsage()
         pollSessions()
         render()
@@ -226,6 +245,12 @@ final class NotchRuntimeCoordinator {
         usageTask?.cancel()
         usageRequestID = nil
         usageCredentials = nil
+        let authFingerprint = activeAuthReader.authFileFingerprint()
+        usageAuthModifiedAt = authFingerprint?.modifiedAt
+        lastObservedAuthFileFingerprint = authFingerprint
+        latestRolloutRateLimit = nil
+        sessionAuthDrift = nil
+        lastDriftRevalidationRequestAt = nil
         resetTask?.cancel()
         resetController = nil
         usage = accountsService?.activeAccount?.quota?.previewUsageSnapshot(preservingResetCreditsFrom: nil)
@@ -265,6 +290,11 @@ final class NotchRuntimeCoordinator {
         usageTask?.cancel()
         usageTask = nil
         usageRequestID = nil
+        usageAuthModifiedAt = nil
+        lastObservedAuthFileFingerprint = nil
+        latestRolloutRateLimit = nil
+        sessionAuthDrift = nil
+        lastDriftRevalidationRequestAt = nil
         resetTask?.cancel()
         resetTask = nil
         resetDialogs.dismiss()
@@ -347,7 +377,16 @@ final class NotchRuntimeCoordinator {
             return
         }
 
+        let sessionsChanged = snapshot.activeSessions != lastSessionSnapshot?.activeSessions
+            || snapshot.recentCompletions != lastSessionSnapshot?.recentCompletions
         lastSessionSnapshot = snapshot
+        latestRolloutRateLimit = snapshot.latestRateLimit
+        let driftChanged = recomputeSessionAuthDrift(now: now)
+        guard sessionsChanged || driftChanged || feedbackChanged else {
+            viewModel.updateClock(now: now)
+            refreshTitlesIfNeeded(now: now)
+            return
+        }
         let hadActiveSessions = !activeSessions.isEmpty
         activeSessions = snapshot.activeSessions.map {
             $0.withTitle(threadTitles[$0.threadID])
@@ -427,6 +466,42 @@ final class NotchRuntimeCoordinator {
         accountsService?.activeHomeURL.map { CodexAuthReader(codexHome: $0) } ?? authReader
     }
 
+    private var effectiveUsage: UsageSnapshot? {
+        sessionAuthDrift?.liveUsage ?? usage
+    }
+
+    private func checkSharedAuthFileChangeIfNeeded() {
+        guard started, !viewModel.isUsingResetCredit else { return }
+        let current = activeAuthReader.authFileFingerprint()
+        guard current != lastObservedAuthFileFingerprint else { return }
+        lastObservedAuthFileFingerprint = current
+        refreshUsage()
+    }
+
+    @discardableResult
+    private func recomputeSessionAuthDrift(now: Date? = nil) -> Bool {
+        let resolution = SessionAuthDriftResolver.resolve(
+            sharedAuthUsage: usage,
+            sharedAuthModifiedAt: usageAuthModifiedAt,
+            diskAccount: accountsService?.activeAccount,
+            rolloutRateLimit: latestRolloutRateLimit,
+            accounts: accountsService?.accounts ?? [],
+            codexAppLaunchDate: codexAppLaunchDateProvider()
+        )
+        let changed = sessionAuthDrift != resolution.drift
+        sessionAuthDrift = resolution.drift
+
+        if resolution.needsFreshAPIUsage, !viewModel.isUsingResetCredit {
+            let checkNow = now ?? nowProvider()
+            if checkNow.timeIntervalSince(lastDriftRevalidationRequestAt ?? .distantPast)
+                >= Self.driftRevalidationCooldown {
+                lastDriftRevalidationRequestAt = checkNow
+                refreshUsage()
+            }
+        }
+        return changed
+    }
+
     private func refreshUsage() {
         guard !viewModel.isUsingResetCredit else { return }
         let requestID = UUID()
@@ -439,6 +514,7 @@ final class NotchRuntimeCoordinator {
         let endpoint = usageEndpoint
         usageTask = Task { [weak self] in
             var readCredentials: CodexCredentials?
+            let authFingerprint = reader.authFileFingerprint()
             do {
                 let credentials = try reader.read()
                 readCredentials = credentials
@@ -452,10 +528,13 @@ final class NotchRuntimeCoordinator {
                     guard let self, self.usageRequestID == requestID else { return }
                     self.usage = snapshot
                     self.usageCredentials = credentials
+                    self.usageAuthModifiedAt = authFingerprint?.modifiedAt
+                    self.lastObservedAuthFileFingerprint = authFingerprint
                     self.accountsService?.recordSharedAuthUsageSuccess(
                         credentials: credentials,
                         snapshot: snapshot
                     )
+                    self.recomputeSessionAuthDrift()
                     self.render()
                 }
             } catch {
@@ -463,12 +542,14 @@ final class NotchRuntimeCoordinator {
                 let resolvedCredentials = readCredentials
                 await MainActor.run { [weak self] in
                     guard let self, self.usageRequestID == requestID else { return }
+                    self.lastObservedAuthFileFingerprint = authFingerprint
                     self.accountsService?.recordSharedAuthUsageFailure(
                         credentials: resolvedCredentials,
                         error: error
                     )
                     // Keep the last successful snapshot. A transient usage failure
                     // must not hide an otherwise valid session indicator.
+                    self.recomputeSessionAuthDrift()
                     self.render()
                 }
             }
@@ -483,6 +564,7 @@ final class NotchRuntimeCoordinator {
             return
         }
         guard !viewModel.isUsingResetCredit,
+              sessionAuthDrift == nil,
               credit.canRedeem(at: nowProvider()),
               usage?.resetCredits.contains(credit) == true,
               let expectedCredentials = usageCredentials else { return }
@@ -555,9 +637,13 @@ final class NotchRuntimeCoordinator {
                 guard ResetCreditRedemptionController.sameAccount(credentials, try reader.read()) else {
                     throw ResetCreditRedemptionError.accountChanged
                 }
+                let authFingerprint = reader.authFileFingerprint()
                 self.usage = snapshot
                 self.usageCredentials = credentials
+                self.usageAuthModifiedAt = authFingerprint?.modifiedAt
+                self.lastObservedAuthFileFingerprint = authFingerprint
                 self.lastUsageRequestAt = self.nowProvider()
+                self.recomputeSessionAuthDrift()
                 refreshed = true
             } catch { /* The result dialog explicitly reports a failed refresh. */ }
             guard !Task.isCancelled, self.started else { return }
@@ -576,6 +662,7 @@ final class NotchRuntimeCoordinator {
         if isChatGPTFrontmost != isFrontmost {
             isChatGPTFrontmost = isFrontmost
             if isFrontmost {
+                recomputeSessionAuthDrift()
                 refreshUsage()
             }
         }
@@ -611,6 +698,10 @@ final class NotchRuntimeCoordinator {
         if hovered {
             hoverCollapseWorkItem?.cancel()
             hoverCollapseWorkItem = nil
+            checkSharedAuthFileChangeIfNeeded()
+            if sessionAuthDrift != nil, recomputeSessionAuthDrift() {
+                render()
+            }
 
             guard !isHovered, hoverExpandWorkItem == nil else { return }
             let workItem = DispatchWorkItem { [weak self] in
@@ -775,6 +866,7 @@ final class NotchRuntimeCoordinator {
             guard let self else { return }
             self.accountRenderScheduled = false
             guard self.started else { return }
+            self.recomputeSessionAuthDrift()
             self.render()
         }
     }
@@ -890,7 +982,7 @@ final class NotchRuntimeCoordinator {
                 isDrawerExpanded: false,
                 displayedAccountCount: 0,
                 isConfirmingAccount: false,
-                showsStatusBanner: false,
+                showsStatusBanner: sessionAuthDrift != nil,
                 reservesFiveHourRow: false
             )
         }
@@ -910,7 +1002,7 @@ final class NotchRuntimeCoordinator {
         let showsBanner: Bool
         switch accountsService.switchPhase {
         case .idle:
-            showsBanner = false
+            showsBanner = sessionAuthDrift != nil
         case .switching, .failed:
             showsBanner = accountCount >= 1
         }
@@ -980,7 +1072,7 @@ final class NotchRuntimeCoordinator {
             isChatGPTFrontmost: isChatGPTFrontmost,
             activeSessions: activeSessions,
             recentCompletions: recentCompletions,
-            usage: usage,
+            usage: effectiveUsage,
             isHovered: isHovered,
             completionFeedback: completionFeedback.feedback.map {
                 CompletedSession(session: $0.session.withTitle(threadTitles[$0.session.threadID]), completedAt: $0.completedAt)
@@ -1058,6 +1150,7 @@ final class NotchRuntimeCoordinator {
             isAccountDrawerExpanded: accountLayout.isDrawerExpanded,
             accountPickerFilter: accountPickerFilter,
             selectedAccountIDForSwitch: selectedAccountIDForSwitch,
+            sessionAuthDrift: sessionAuthDrift,
             isPointerInside: isPointerInside,
             animationsEnabled: animationsEnabled,
             onSurfaceAnimationCompleted: { [weak windowController] in
@@ -1137,6 +1230,7 @@ final class NotchRuntimeCoordinator {
             compactLeadingInset: layout.compactLeadingInset,
             surfaceSize: displayState == .hidden ? targetFrame.size : layout.compactFrame.size,
             isResetScheduleExpanded: false,
+            sessionAuthDrift: sessionAuthDrift,
             isPointerInside: isPointerInside && displayState != .hidden,
             animationsEnabled: animationsEnabled,
             onSurfaceAnimationCompleted: { [weak windowController] in

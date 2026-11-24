@@ -11,6 +11,7 @@ struct AccountSwitchList: View {
     let isDrawerExpanded: Bool
     let pickerFilter: AccountPickerFilter
     let selectedAccountID: UUID?
+    var sessionAuthDrift: SessionAuthDrift? = nil
     @Binding var hoveredAccountID: UUID?
     let onDrawerExpandedChanged: (Bool) -> Void
     let onPickerFilterChanged: (AccountPickerFilter) -> Void
@@ -32,7 +33,7 @@ struct AccountSwitchList: View {
     private var showsStatusBanner: Bool {
         switch service.switchPhase {
         case .idle:
-            return false
+            return sessionAuthDrift != nil
         case .switching, .failed:
             return true
         }
@@ -65,6 +66,7 @@ struct AccountSwitchList: View {
                 if showsStatusBanner {
                     AccountStatusBannerView(
                         switchPhase: service.switchPhase,
+                        sessionAuthDrift: sessionAuthDrift,
                         accountNameLookup: { id in service.account(withID: id)?.shortLabel },
                         language: language,
                         onRetry: onConfirmSwitch,
@@ -397,8 +399,36 @@ private struct AccountAnchorBar: View {
     }
 }
 
+struct StandaloneSessionAuthDriftSection: View {
+    let drift: SessionAuthDrift
+    let language: AppLanguage
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                Rectangle()
+                    .fill(NotchPalette.border.opacity(0.45))
+                    .frame(height: 0.5)
+                Spacer(minLength: 0)
+            }
+            .frame(height: NotchExpandedLayout.accountSectionTopSpacing)
+
+            AccountStatusBannerView(
+                switchPhase: .idle,
+                sessionAuthDrift: drift,
+                accountNameLookup: { _ in nil },
+                language: language,
+                onRetry: { _ in },
+                onDismiss: {}
+            )
+        }
+    }
+}
+
 private struct AccountStatusBannerView: View {
     let switchPhase: AccountSwitchPhase
+    var sessionAuthDrift: SessionAuthDrift? = nil
     let accountNameLookup: (UUID) -> String?
     let language: AppLanguage
     let onRetry: (UUID) -> Void
@@ -408,7 +438,19 @@ private struct AccountStatusBannerView: View {
         HStack(spacing: 6) {
             switch switchPhase {
             case .idle:
-                EmptyView()
+                if let sessionAuthDrift {
+                    let message = sessionAuthDrift.bannerText(language: language)
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(NotchPalette.warning)
+                    Text(message)
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(NotchPalette.warning)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .accessibilityLabel(message)
+                    Spacer(minLength: 0)
+                }
             case let .switching(targetID):
                 ProgressView()
                     .controlSize(.mini)
@@ -469,17 +511,29 @@ private struct AccountStatusBannerView: View {
     }
 
     private var bannerFill: Color {
-        if case .failed = switchPhase {
+        switch switchPhase {
+        case .failed:
             return NotchPalette.danger.opacity(0.14)
+        case .switching:
+            return NotchPalette.accent.opacity(0.12)
+        case .idle:
+            return sessionAuthDrift != nil
+                ? NotchPalette.warning.opacity(0.14)
+                : NotchPalette.accent.opacity(0.12)
         }
-        return NotchPalette.accent.opacity(0.12)
     }
 
     private var bannerBorder: Color {
-        if case .failed = switchPhase {
+        switch switchPhase {
+        case .failed:
             return NotchPalette.danger.opacity(0.32)
+        case .switching:
+            return NotchPalette.accent.opacity(0.28)
+        case .idle:
+            return sessionAuthDrift != nil
+                ? NotchPalette.warning.opacity(0.34)
+                : NotchPalette.accent.opacity(0.28)
         }
-        return NotchPalette.accent.opacity(0.28)
     }
 }
 

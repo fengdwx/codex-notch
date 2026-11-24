@@ -16,6 +16,8 @@ final class RolloutActivityMonitor {
 
     private var cursors: [URL: FileCursor] = [:]
     private var eventsByFile: [URL: [RolloutEvent]] = [:]
+    private var isSubagentByFile: [URL: Bool] = [:]
+    private var latestRateLimitByFile: [URL: RolloutRateLimitObservation] = [:]
     private var completionDatesByFile: [URL: [String: Date]] = [:]
     private var pendingScan: DispatchWorkItem?
     private var pendingURLs: Set<URL> = []
@@ -125,8 +127,9 @@ final class RolloutActivityMonitor {
 
     private func scanRollouts() {
         defer { publishInitialScanCompletionIfNeeded() }
+        let trackedURLs = Set(eventsByFile.keys).union(latestRateLimitByFile.keys)
         guard fileManager.fileExists(atPath: rootURL.path) else {
-            for url in Array(eventsByFile.keys) { remove(url: url) }
+            for url in trackedURLs { remove(url: url) }
             return
         }
 
@@ -148,7 +151,8 @@ final class RolloutActivityMonitor {
             completionDates.merge(completionDatesByFile[url] ?? [:], uniquingKeysWith: max)
         }
 
-        for knownURL in Array(eventsByFile.keys) where !retainedURLs.contains(knownURL) {
+        for knownURL in Set(eventsByFile.keys).union(latestRateLimitByFile.keys)
+            where !retainedURLs.contains(knownURL) {
             remove(url: knownURL)
         }
     }
@@ -211,6 +215,8 @@ final class RolloutActivityMonitor {
             if fingerprint.size < cursor.offset
                 || (fingerprints[url].map { $0.inode != fingerprint.inode } ?? false) {
                 eventsByFile[url] = []
+                isSubagentByFile[url] = false
+                latestRateLimitByFile[url] = nil
                 cursor = FileCursor()
             }
 
@@ -218,10 +224,39 @@ final class RolloutActivityMonitor {
             cursors[url] = cursor
             fingerprints[url] = fingerprint
             if !lines.isEmpty {
-                eventsByFile[url, default: []].append(contentsOf: lines.compactMap(RolloutEventParser.parseLine))
+                var newEvents: [RolloutEvent] = []
+                var isSubagent = isSubagentByFile[url] ?? false
+                var latestRateLimit = latestRateLimitByFile[url]
+                for line in lines {
+                    guard let record = RolloutEventParser.parseRecord(line) else { continue }
+                    switch record {
+                    case let .event(event):
+                        switch event.kind {
+                        case .sessionMeta:
+                            isSubagent = false
+                        case .subagentSessionMeta:
+                            isSubagent = true
+                            latestRateLimit = nil
+                        case .taskStarted, .taskCompleted, .turnAborted:
+                            break
+                        }
+                        newEvents.append(event)
+                    case let .rateLimit(observation):
+                        guard !isSubagent else { continue }
+                        if latestRateLimit.map({ observation.observedAt >= $0.observedAt }) ?? true {
+                            latestRateLimit = observation
+                        }
+                    }
+                }
+                if !newEvents.isEmpty {
+                    eventsByFile[url, default: []].append(contentsOf: newEvents)
+                }
+                isSubagentByFile[url] = isSubagent
+                latestRateLimitByFile[url] = latestRateLimit
             }
 
             let reduction = ActiveSessionReducer.reduce(eventsByFile[url, default: []])
+            let latestRateLimit = (isSubagentByFile[url] == true) ? nil : latestRateLimitByFile[url]
             completionDatesByFile[url] = Dictionary(
                 reduction.completed.map { ($0.threadID, $0.lastActivityAt) },
                 uniquingKeysWith: max
@@ -231,7 +266,12 @@ final class RolloutActivityMonitor {
             let notify = onChange
             publicationTask = Task {
                 await previous?.value
-                await store.replace(rolloutID: url.path, reduction: reduction, lastModifiedAt: modifiedAt)
+                await store.replace(
+                    rolloutID: url.path,
+                    reduction: reduction,
+                    lastModifiedAt: modifiedAt,
+                    latestRateLimit: latestRateLimit
+                )
                 DispatchQueue.main.async { notify?() }
             }
         } catch {
@@ -241,7 +281,10 @@ final class RolloutActivityMonitor {
     }
 
     private func remove(url: URL) {
-        guard eventsByFile.removeValue(forKey: url) != nil else { return }
+        guard eventsByFile.removeValue(forKey: url) != nil
+            || latestRateLimitByFile.removeValue(forKey: url) != nil else { return }
+        isSubagentByFile.removeValue(forKey: url)
+        latestRateLimitByFile.removeValue(forKey: url)
         cursors.removeValue(forKey: url)
         fingerprints.removeValue(forKey: url)
         completionDatesByFile.removeValue(forKey: url)
