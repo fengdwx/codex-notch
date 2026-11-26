@@ -825,6 +825,7 @@ private struct AccountDrawerCard: View {
                     AccountQuotaSummaryView(
                         quota: account.quota,
                         availabilityStatus: availabilityStatus,
+                        now: now,
                         language: language
                     )
                     .fixedSize(horizontal: true, vertical: false)
@@ -1012,10 +1013,11 @@ private struct AccountConfirmFooter: View {
 private struct AccountQuotaSummaryView: View {
     let quota: AccountQuota?
     let availabilityStatus: AccountAvailabilityStatus
+    let now: Date
     let language: AppLanguage
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 2) {
+        VStack(alignment: .trailing, spacing: 2.5) {
             if availabilityStatus != .available {
                 Text(
                     availabilityStatus == .reauthRequired
@@ -1064,17 +1066,93 @@ private struct AccountQuotaSummaryView: View {
                 }
                 .monospacedDigit()
 
-                Text(quota.conciseResetText(language: language))
-                    .font(.system(size: 9.5, weight: .regular))
-                    .foregroundStyle(NotchPalette.secondaryText.opacity(0.75))
-                    .monospacedDigit()
-                    .lineLimit(1)
+                AccountResetCountdownLine(
+                    presentation: quota.resetPresentation(now: now),
+                    language: language
+                )
             } else {
                 Text(language.localized(chinese: "未检查", english: "Unchecked"))
                     .font(.system(size: 10, weight: .regular))
                     .foregroundStyle(NotchPalette.secondaryText)
             }
         }
+    }
+}
+
+private struct AccountResetCountdownLine: View {
+    let presentation: AccountResetPresentation
+    let language: AppLanguage
+
+    var body: some View {
+        Group {
+            switch presentation {
+            case let .dual(fiveHour, weekly):
+                HStack(spacing: 4.5) {
+                    countdownSegment(fiveHour)
+
+                    Text("·")
+                        .font(.system(size: 9.5, weight: .regular))
+                        .foregroundStyle(Color.white.opacity(0.28))
+
+                    countdownSegment(weekly)
+                }
+
+            case let .single(segment):
+                countdownSegment(segment)
+
+            case .unavailable:
+                Text("—")
+                    .font(.system(size: 9.5, weight: .regular))
+                    .foregroundStyle(Color.white.opacity(0.36))
+            }
+        }
+        .lineLimit(1)
+    }
+
+    private func countdownSegment(_ segment: AccountResetWindowCountdown) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 2.5) {
+            if let label = segment.windowLabel {
+                Text(label)
+                    .font(.system(size: 9.5, weight: .regular))
+                    .foregroundStyle(Color.white.opacity(0.38))
+            }
+
+            countdownValueText(for: segment)
+        }
+    }
+
+    private func countdownValueText(for segment: AccountResetWindowCountdown) -> some View {
+        let text: String = switch segment.state {
+        case let .counting(value):
+            value
+        case .idle:
+            language.localized(chinese: "待开始", english: "Ready")
+        case .expired:
+            language.localized(chinese: "已重置", english: "Reset")
+        }
+
+        let fontWeight: Font.Weight = switch segment.tone {
+        case .ready, .recovering:
+            .medium
+        case .normal, .muted:
+            .regular
+        }
+
+        let color: Color = switch segment.tone {
+        case .ready:
+            NotchPalette.success.opacity(0.84)
+        case .recovering:
+            NotchPalette.warning.opacity(0.82)
+        case .normal:
+            Color.white.opacity(0.56)
+        case .muted:
+            Color.white.opacity(0.42)
+        }
+
+        return Text(text)
+            .font(.system(size: 9.5, weight: fontWeight))
+            .foregroundStyle(color)
+            .monospacedDigit()
     }
 }
 

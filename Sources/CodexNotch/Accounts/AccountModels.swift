@@ -1,5 +1,35 @@
 import Foundation
 
+enum AccountResetCountdownState: Equatable, Sendable {
+    case counting(String)
+    /// 5h window is still at 100% so its rolling timer has not started yet.
+    case idle
+    case expired
+}
+
+enum AccountResetCountdownTone: Equatable, Sendable {
+    /// Reset timestamp has passed; window is ready to refresh/use.
+    case ready
+    /// Quota is exhausted or low (`<= 20%`); highlights the recovery countdown.
+    case recovering
+    /// Standard calm secondary countdown tone shared across healthy windows.
+    case normal
+    /// Quieter metadata tone for an unstarted 100% 5h window.
+    case muted
+}
+
+struct AccountResetWindowCountdown: Equatable, Sendable {
+    let windowLabel: String?
+    let state: AccountResetCountdownState
+    let tone: AccountResetCountdownTone
+}
+
+enum AccountResetPresentation: Equatable, Sendable {
+    case dual(fiveHour: AccountResetWindowCountdown, weekly: AccountResetWindowCountdown)
+    case single(AccountResetWindowCountdown)
+    case unavailable
+}
+
 /// A normalized quota snapshot that is small enough to persist next to an account.
 struct AccountQuota: Codable, Equatable, Sendable {
     /// Distinguishes caches written after mapping by semantic `UsageWindowKind`
@@ -212,58 +242,144 @@ struct AccountQuota: Codable, Equatable, Sendable {
         )
     }
 
-    private static func makeFormatter(_ format: String, timeZone: TimeZone) -> DateFormatter {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.timeZone = timeZone
-        formatter.dateFormat = format
-        return formatter
+    private static func conciseCountdown(to resetAt: Date, now: Date) -> String? {
+        let totalSeconds = Int(resetAt.timeIntervalSince(now).rounded(.down))
+        guard totalSeconds > 0 else { return nil }
+
+        let days = totalSeconds / 86_400
+        let hours = (totalSeconds % 86_400) / 3_600
+        let minutes = (totalSeconds % 3_600) / 60
+        let seconds = totalSeconds % 60
+
+        if days > 0 {
+            return String(format: "%dd %02d:%02d:%02d", days, hours, minutes, seconds)
+        }
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
 
-    private static let currentDateTimeFormatter = makeFormatter("MM-dd HH:mm", timeZone: .current)
-    private static let currentTimeOnlyFormatter = makeFormatter("HH:mm", timeZone: .current)
-    private static let currentMonthDayFormatter = makeFormatter("MM-dd", timeZone: .current)
-
-    /// Summarizes reset timing for the compact drawer row. Full `100%` 5h
-    /// windows hold a rolling placeholder reset timestamp, so 5h reset timing is
-    /// revealed side-by-side only once 5h quota actually drops below 100%.
-    func conciseResetText(
-        language: AppLanguage,
-        timeZone: TimeZone = .current
-    ) -> String {
-        let dateTimeFormatter = timeZone == .current
-            ? Self.currentDateTimeFormatter
-            : Self.makeFormatter("MM-dd HH:mm", timeZone: timeZone)
-        let timeOnlyFormatter = timeZone == .current
-            ? Self.currentTimeOnlyFormatter
-            : Self.makeFormatter("HH:mm", timeZone: timeZone)
-        let monthDayFormatter = timeZone == .current
-            ? Self.currentMonthDayFormatter
-            : Self.makeFormatter("MM-dd", timeZone: timeZone)
-
-        let hasConsumedFiveHour = primaryRemainingPercent.map { Int($0.rounded()) < 100 } ?? false
-        if hasConsumedFiveHour, let primaryResetsAt {
-            let fiveHourText = timeOnlyFormatter.string(from: primaryResetsAt)
-            if let secondaryResetsAt {
-                let weeklyDate = monthDayFormatter.string(from: secondaryResetsAt)
-                return "5h \(fiveHourText) · 7d \(weeklyDate)"
-            }
-            return language.localized(
-                chinese: "5h \(fiveHourText) 重置",
-                english: "Resets 5h \(fiveHourText)"
+    private static func countdownSegment(
+        windowLabel: String,
+        resetAt: Date,
+        now: Date,
+        remainingPercent: Double?
+    ) -> AccountResetWindowCountdown {
+        if let countdown = conciseCountdown(to: resetAt, now: now) {
+            let isLowOrExhausted = remainingPercent.map {
+                $0 <= Self.lowQuotaCueThresholdPercent
+            } ?? false
+            return AccountResetWindowCountdown(
+                windowLabel: windowLabel,
+                state: .counting(countdown),
+                tone: isLowOrExhausted ? .recovering : .normal
             )
+        }
+        return AccountResetWindowCountdown(
+            windowLabel: windowLabel,
+            state: .expired,
+            tone: .ready
+        )
+    }
+
+    /// Structured countdown presentation used by both the styled drawer view
+    /// and plain-text summaries. Full `100%` 5h windows hold a rolling
+    /// placeholder reset timestamp, so 5h shows an idle cue until quota drops
+    /// below 100%.
+    func resetPresentation(now: Date = .now) -> AccountResetPresentation {
+        let hasFiveHourWindow = primaryRemainingPercent != nil
+        let hasConsumedFiveHour = primaryRemainingPercent.map { Int($0.rounded()) < 100 } ?? false
+
+        if hasFiveHourWindow {
+            let fiveHour: AccountResetWindowCountdown? = if hasConsumedFiveHour, let primaryResetsAt {
+                Self.countdownSegment(
+                    windowLabel: "5h",
+                    resetAt: primaryResetsAt,
+                    now: now,
+                    remainingPercent: primaryRemainingPercent
+                )
+            } else if !hasConsumedFiveHour {
+                AccountResetWindowCountdown(
+                    windowLabel: "5h",
+                    state: .idle,
+                    tone: .muted
+                )
+            } else {
+                nil
+            }
+
+            if let fiveHour {
+                if let secondaryResetsAt {
+                    let weekly = Self.countdownSegment(
+                        windowLabel: "7d",
+                        resetAt: secondaryResetsAt,
+                        now: now,
+                        remainingPercent: secondaryRemainingPercent
+                    )
+                    return .dual(fiveHour: fiveHour, weekly: weekly)
+                }
+                return .single(fiveHour)
+            }
         }
 
         if let secondaryResetsAt {
-            let formatted = dateTimeFormatter.string(from: secondaryResetsAt)
-            return language.localized(chinese: "\(formatted) 重置", english: "Resets \(formatted)")
+            return .single(
+                Self.countdownSegment(
+                    windowLabel: "7d",
+                    resetAt: secondaryResetsAt,
+                    now: now,
+                    remainingPercent: secondaryRemainingPercent
+                )
+            )
         }
+
         if let primaryResetsAt {
-            let formatted = dateTimeFormatter.string(from: primaryResetsAt)
-            return language.localized(chinese: "5h \(formatted) 重置", english: "5h \(formatted)")
+            return .single(
+                Self.countdownSegment(
+                    windowLabel: "5h",
+                    resetAt: primaryResetsAt,
+                    now: now,
+                    remainingPercent: primaryRemainingPercent
+                )
+            )
         }
-        return "—"
+
+        return .unavailable
+    }
+
+    /// Summarizes reset countdown for the compact drawer row.
+    func conciseResetText(
+        now: Date = .now,
+        language: AppLanguage
+    ) -> String {
+        switch resetPresentation(now: now) {
+        case let .dual(fiveHour, weekly):
+            let fiveHourText = Self.plainValue(for: fiveHour.state, language: language)
+            let weeklyText = Self.plainValue(for: weekly.state, language: language)
+            return "\(fiveHour.windowLabel ?? "5h") \(fiveHourText) · \(weekly.windowLabel ?? "7d") \(weeklyText)"
+
+        case let .single(segment):
+            let value = Self.plainValue(for: segment.state, language: language)
+            if let prefix = segment.windowLabel {
+                return "\(prefix) \(value)"
+            }
+            return value
+
+        case .unavailable:
+            return "—"
+        }
+    }
+
+    private static func plainValue(
+        for state: AccountResetCountdownState,
+        language: AppLanguage
+    ) -> String {
+        switch state {
+        case let .counting(countdown):
+            return countdown
+        case .idle:
+            return language.localized(chinese: "待开始", english: "Ready")
+        case .expired:
+            return language.localized(chinese: "已重置", english: "Reset")
+        }
     }
 }
 

@@ -739,45 +739,140 @@ final class AccountsTests: XCTestCase {
         XCTAssertTrue(fresh.isStaleQuota(at: now, failedIDs: [fresh.id]))
     }
 
-    func testQuotaConciseResetTextRevealsFiveHourResetOnlyWhenConsumed() {
-        let gmt = TimeZone(secondsFromGMT: 0)!
-        let primaryReset = ISO8601DateFormatter().date(from: "2026-11-15T02:30:00Z")!
-        let weeklyReset = ISO8601DateFormatter().date(from: "2026-11-21T15:00:00Z")!
+    func testQuotaConciseResetTextShowsCountdownsAndRevealsFiveHourOnlyWhenConsumed() {
+        let now = ISO8601DateFormatter().date(from: "2026-11-15T00:00:00Z")!
+        let primaryReset = now.addingTimeInterval(2 * 3_600 + 30 * 60 + 45)
+        let weeklyReset = now.addingTimeInterval(6 * 86_400 + 15 * 3_600 + 20)
 
-        // Full 100% (even 99.8 rounded to 100%) suppresses rolling 5h placeholder and shows full 7d reset
+        // Full 100% (even 99.8 rounded to 100%) suppresses rolling 5h placeholder and shows an idle 5h cue beside 7d
         let fullFiveHourQuota = AccountQuota(
             primaryUsedPercent: 0.2,
             primaryResetsAt: primaryReset,
             secondaryUsedPercent: 15,
             secondaryResetsAt: weeklyReset
         )
-        XCTAssertEqual(fullFiveHourQuota.conciseResetText(language: .chinese, timeZone: gmt), "11-21 15:00 重置")
-        XCTAssertEqual(fullFiveHourQuota.conciseResetText(language: .english, timeZone: gmt), "Resets 11-21 15:00")
+        XCTAssertEqual(fullFiveHourQuota.conciseResetText(now: now, language: .chinese), "5h 待开始 · 7d 6d 15:00:20")
+        XCTAssertEqual(fullFiveHourQuota.conciseResetText(now: now, language: .english), "5h Ready · 7d 6d 15:00:20")
+        XCTAssertEqual(
+            fullFiveHourQuota.resetPresentation(now: now),
+            .dual(
+                fiveHour: AccountResetWindowCountdown(
+                    windowLabel: "5h",
+                    state: .idle,
+                    tone: .muted
+                ),
+                weekly: AccountResetWindowCountdown(
+                    windowLabel: "7d",
+                    state: .counting("6d 15:00:20"),
+                    tone: .normal
+                )
+            )
+        )
 
-        // Consumed 5h (< 100%) reveals compact side-by-side 5h HH:mm and 7d MM-dd
+        // Consumed 5h (< 100%) reveals second-level side-by-side 5h and 7d countdowns
         let consumedFiveHourQuota = AccountQuota(
             primaryUsedPercent: 40,
             primaryResetsAt: primaryReset,
             secondaryUsedPercent: 15,
             secondaryResetsAt: weeklyReset
         )
-        XCTAssertEqual(consumedFiveHourQuota.conciseResetText(language: .chinese, timeZone: gmt), "5h 02:30 · 7d 11-21")
-        XCTAssertEqual(consumedFiveHourQuota.conciseResetText(language: .english, timeZone: gmt), "5h 02:30 · 7d 11-21")
+        XCTAssertEqual(consumedFiveHourQuota.conciseResetText(now: now, language: .chinese), "5h 02:30:45 · 7d 6d 15:00:20")
+        XCTAssertEqual(consumedFiveHourQuota.conciseResetText(now: now, language: .english), "5h 02:30:45 · 7d 6d 15:00:20")
 
-        // Single-window consumed 5h shows 5h HH:mm reset
+        // Advancing `now` updates both countdowns down to the second and through expired states
+        let subHourNow = primaryReset.addingTimeInterval(-(45 * 60 + 10))
+        XCTAssertEqual(consumedFiveHourQuota.conciseResetText(now: subHourNow, language: .chinese), "5h 00:45:10 · 7d 6d 13:14:45")
+
+        let subMinuteNow = primaryReset.addingTimeInterval(-35)
+        XCTAssertEqual(consumedFiveHourQuota.conciseResetText(now: subMinuteNow, language: .chinese), "5h 00:00:35 · 7d 6d 12:30:10")
+
+        let underOneDayWeekly = AccountQuota(
+            primaryUsedPercent: 50,
+            primaryResetsAt: now.addingTimeInterval(3 * 3_600),
+            secondaryUsedPercent: 10,
+            secondaryResetsAt: now.addingTimeInterval(12 * 3_600 + 5 * 60 + 3)
+        )
+        XCTAssertEqual(underOneDayWeekly.conciseResetText(now: now, language: .english), "5h 03:00:00 · 7d 12:05:03")
+
+        let expiredFiveHourNow = primaryReset.addingTimeInterval(5)
+        XCTAssertEqual(consumedFiveHourQuota.conciseResetText(now: expiredFiveHourNow, language: .chinese), "5h 已重置 · 7d 6d 12:29:30")
+        XCTAssertEqual(consumedFiveHourQuota.conciseResetText(now: expiredFiveHourNow, language: .english), "5h Reset · 7d 6d 12:29:30")
+
+        // Single-window consumed 5h shows 5h countdown and expired state
         let fiveHourOnlyConsumed = AccountQuota(
             primaryUsedPercent: 60,
             primaryResetsAt: primaryReset
         )
-        XCTAssertEqual(fiveHourOnlyConsumed.conciseResetText(language: .chinese, timeZone: gmt), "5h 02:30 重置")
-        XCTAssertEqual(fiveHourOnlyConsumed.conciseResetText(language: .english, timeZone: gmt), "Resets 5h 02:30")
+        XCTAssertEqual(fiveHourOnlyConsumed.conciseResetText(now: now, language: .chinese), "5h 02:30:45")
+        XCTAssertEqual(fiveHourOnlyConsumed.conciseResetText(now: now, language: .english), "5h 02:30:45")
+        XCTAssertEqual(fiveHourOnlyConsumed.conciseResetText(now: expiredFiveHourNow, language: .chinese), "5h 已重置")
+        XCTAssertEqual(fiveHourOnlyConsumed.conciseResetText(now: expiredFiveHourNow, language: .english), "5h Reset")
 
-        // Weekly-only (e.g. support) keeps 7d date-time reset
+        // Weekly-only (e.g. support) keeps 7d countdown and expired state
         let weeklyOnlyQuota = AccountQuota(
             secondaryUsedPercent: 20,
             secondaryResetsAt: weeklyReset
         )
-        XCTAssertEqual(weeklyOnlyQuota.conciseResetText(language: .chinese, timeZone: gmt), "11-21 15:00 重置")
+        XCTAssertEqual(weeklyOnlyQuota.conciseResetText(now: now, language: .chinese), "7d 6d 15:00:20")
+        XCTAssertEqual(weeklyOnlyQuota.conciseResetText(now: weeklyReset, language: .chinese), "7d 已重置")
+        XCTAssertEqual(weeklyOnlyQuota.conciseResetText(now: weeklyReset, language: .english), "7d Reset")
+
+        // Missing reset timestamps fall back to em dash
+        XCTAssertEqual(AccountQuota(primaryUsedPercent: 20).conciseResetText(now: now, language: .chinese), "—")
+        XCTAssertEqual(AccountQuota(primaryUsedPercent: 20).resetPresentation(now: now), .unavailable)
+
+        // Semantic countdown tones keep healthy windows uniform and highlight only exhausted/low or ready windows
+        let exhaustedFiveHour = AccountQuota(
+            primaryUsedPercent: 100,
+            primaryResetsAt: primaryReset,
+            secondaryUsedPercent: 16,
+            secondaryResetsAt: weeklyReset
+        )
+        XCTAssertEqual(
+            exhaustedFiveHour.resetPresentation(now: now),
+            .dual(
+                fiveHour: AccountResetWindowCountdown(
+                    windowLabel: "5h",
+                    state: .counting("02:30:45"),
+                    tone: .recovering
+                ),
+                weekly: AccountResetWindowCountdown(
+                    windowLabel: "7d",
+                    state: .counting("6d 15:00:20"),
+                    tone: .normal
+                )
+            )
+        )
+        XCTAssertEqual(
+            consumedFiveHourQuota.resetPresentation(now: now),
+            .dual(
+                fiveHour: AccountResetWindowCountdown(
+                    windowLabel: "5h",
+                    state: .counting("02:30:45"),
+                    tone: .normal
+                ),
+                weekly: AccountResetWindowCountdown(
+                    windowLabel: "7d",
+                    state: .counting("6d 15:00:20"),
+                    tone: .normal
+                )
+            )
+        )
+        XCTAssertEqual(
+            consumedFiveHourQuota.resetPresentation(now: expiredFiveHourNow),
+            .dual(
+                fiveHour: AccountResetWindowCountdown(
+                    windowLabel: "5h",
+                    state: .expired,
+                    tone: .ready
+                ),
+                weekly: AccountResetWindowCountdown(
+                    windowLabel: "7d",
+                    state: .counting("6d 12:29:30"),
+                    tone: .normal
+                )
+            )
+        )
     }
 
     func testSidebarProjectSynchronizerCopiesPoolToEveryAccount() throws {
