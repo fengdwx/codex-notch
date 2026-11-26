@@ -3,24 +3,24 @@
     <channel>
         <title>CodexNotch</title>
         <item>
-            <title>2.1.0</title>
-            <pubDate>Thu, 19 Nov 2026 23:39:25 +0800</pubDate>
-            <sparkle:version>27</sparkle:version>
-            <sparkle:shortVersionString>2.1.0</sparkle:shortVersionString>
+            <title>2.1.2</title>
+            <pubDate>Thu, 26 Nov 2026 22:10:22 +0800</pubDate>
+            <sparkle:version>29</sparkle:version>
+            <sparkle:shortVersionString>2.1.2</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# CodexNotch 2.1.0
+            <description sparkle:format="markdown"><![CDATA[# CodexNotch 2.1.2
 
-CodexNotch 2.1.0 simplifies account onboarding in **Settings → Accounts** and brings the project documentation up to date.
+CodexNotch 2.1.2 updates the account switcher drawer to show live second-level reset countdowns with unified, restrained typography.
 
-- **Cleaner account onboarding:** Removed the obsolete external `CodexAccountSwitcher` auto-import and "Sync legacy" link. Add accounts cleanly via **+ Sign in**, **Import auth.json**, or **Adopt local login**.
-- **Updated documentation:** Rewrote the English and Simplified Chinese READMEs to reflect multi-account shared-workspace workflows, **External Island** customization, privacy boundaries, and a new **Acknowledgments & References** section crediting open-source inspirations and dependencies.
+- **Live account reset countdowns:** Replaces static reset clock times and dates in the expanded notch account switcher with live second-level countdowns (`HH:mm:ss` and `Xd HH:mm:ss`), keeping monospaced digits aligned across rows.
+- **Unstarted 5h window cue and semantic hierarchy:** Displays `5h Ready` (`5h 待开始`) alongside the `7d` countdown when a 5-hour window is still at 100%, uses a calm uniform secondary tone for healthy windows, highlights low/exhausted windows (≤ 20%) in soft amber, and marks elapsed reset windows in green.
 
 Update from Settings → Check Updates, or download the DMG or ZIP. Existing preferences and saved accounts are preserved.
 
-Downloads are available for Apple Silicon on macOS 14 or later. The app has not been notarized by Apple. See the [installation guide](https://github.com/fengdwx/codex-notch/blob/v2.1.0/README.md#install).
+Downloads are available for Apple Silicon on macOS 14 or later. The app has not been notarized by Apple. See the [installation guide](https://github.com/fengdwx/codex-notch/blob/v2.1.2/README.md#install).
 ]]></description>
-            <enclosure url="https://github.com/fengdwx/codex-notch/releases/download/v2.1.0/CodexNotch-2.1.0-macOS-arm64.zip" length="4863837" type="application/octet-stream" sparkle:edSignature="d3F8vS2WHRtu3j1zu0fNQHekV5deGpI/7cZ9QZfae4c+QsIVhWKibrhBEjA0KcpVdposKGZ0g/qhbF82CQHwCg=="/>
+            <enclosure url="https://github.com/fengdwx/codex-notch/releases/download/v2.1.2/CodexNotch-2.1.2-macOS-arm64.zip" length="4842360" type="application/octet-stream" sparkle:edSignature="K1ffzH2JzBsQkw8t3D/s/NUE3N+21iS0P0Diqybpyi1ItzExsAAju1uH9oJBzRNYLWQ8RcCgmT8yhDxL89LYBA=="/>
         </item>
     </channel>
 </rss>
