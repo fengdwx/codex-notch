@@ -457,26 +457,42 @@ final class SessionAuthSyncTests: XCTestCase {
         let alpha = try accountsService.importSession(authAlpha)
         let beta = try accountsService.importSession(authBeta)
         try await accountsService.switchTo(alpha.id)
+        let baseNow = Date(timeIntervalSince1970: floor(Date().timeIntervalSince1970))
+        let alphaPrimaryReset = baseNow.addingTimeInterval(17_382)
+        let alphaWeeklyReset = baseNow.addingTimeInterval(115_662)
+        let betaPrimaryReset = baseNow.addingTimeInterval(17_683)
+        let betaWeeklyReset = baseNow.addingTimeInterval(173_983)
+        let alphaPrimaryResetEpoch = Int(alphaPrimaryReset.timeIntervalSince1970)
+        let alphaWeeklyResetEpoch = Int(alphaWeeklyReset.timeIntervalSince1970)
+        let betaPrimaryResetEpoch = Int(betaPrimaryReset.timeIntervalSince1970)
+        let betaWeeklyResetEpoch = Int(betaWeeklyReset.timeIntervalSince1970)
+
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let turn1MetaTimestamp = isoFormatter.string(from: baseNow.addingTimeInterval(-66))
+        let turn1EventTimestamp = isoFormatter.string(from: baseNow.addingTimeInterval(-65.816))
+        let turn2EventTimestamp = isoFormatter.string(from: baseNow.addingTimeInterval(-30))
+
         // Seed alpha's cached quota so drift matching can resolve its display name.
         accountsService.recordSharedAuthUsageSuccess(
             credentials: CodexCredentials(accessToken: "tok-alpha", accountID: "acct-alpha"),
             snapshot: UsageSnapshot(
                 windows: [
-                    UsageWindow(id: "primary", kind: .rolling(hours: 5), usedPercent: 10, resetAt: Date(timeIntervalSince1970: 1_795_521_582)),
-                    UsageWindow(id: "secondary", kind: .weekly, usedPercent: 55, resetAt: Date(timeIntervalSince1970: 1_795_619_862))
+                    UsageWindow(id: "primary", kind: .rolling(hours: 5), usedPercent: 10, resetAt: alphaPrimaryReset),
+                    UsageWindow(id: "secondary", kind: .weekly, usedPercent: 55, resetAt: alphaWeeklyReset)
                 ],
-                fetchedAt: Date(timeIntervalSince1970: 1_795_497_200)
+                fetchedAt: baseNow.addingTimeInterval(-7_000)
             )
         )
         XCTAssertEqual(accountsService.activeAccountID, alpha.id)
 
-        // External tool rewrites ~/.codex/auth.json to beta while Codex Desktop (launched at 13:12) stays on alpha.
+        // External tool rewrites ~/.codex/auth.json to beta while Codex Desktop (launched earlier) stays on alpha.
         let authURL = codexHome.appendingPathComponent("auth.json")
         try authBeta.write(to: authURL, options: .atomic)
-        let authModifiedAt = Date(timeIntervalSince1970: 1_795_500_838)
+        let authModifiedAt = baseNow.addingTimeInterval(-3_362)
         try FileManager.default.setAttributes([.modificationDate: authModifiedAt], ofItemAtPath: authURL.path)
 
-        var codexLaunchDate = Date(timeIntervalSince1970: 1_795_497_120) // 13:12 (before auth.json rewrite)
+        var codexLaunchDate = baseNow.addingTimeInterval(-7_080) // before auth.json rewrite
         var resetPostCount = 0
 
         let config = URLSessionConfiguration.ephemeral
@@ -490,8 +506,8 @@ final class SessionAuthSyncTests: XCTestCase {
                 body = """
                 {
                   "rate_limit": {
-                    "primary_window": {"used_percent": 0, "limit_window_seconds": 18000, "reset_at": 1795521883},
-                    "secondary_window": {"used_percent": 44, "limit_window_seconds": 604800, "reset_at": 1795678183}
+                    "primary_window": {"used_percent": 0, "limit_window_seconds": 18000, "reset_at": \(betaPrimaryResetEpoch)},
+                    "secondary_window": {"used_percent": 44, "limit_window_seconds": 604800, "reset_at": \(betaWeeklyResetEpoch)}
                   },
                   "rate_limit_reset_credits": {"available_count": 1}
                 }
@@ -531,7 +547,7 @@ final class SessionAuthSyncTests: XCTestCase {
             sessionStore: ActiveSessionStore(),
             urlSession: session,
             usageEndpoint: usageEndpoint,
-            nowProvider: { Date(timeIntervalSince1970: 1_795_504_200) },
+            nowProvider: { baseNow },
             codexAppLaunchDateProvider: { codexLaunchDate },
             userDefaults: defaults,
             viewModel: viewModel,
@@ -556,8 +572,8 @@ final class SessionAuthSyncTests: XCTestCase {
         // 2. Option 2: Codex (still running alpha) emits a rollout token_count after auth.json mtime.
         let rolloutFile = sessionsDir.appendingPathComponent("live.jsonl")
         let turn1 = """
-        {"timestamp":"2026-11-24T07:08:54.000Z","type":"session_meta","payload":{"id":"t-live","cwd":"/tmp/app","originator":"Codex Desktop"}}
-        {"timestamp":"2026-11-24T07:08:54.184Z","type":"event_msg","payload":{"type":"token_count","rate_limits":{"limit_id":"codex","primary":{"used_percent":11,"window_minutes":300,"resets_at":1795521582},"secondary":{"used_percent":55,"window_minutes":10080,"resets_at":1795619862},"plan_type":"plus"}}}
+        {"timestamp":"\(turn1MetaTimestamp)","type":"session_meta","payload":{"id":"t-live","cwd":"/tmp/app","originator":"Codex Desktop"}}
+        {"timestamp":"\(turn1EventTimestamp)","type":"event_msg","payload":{"type":"token_count","rate_limits":{"limit_id":"codex","primary":{"used_percent":11,"window_minutes":300,"resets_at":\(alphaPrimaryResetEpoch)},"secondary":{"used_percent":55,"window_minutes":10080,"resets_at":\(alphaWeeklyResetEpoch)},"plan_type":"plus"}}}
 
         """
         try Data(turn1.utf8).write(to: rolloutFile, options: .atomic)
@@ -581,7 +597,7 @@ final class SessionAuthSyncTests: XCTestCase {
         let handle = try FileHandle(forWritingTo: rolloutFile)
         try handle.seekToEnd()
         let turn2 = """
-        {"timestamp":"2026-11-24T07:09:30.000Z","type":"event_msg","payload":{"type":"token_count","rate_limits":{"limit_id":"codex","primary":{"used_percent":15,"window_minutes":300,"resets_at":1795521582},"secondary":{"used_percent":56,"window_minutes":10080,"resets_at":1795619862},"plan_type":"plus"}}}
+        {"timestamp":"\(turn2EventTimestamp)","type":"event_msg","payload":{"type":"token_count","rate_limits":{"limit_id":"codex","primary":{"used_percent":15,"window_minutes":300,"resets_at":\(alphaPrimaryResetEpoch)},"secondary":{"used_percent":56,"window_minutes":10080,"resets_at":\(alphaWeeklyResetEpoch)},"plan_type":"plus"}}}
 
         """
         try handle.write(contentsOf: Data(turn2.utf8))
@@ -593,7 +609,7 @@ final class SessionAuthSyncTests: XCTestCase {
         }
 
         // 4. User restarts Codex Desktop (launchDate > rollout) -> hovering clears drift and restores beta's quota & reset credits.
-        codexLaunchDate = Date(timeIntervalSince1970: 1_795_504_500)
+        codexLaunchDate = baseNow.addingTimeInterval(300)
         viewModel.onHoverChanged(true)
         try await waitUntil {
             viewModel.sessionAuthDrift == nil
